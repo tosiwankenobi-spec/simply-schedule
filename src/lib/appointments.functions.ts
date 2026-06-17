@@ -23,14 +23,29 @@ export const parseAppointmentWithAI = createServerFn({ method: "POST" })
     if (!LOVABLE_API_KEY) throw new Error("Missing LOVABLE_API_KEY");
 
     const now = data.now ?? new Date().toISOString();
+    const tzOffsetMin = new Date().getTimezoneOffset();
+    const localNow = new Date(Date.now() - tzOffsetMin * 60000).toISOString().replace("Z", "");
 
-    const system = `You extract a single appointment from text (an email, a forwarded invite, or a short description).
-Today's date/time (ISO, user's local converted to UTC) is: ${now}.
-Return ONLY valid JSON matching this TypeScript type — no prose, no markdown fence:
-{ "title": string, "starts_at": string (ISO 8601 with timezone offset), "ends_at": string | null, "location": string | null, "notes": string | null }
-If the user says "tomorrow", "next Tuesday", etc., resolve relative to the date above.
-If no end time is given, set ends_at to null.
-Title should be short and human (e.g. "Dentist", "Lunch with Maya"). Keep notes short or null.`;
+    const system = `You are an expert appointment extractor. Pull ONE appointment from the user's text (which may be an email, calendar invite, forwarded message, or freeform note).
+
+CURRENT CONTEXT
+- Now (UTC ISO): ${now}
+- Now (user local, no tz): ${localNow}
+- Resolve relative phrases ("today", "tomorrow", "tonight", "next Friday", "in 2 hours", "this weekend") against the user-local time above.
+- If a date is given without a year, pick the next future occurrence.
+- If a time has no AM/PM, prefer the next plausible future time.
+- Only set ends_at if the text states or strongly implies it.
+
+EXTRACTION RULES
+- title: short, human, action-first. Strip "Re:", "Fwd:", "Invitation:", "Reminder:". Examples: "Dentist", "Lunch with Maya", "Standup", "Flight to Berlin". Max ~60 chars. Never blank — if unclear, summarize the subject in 2-4 words.
+- starts_at: ISO 8601 WITH timezone offset (e.g. "2026-06-18T15:00:00-07:00"). If no timezone in text, assume the user's local timezone (offset ${-tzOffsetMin} minutes from UTC).
+- ends_at: ISO 8601 with offset, or null.
+- location: physical address, room, venue, OR a video link (Zoom/Meet/Teams URL). Check for "at ___", "in ___", "Location:", "Where:", "Join:", or any zoom/meet/teams URL. null if truly absent.
+- notes: one short sentence of extra context (agenda, attendees, confirmation #), or null. Do NOT repeat title/time/location.
+
+OUTPUT
+Return ONLY a JSON object (no markdown, no prose) with exactly these keys:
+{"title": string, "starts_at": string, "ends_at": string|null, "location": string|null, "notes": string|null}`;
 
     const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -45,6 +60,7 @@ Title should be short and human (e.g. "Dentist", "Lunch with Maya"). Keep notes 
           { role: "user", content: data.text },
         ],
         response_format: { type: "json_object" },
+        temperature: 0.1,
       }),
     });
 
@@ -56,15 +72,24 @@ Title should be short and human (e.g. "Dentist", "Lunch with Maya"). Keep notes 
     }
 
     const json = await res.json();
-    const content: string = json?.choices?.[0]?.message?.content ?? "";
+    let content: string = json?.choices?.[0]?.message?.content ?? "";
+    content = content.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
     let parsed: ParsedAppointment;
     try {
       parsed = JSON.parse(content);
     } catch {
-      throw new Error("AI returned malformed JSON. Try rephrasing.");
+      const m = content.match(/\{[\s\S]*\}/);
+      if (!m) throw new Error("AI returned malformed JSON. Try rephrasing.");
+      try { parsed = JSON.parse(m[0]); } catch { throw new Error("AI returned malformed JSON. Try rephrasing."); }
     }
     if (!parsed.title || !parsed.starts_at) {
       throw new Error("Couldn't find a clear title and start time. Try adding more detail.");
+    }
+    if (Number.isNaN(Date.parse(parsed.starts_at))) {
+      throw new Error("AI returned an invalid start time. Try rephrasing.");
+    }
+    if (parsed.ends_at && Number.isNaN(Date.parse(parsed.ends_at))) {
+      parsed.ends_at = null;
     }
     return {
       title: String(parsed.title).slice(0, 200),
