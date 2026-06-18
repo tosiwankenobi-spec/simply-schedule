@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { format, isToday, isTomorrow, isPast, startOfDay, addDays } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { parseAppointmentWithAI } from "@/lib/appointments.functions";
+import { importFromGmail } from "@/lib/gmail.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { CalendarHeart, Sparkles, Plus, MapPin, Trash2, LogOut, Clock } from "lucide-react";
+import { CalendarHeart, Sparkles, Plus, MapPin, Trash2, LogOut, Clock, Mail } from "lucide-react";
 
 type Appointment = {
   id: string;
