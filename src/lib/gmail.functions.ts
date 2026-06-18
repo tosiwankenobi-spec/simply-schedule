@@ -25,8 +25,8 @@ function decodeBase64Url(data: string): string {
       for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
       return new TextDecoder("utf-8").decode(bytes);
     }
-    // @ts-expect-error Buffer fallback for non-browser runtimes
-    return Buffer.from(padded, "base64").toString("utf-8");
+    return (globalThis as { Buffer?: { from: (s: string, enc: string) => { toString: (e: string) => string } } })
+      .Buffer?.from(padded, "base64").toString("utf-8") ?? "";
   } catch {
     return "";
   }
