@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { format, isToday, isTomorrow, isPast, startOfDay, addDays } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { parseAppointmentWithAI } from "@/lib/appointments.functions";
+import { importFromGmail } from "@/lib/gmail.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { CalendarHeart, Sparkles, Plus, MapPin, Trash2, LogOut, Clock } from "lucide-react";
+import { CalendarHeart, Sparkles, Plus, MapPin, Trash2, LogOut, Clock, Mail } from "lucide-react";
 
 type Appointment = {
   id: string;
@@ -92,9 +93,14 @@ function AppPage() {
           </p>
         </div>
 
-        <div className="mt-6 flex gap-2">
+        <div className="mt-6 flex flex-wrap gap-2">
           <NewAppointmentDialog open={open} onOpenChange={setOpen} />
+          <GmailImportButton />
         </div>
+
+        <p className="mt-2 text-xs text-muted-foreground">
+          Imports from the connected Gmail inbox. Only emails that clearly describe an appointment will be added.
+        </p>
 
         <Tabs defaultValue="upcoming" className="mt-10">
           <TabsList className="bg-secondary">
@@ -122,6 +128,36 @@ function AppPage() {
         </Tabs>
       </div>
     </div>
+  );
+}
+
+function GmailImportButton() {
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  async function run() {
+    setBusy(true);
+    const t = toast.loading("Scanning your inbox…");
+    try {
+      const res = await importFromGmail();
+      toast.dismiss(t);
+      if (res.imported > 0) {
+        toast.success(`Imported ${res.imported} appointment${res.imported === 1 ? "" : "s"} from Gmail`);
+        qc.invalidateQueries({ queryKey: ["appointments"] });
+      } else {
+        toast.message("No new appointments found", { description: `Scanned ${res.scanned} recent emails.` });
+      }
+    } catch (err) {
+      toast.dismiss(t);
+      toast.error(err instanceof Error ? err.message : "Couldn't import from Gmail");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Button variant="outline" onClick={run} disabled={busy}>
+      <Mail className="h-4 w-4 mr-1.5" />
+      {busy ? "Scanning…" : "Import from Gmail"}
+    </Button>
   );
 }
 
