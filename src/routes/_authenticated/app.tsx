@@ -131,6 +131,36 @@ function AppPage() {
   );
 }
 
+function GmailImportButton() {
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  async function run() {
+    setBusy(true);
+    const t = toast.loading("Scanning your inbox…");
+    try {
+      const res = await importFromGmail();
+      toast.dismiss(t);
+      if (res.imported > 0) {
+        toast.success(`Imported ${res.imported} appointment${res.imported === 1 ? "" : "s"} from Gmail`);
+        qc.invalidateQueries({ queryKey: ["appointments"] });
+      } else {
+        toast.message("No new appointments found", { description: `Scanned ${res.scanned} recent emails.` });
+      }
+    } catch (err) {
+      toast.dismiss(t);
+      toast.error(err instanceof Error ? err.message : "Couldn't import from Gmail");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Button variant="outline" onClick={run} disabled={busy}>
+      <Mail className="h-4 w-4 mr-1.5" />
+      {busy ? "Scanning…" : "Import from Gmail"}
+    </Button>
+  );
+}
+
 function EmptyState({ label, hint }: { label: string; hint?: string }) {
   return (
     <div className="rounded-xl border border-dashed border-border bg-card/40 px-6 py-14 text-center">
