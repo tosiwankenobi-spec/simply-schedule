@@ -93,9 +93,14 @@ function AppPage() {
           </p>
         </div>
 
-        <div className="mt-6 flex gap-2">
+        <div className="mt-6 flex flex-wrap gap-2">
           <NewAppointmentDialog open={open} onOpenChange={setOpen} />
+          <GmailImportButton />
         </div>
+
+        <p className="mt-2 text-xs text-muted-foreground">
+          Imports from the connected Gmail inbox. Only emails that clearly describe an appointment will be added.
+        </p>
 
         <Tabs defaultValue="upcoming" className="mt-10">
           <TabsList className="bg-secondary">
