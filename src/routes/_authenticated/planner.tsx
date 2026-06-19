@@ -53,11 +53,13 @@ function PlannerPage() {
 }
 
 function DayOptimizer() {
+  const qc = useQueryClient();
   const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [workStart, setWorkStart] = useState("09:00");
   const [workEnd, setWorkEnd] = useState("18:00");
   const [goals, setGoals] = useState("");
   const [busy, setBusy] = useState(false);
+  const [applying, setApplying] = useState(false);
   const [plan, setPlan] = useState<{ summary: string; items: DailyPlanItem[] } | null>(null);
 
   async function run() {
@@ -69,6 +71,25 @@ function DayOptimizer() {
       toast.error(err instanceof Error ? err.message : "Couldn't build plan");
     } finally { setBusy(false); }
   }
+
+  async function apply() {
+    if (!plan) return;
+    setApplying(true);
+    try {
+      const res = await applyDayPlan({ data: { date, items: plan.items } });
+      if (res.created > 0) {
+        toast.success(`Added ${res.created} block${res.created === 1 ? "" : "s"} to your schedule`);
+        qc.invalidateQueries({ queryKey: ["appointments"] });
+        setPlan(null);
+      } else {
+        toast.message("Nothing new to add", { description: "The plan only referenced existing appointments." });
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't apply plan");
+    } finally { setApplying(false); }
+  }
+
+  const newItemCount = plan?.items.filter((it) => it.kind !== "appointment").length ?? 0;
 
   return (
     <div className="space-y-4">
@@ -115,6 +136,16 @@ function DayOptimizer() {
               </li>
             ))}
           </ul>
+          <div className="mt-5 flex gap-2">
+            <Button
+              onClick={apply}
+              disabled={applying || newItemCount === 0}
+              className="flex-1 bg-foreground text-background hover:bg-foreground/90"
+            >
+              {applying ? "Adding…" : `Add ${newItemCount} block${newItemCount === 1 ? "" : "s"} to schedule`}
+            </Button>
+            <Button variant="ghost" onClick={() => setPlan(null)} disabled={applying}>Discard</Button>
+          </div>
         </div>
       )}
     </div>
