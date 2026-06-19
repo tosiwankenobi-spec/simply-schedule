@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import { format, isToday, isTomorrow, isPast, startOfDay, addDays } from "date-fns";
@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { CalendarHeart, Sparkles, Plus, MapPin, Trash2, LogOut, Clock, Mail } from "lucide-react";
+import { CalendarHeart, Sparkles, Plus, MapPin, Trash2, LogOut, Clock, Mail, Wand2, Settings } from "lucide-react";
 
 type Appointment = {
   id: string;
@@ -95,7 +95,13 @@ function AppPage() {
 
         <div className="mt-6 flex flex-wrap gap-2">
           <NewAppointmentDialog open={open} onOpenChange={setOpen} />
+          <Button asChild variant="outline">
+            <Link to="/planner"><Wand2 className="h-4 w-4 mr-1.5" /> AI planner</Link>
+          </Button>
           <GmailImportButton />
+          <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
+            <Link to="/setup/gmail"><Settings className="h-3.5 w-3.5 mr-1" /> Gmail setup</Link>
+          </Button>
         </div>
 
         <p className="mt-2 text-xs text-muted-foreground">
