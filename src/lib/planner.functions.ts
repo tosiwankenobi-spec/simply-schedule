@@ -198,3 +198,59 @@ Return JSON: {"summary":string,"appointments":[{"title":string,"starts_at":ISO86
     if (error) throw error;
     return { summary: String(out.summary ?? "").slice(0, 400), created: rows.length };
   });
+
+// ============ 4. Apply a generated day plan ============
+
+const applyDaySchema = z.object({
+  date: z.string(), // YYYY-MM-DD
+  items: z.array(z.object({
+    time: z.string(), // "HH:mm"
+    title: z.string().min(1).max(200),
+    kind: z.enum(["appointment", "block", "break"]),
+    rationale: z.string().optional().nullable(),
+    durationMin: z.number().int().min(5).max(480).optional(),
+  })).min(1).max(30),
+});
+
+export const applyDayPlan = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => applyDaySchema.parse(i))
+  .handler(async ({ data, context }) => {
+    // Only create new appointments for blocks/breaks; the "appointment" items
+    // are already on the schedule (the AI was told not to move them).
+    const candidates = data.items.filter((it) => it.kind !== "appointment");
+
+    const tzOffsetMin = new Date().getTimezoneOffset();
+    const sign = tzOffsetMin <= 0 ? "+" : "-";
+    const abs = Math.abs(tzOffsetMin);
+    const offset = `${sign}${String(Math.floor(abs / 60)).padStart(2, "0")}:${String(abs % 60).padStart(2, "0")}`;
+
+    const rows = candidates.map((it, idx) => {
+      const [h, m] = it.time.split(":").map((n) => parseInt(n, 10));
+      const start = new Date(`${data.date}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00${offset}`);
+      // Default duration: use provided, else infer from next item, else 30 min.
+      let durationMin = it.durationMin ?? 30;
+      const next = candidates[idx + 1];
+      if (!it.durationMin && next) {
+        const [nh, nm] = next.time.split(":").map((n) => parseInt(n, 10));
+        const diff = (nh * 60 + nm) - (h * 60 + m);
+        if (diff > 0 && diff <= 240) durationMin = diff;
+      }
+      const end = new Date(start.getTime() + durationMin * 60 * 1000);
+      return {
+        user_id: context.userId,
+        title: it.title.slice(0, 200),
+        starts_at: start.toISOString(),
+        ends_at: end.toISOString(),
+        notes: it.rationale ? it.rationale.slice(0, 1000) : null,
+        source: "ai",
+      };
+    });
+
+    if (rows.length === 0) {
+      return { created: 0 };
+    }
+    const { error } = await context.supabase.from("appointments").insert(rows);
+    if (error) throw error;
+    return { created: rows.length };
+  });

@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Sparkles, ArrowLeft, Wand2, CalendarRange, ListChecks } from "lucide-react";
-import { optimizeDay, planTask, planWeek, type DailyPlanItem } from "@/lib/planner.functions";
+import { optimizeDay, planTask, planWeek, applyDayPlan, type DailyPlanItem } from "@/lib/planner.functions";
 
 export const Route = createFileRoute("/_authenticated/planner")({
   component: PlannerPage,
