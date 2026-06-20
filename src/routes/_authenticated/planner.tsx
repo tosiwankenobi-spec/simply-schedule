@@ -223,16 +223,18 @@ function QuickTask() {
 
 function WeekPlanner() {
   const qc = useQueryClient();
+  const { data: profiles } = useQuery({ queryKey: ["planner-profiles"], queryFn: () => listPlannerProfiles() });
   const [goals, setGoals] = useState("");
   const [startDate, setStartDate] = useState(format(addDays(new Date(), 1), "yyyy-MM-dd"));
   const [days, setDays] = useState(7);
+  const [profileId, setProfileId] = useState<string>("");
   const [busy, setBusy] = useState(false);
 
   async function run() {
     if (!goals.trim()) return;
     setBusy(true);
     try {
-      const res = await planWeek({ data: { goals, startDate, days } });
+      const res = await planWeek({ data: { goals, startDate, days, profileId: profileId || undefined } });
       toast.success(`Created ${res.created} block${res.created === 1 ? "" : "s"}`, { description: res.summary });
       qc.invalidateQueries({ queryKey: ["appointments"] });
       setGoals("");
@@ -258,6 +260,18 @@ function WeekPlanner() {
           <Label htmlFor="dn">Days</Label>
           <Input id="dn" type="number" min={1} max={14} value={days} onChange={(e) => setDays(Number(e.target.value) || 7)} />
         </div>
+      </div>
+      <div className="space-y-1.5">
+        <Label>Profile</Label>
+        <Select value={profileId || "__auto"} onValueChange={(v) => setProfileId(v === "__auto" ? "" : v)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__auto">Auto (use assigned/default for start date)</SelectItem>
+            {(profiles ?? []).map((p) => (
+              <SelectItem key={p.id} value={p.id}>{p.name}{p.is_default ? " (default)" : ""}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <Button onClick={run} disabled={busy || !goals.trim()} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
         {busy ? "Planning week…" : (<><Sparkles className="h-4 w-4 mr-1.5" /> Plan my week</>)}
