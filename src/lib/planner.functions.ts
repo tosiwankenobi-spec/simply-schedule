@@ -107,9 +107,9 @@ async function callAI(system: string, user: string, key: string) {
 // ============ 1. Daily schedule optimizer ============
 
 const optimizeSchema = z.object({
-  date: z.string(), // ISO date "YYYY-MM-DD"
-  workStart: z.string().default("09:00"),
-  workEnd: z.string().default("18:00"),
+  date: z.string(),
+  workStart: z.string().optional(),
+  workEnd: z.string().optional(),
   goals: z.string().max(500).optional(),
 });
 
