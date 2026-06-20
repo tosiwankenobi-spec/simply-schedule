@@ -133,6 +133,19 @@ function DayOptimizer() {
         </div>
       </div>
       <div className="space-y-1.5">
+        <Label>Profile</Label>
+        <Select value={profileId || "__auto"} onValueChange={(v) => setProfileId(v === "__auto" ? "" : v)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__auto">Auto for date{dayPrefs ? ` · ${dayPrefs.name}` : ""}</SelectItem>
+            {(profiles ?? []).map((p) => (
+              <SelectItem key={p.id} value={p.id}>{p.name}{p.is_default ? " (default)" : ""}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-[11px] text-muted-foreground">Auto picks the profile assigned to this date, or your default. <Link to="/planner/preferences" className="underline">Manage profiles</Link>.</p>
+      </div>
+      <div className="space-y-1.5">
         <Label htmlFor="g">Priorities (optional)</Label>
         <Textarea id="g" value={goals} onChange={(e) => setGoals(e.target.value)} rows={3} maxLength={500}
           placeholder="e.g. Ship the planner feature, prep Friday demo, gym at 6pm" className="resize-none" />
