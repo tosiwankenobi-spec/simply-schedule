@@ -2,6 +2,74 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
+export type PlannerPrefs = {
+  work_start: string;
+  work_end: string;
+  default_meeting_min: number;
+  break_every_min: number;
+  break_length_min: number;
+  lunch_at: string;
+  lunch_length_min: number;
+  notes: string | null;
+};
+
+const DEFAULT_PREFS: PlannerPrefs = {
+  work_start: "09:00",
+  work_end: "18:00",
+  default_meeting_min: 30,
+  break_every_min: 90,
+  break_length_min: 10,
+  lunch_at: "12:30",
+  lunch_length_min: 45,
+  notes: null,
+};
+
+async function loadPrefs(supabase: any, userId: string): Promise<PlannerPrefs> {
+  const { data } = await supabase
+    .from("planner_preferences")
+    .select("work_start,work_end,default_meeting_min,break_every_min,break_length_min,lunch_at,lunch_length_min,notes")
+    .eq("user_id", userId)
+    .maybeSingle();
+  return (data as PlannerPrefs) ?? DEFAULT_PREFS;
+}
+
+function prefsBlock(p: PlannerPrefs) {
+  return `User planner preferences (HONOR THESE):
+- Working hours: ${p.work_start}–${p.work_end}
+- Default meeting/block duration: ${p.default_meeting_min} min
+- Insert a short break (${p.break_length_min} min) roughly every ${p.break_every_min} min of focused work
+- Lunch around ${p.lunch_at} for ${p.lunch_length_min} min${p.lunch_length_min === 0 ? " (skip)" : ""}
+${p.notes ? `- Extra constraints from user: ${p.notes}` : ""}`;
+}
+
+export const getPlannerPrefs = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<PlannerPrefs> => {
+    return loadPrefs(context.supabase, context.userId);
+  });
+
+const savePrefsSchema = z.object({
+  work_start: z.string().regex(/^\d{2}:\d{2}$/),
+  work_end: z.string().regex(/^\d{2}:\d{2}$/),
+  default_meeting_min: z.number().int().min(5).max(480),
+  break_every_min: z.number().int().min(15).max(480),
+  break_length_min: z.number().int().min(5).max(120),
+  lunch_at: z.string().regex(/^\d{2}:\d{2}$/),
+  lunch_length_min: z.number().int().min(0).max(180),
+  notes: z.string().max(1000).nullable().optional(),
+});
+
+export const savePlannerPrefs = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => savePrefsSchema.parse(i))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("planner_preferences")
+      .upsert({ user_id: context.userId, ...data, notes: data.notes ?? null });
+    if (error) throw error;
+    return { ok: true };
+  });
+
 const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
 async function callAI(system: string, user: string, key: string) {
@@ -39,9 +107,9 @@ async function callAI(system: string, user: string, key: string) {
 // ============ 1. Daily schedule optimizer ============
 
 const optimizeSchema = z.object({
-  date: z.string(), // ISO date "YYYY-MM-DD"
-  workStart: z.string().default("09:00"),
-  workEnd: z.string().default("18:00"),
+  date: z.string(),
+  workStart: z.string().optional(),
+  workEnd: z.string().optional(),
   goals: z.string().max(500).optional(),
 });
 
@@ -58,6 +126,9 @@ export const optimizeDay = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<{ summary: string; items: DailyPlanItem[] }> => {
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("Missing LOVABLE_API_KEY");
+    const prefs = await loadPrefs(context.supabase, context.userId);
+    const workStart = data.workStart ?? prefs.work_start;
+    const workEnd = data.workEnd ?? prefs.work_end;
 
     const dayStart = new Date(`${data.date}T00:00:00`);
     const dayEnd = new Date(`${data.date}T23:59:59`);
@@ -73,13 +144,17 @@ export const optimizeDay = createServerFn({ method: "POST" })
 - Anchor existing appointments at their fixed times (do not move them).
 - Around them, time-block focus work, prep, transitions, and short breaks.
 - Honor working hours and the user's goals.
-- Keep blocks 25–90 min. Add a lunch break.
+- Default block length should match the user's preferred meeting/block duration.
+- Insert breaks and lunch as configured below.
+
+${prefsBlock(prefs)}
+
 Return JSON:
 {"summary": string (1-2 sentences), "items": [{"time":"HH:mm","title":string,"kind":"appointment"|"block"|"break","rationale":string}]}`;
 
     const user = JSON.stringify({
       date: data.date,
-      working_hours: `${data.workStart}–${data.workEnd}`,
+      working_hours: `${workStart}–${workEnd}`,
       goals: data.goals ?? "general productive day",
       fixed_appointments: (appts ?? []).map((a) => ({
         title: a.title,
@@ -109,13 +184,15 @@ export const planTask = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("Missing LOVABLE_API_KEY");
+    const prefs = await loadPrefs(context.supabase, context.userId);
     const now = data.now ?? new Date().toISOString();
     const tzOffsetMin = new Date().getTimezoneOffset();
 
     const system = `Turn the user's request into ONE scheduled appointment.
 Now: ${now}. User timezone offset: ${-tzOffsetMin} min from UTC.
 Resolve relative phrases ("tomorrow morning", "Friday afternoon", "in 2 hours") against now.
-Defaults: morning=09:00, afternoon=14:00, evening=19:00. Default duration 30 min unless stated.
+Defaults: morning=${prefs.work_start}, afternoon=14:00, evening=19:00. Default duration ${prefs.default_meeting_min} min unless stated.
+Stay within working hours ${prefs.work_start}–${prefs.work_end} unless the user specifies otherwise.
 Return JSON: {"title":string,"starts_at":ISO8601 with offset,"ends_at":ISO8601 or null,"location":string|null,"notes":string|null}`;
 
     const out = await callAI(system, data.text, key);
@@ -144,10 +221,10 @@ Return JSON: {"title":string,"starts_at":ISO8601 with offset,"ends_at":ISO8601 o
 
 const weekSchema = z.object({
   goals: z.string().min(1).max(2000),
-  startDate: z.string(), // YYYY-MM-DD
+  startDate: z.string(),
   days: z.number().int().min(1).max(14).default(7),
-  workStart: z.string().default("09:00"),
-  workEnd: z.string().default("18:00"),
+  workStart: z.string().optional(),
+  workEnd: z.string().optional(),
 });
 
 export const planWeek = createServerFn({ method: "POST" })
@@ -156,6 +233,9 @@ export const planWeek = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("Missing LOVABLE_API_KEY");
+    const prefs = await loadPrefs(context.supabase, context.userId);
+    const workStart = data.workStart ?? prefs.work_start;
+    const workEnd = data.workEnd ?? prefs.work_end;
     const tzOffsetMin = new Date().getTimezoneOffset();
 
     const start = new Date(`${data.startDate}T00:00:00`);
@@ -167,11 +247,14 @@ export const planWeek = createServerFn({ method: "POST" })
       .lt("starts_at", end.toISOString());
 
     const system = `Break the user's goals into concrete, time-blocked appointments across ${data.days} day(s) starting ${data.startDate}.
-- Working hours: ${data.workStart}–${data.workEnd}. User tz offset: ${-tzOffsetMin} min.
+- Working hours: ${workStart}–${workEnd}. User tz offset: ${-tzOffsetMin} min.
 - Avoid conflicts with existing appointments.
-- Make each block 30–90 min, action-oriented title (verb + object).
+- Each block should default to ${prefs.default_meeting_min} min (allow ${Math.max(30, prefs.default_meeting_min)}–90 min). Action-oriented title (verb + object).
 - Spread work sensibly; don't pile everything on one day.
 - 6–14 blocks total.
+
+${prefsBlock(prefs)}
+
 Return JSON: {"summary":string,"appointments":[{"title":string,"starts_at":ISO8601 w/ offset,"ends_at":ISO8601 w/ offset,"notes":string|null}]}`;
 
     const user = JSON.stringify({
@@ -216,6 +299,7 @@ export const applyDayPlan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => applyDaySchema.parse(i))
   .handler(async ({ data, context }) => {
+    const prefs = await loadPrefs(context.supabase, context.userId);
     // Only create new appointments for blocks/breaks; the "appointment" items
     // are already on the schedule (the AI was told not to move them).
     const candidates = data.items.filter((it) => it.kind !== "appointment");
@@ -228,8 +312,8 @@ export const applyDayPlan = createServerFn({ method: "POST" })
     const rows = candidates.map((it, idx) => {
       const [h, m] = it.time.split(":").map((n) => parseInt(n, 10));
       const start = new Date(`${data.date}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00${offset}`);
-      // Default duration: use provided, else infer from next item, else 30 min.
-      let durationMin = it.durationMin ?? 30;
+      const fallback = it.kind === "break" ? prefs.break_length_min : prefs.default_meeting_min;
+      let durationMin = it.durationMin ?? fallback;
       const next = candidates[idx + 1];
       if (!it.durationMin && next) {
         const [nh, nm] = next.time.split(":").map((n) => parseInt(n, 10));

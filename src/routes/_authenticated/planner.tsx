@@ -1,15 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { format, addDays } from "date-fns";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Sparkles, ArrowLeft, Wand2, CalendarRange, ListChecks } from "lucide-react";
-import { optimizeDay, planTask, planWeek, applyDayPlan, type DailyPlanItem } from "@/lib/planner.functions";
+import { Sparkles, ArrowLeft, Wand2, CalendarRange, ListChecks, SlidersHorizontal } from "lucide-react";
+import { optimizeDay, planTask, planWeek, applyDayPlan, getPlannerPrefs, type DailyPlanItem } from "@/lib/planner.functions";
 
 export const Route = createFileRoute("/_authenticated/planner")({
   component: PlannerPage,
@@ -20,9 +20,14 @@ function PlannerPage() {
     <div className="relative min-h-screen bg-background">
       <div className="absolute inset-0 paper-grain opacity-30 pointer-events-none" />
       <div className="relative mx-auto max-w-2xl px-5 py-8 md:py-12">
-        <Link to="/app" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4 mr-1" /> Back to schedule
-        </Link>
+        <div className="flex items-center justify-between">
+          <Link to="/app" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-4 w-4 mr-1" /> Back to schedule
+          </Link>
+          <Link to="/planner/preferences" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
+            <SlidersHorizontal className="h-3.5 w-3.5 mr-1" /> Preferences
+          </Link>
+        </div>
 
         <div className="mt-6">
           <div className="inline-flex items-center gap-2 rounded-full bg-accent/10 px-3 py-1 text-xs text-accent">
@@ -32,7 +37,7 @@ function PlannerPage() {
             Let AI <span className="text-accent italic">shape</span> your time.
           </h1>
           <p className="mt-2 text-muted-foreground text-sm">
-            Optimize a day, capture a quick task, or break goals into a week of focused blocks.
+            Optimize a day, capture a quick task, or break goals into a week of focused blocks. Tune defaults in <Link to="/planner/preferences" className="underline">preferences</Link>.
           </p>
         </div>
 
@@ -54,6 +59,7 @@ function PlannerPage() {
 
 function DayOptimizer() {
   const qc = useQueryClient();
+  const { data: prefs } = useQuery({ queryKey: ["planner-prefs"], queryFn: () => getPlannerPrefs() });
   const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [workStart, setWorkStart] = useState("09:00");
   const [workEnd, setWorkEnd] = useState("18:00");
@@ -61,6 +67,10 @@ function DayOptimizer() {
   const [busy, setBusy] = useState(false);
   const [applying, setApplying] = useState(false);
   const [plan, setPlan] = useState<{ summary: string; items: DailyPlanItem[] } | null>(null);
+
+  useEffect(() => {
+    if (prefs) { setWorkStart(prefs.work_start); setWorkEnd(prefs.work_end); }
+  }, [prefs]);
 
   async function run() {
     setBusy(true);
@@ -194,7 +204,7 @@ function WeekPlanner() {
     if (!goals.trim()) return;
     setBusy(true);
     try {
-      const res = await planWeek({ data: { goals, startDate, days, workStart: "09:00", workEnd: "18:00" } });
+      const res = await planWeek({ data: { goals, startDate, days } });
       toast.success(`Created ${res.created} block${res.created === 1 ? "" : "s"}`, { description: res.summary });
       qc.invalidateQueries({ queryKey: ["appointments"] });
       setGoals("");
