@@ -126,6 +126,9 @@ export const optimizeDay = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<{ summary: string; items: DailyPlanItem[] }> => {
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("Missing LOVABLE_API_KEY");
+    const prefs = await loadPrefs(context.supabase, context.userId);
+    const workStart = data.workStart ?? prefs.work_start;
+    const workEnd = data.workEnd ?? prefs.work_end;
 
     const dayStart = new Date(`${data.date}T00:00:00`);
     const dayEnd = new Date(`${data.date}T23:59:59`);
@@ -141,13 +144,17 @@ export const optimizeDay = createServerFn({ method: "POST" })
 - Anchor existing appointments at their fixed times (do not move them).
 - Around them, time-block focus work, prep, transitions, and short breaks.
 - Honor working hours and the user's goals.
-- Keep blocks 25–90 min. Add a lunch break.
+- Default block length should match the user's preferred meeting/block duration.
+- Insert breaks and lunch as configured below.
+
+${prefsBlock(prefs)}
+
 Return JSON:
 {"summary": string (1-2 sentences), "items": [{"time":"HH:mm","title":string,"kind":"appointment"|"block"|"break","rationale":string}]}`;
 
     const user = JSON.stringify({
       date: data.date,
-      working_hours: `${data.workStart}–${data.workEnd}`,
+      working_hours: `${workStart}–${workEnd}`,
       goals: data.goals ?? "general productive day",
       fixed_appointments: (appts ?? []).map((a) => ({
         title: a.title,
