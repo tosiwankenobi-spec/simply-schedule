@@ -204,7 +204,7 @@ function WeekPlanner() {
     if (!goals.trim()) return;
     setBusy(true);
     try {
-      const res = await planWeek({ data: { goals, startDate, days, workStart: "09:00", workEnd: "18:00" } });
+      const res = await planWeek({ data: { goals, startDate, days } });
       toast.success(`Created ${res.created} block${res.created === 1 ? "" : "s"}`, { description: res.summary });
       qc.invalidateQueries({ queryKey: ["appointments"] });
       setGoals("");
