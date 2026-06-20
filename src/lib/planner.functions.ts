@@ -2,6 +2,74 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
+export type PlannerPrefs = {
+  work_start: string;
+  work_end: string;
+  default_meeting_min: number;
+  break_every_min: number;
+  break_length_min: number;
+  lunch_at: string;
+  lunch_length_min: number;
+  notes: string | null;
+};
+
+const DEFAULT_PREFS: PlannerPrefs = {
+  work_start: "09:00",
+  work_end: "18:00",
+  default_meeting_min: 30,
+  break_every_min: 90,
+  break_length_min: 10,
+  lunch_at: "12:30",
+  lunch_length_min: 45,
+  notes: null,
+};
+
+async function loadPrefs(supabase: any, userId: string): Promise<PlannerPrefs> {
+  const { data } = await supabase
+    .from("planner_preferences")
+    .select("work_start,work_end,default_meeting_min,break_every_min,break_length_min,lunch_at,lunch_length_min,notes")
+    .eq("user_id", userId)
+    .maybeSingle();
+  return (data as PlannerPrefs) ?? DEFAULT_PREFS;
+}
+
+function prefsBlock(p: PlannerPrefs) {
+  return `User planner preferences (HONOR THESE):
+- Working hours: ${p.work_start}–${p.work_end}
+- Default meeting/block duration: ${p.default_meeting_min} min
+- Insert a short break (${p.break_length_min} min) roughly every ${p.break_every_min} min of focused work
+- Lunch around ${p.lunch_at} for ${p.lunch_length_min} min${p.lunch_length_min === 0 ? " (skip)" : ""}
+${p.notes ? `- Extra constraints from user: ${p.notes}` : ""}`;
+}
+
+export const getPlannerPrefs = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<PlannerPrefs> => {
+    return loadPrefs(context.supabase, context.userId);
+  });
+
+const savePrefsSchema = z.object({
+  work_start: z.string().regex(/^\d{2}:\d{2}$/),
+  work_end: z.string().regex(/^\d{2}:\d{2}$/),
+  default_meeting_min: z.number().int().min(5).max(480),
+  break_every_min: z.number().int().min(15).max(480),
+  break_length_min: z.number().int().min(5).max(120),
+  lunch_at: z.string().regex(/^\d{2}:\d{2}$/),
+  lunch_length_min: z.number().int().min(0).max(180),
+  notes: z.string().max(1000).nullable().optional(),
+});
+
+export const savePlannerPrefs = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => savePrefsSchema.parse(i))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("planner_preferences")
+      .upsert({ user_id: context.userId, ...data, notes: data.notes ?? null });
+    if (error) throw error;
+    return { ok: true };
+  });
+
 const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
 async function callAI(system: string, user: string, key: string) {
