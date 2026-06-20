@@ -56,14 +56,55 @@ export type Database = {
         }
         Relationships: []
       }
-      planner_preferences: {
+      planner_profile_assignments: {
+        Row: {
+          created_at: string
+          end_date: string
+          id: string
+          profile_id: string
+          start_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          end_date: string
+          id?: string
+          profile_id: string
+          start_date: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string
+          id?: string
+          profile_id?: string
+          start_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planner_profile_assignments_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "planner_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      planner_profiles: {
         Row: {
           break_every_min: number
           break_length_min: number
           created_at: string
           default_meeting_min: number
+          id: string
+          is_default: boolean
           lunch_at: string
           lunch_length_min: number
+          name: string
           notes: string | null
           updated_at: string
           user_id: string
@@ -75,8 +116,11 @@ export type Database = {
           break_length_min?: number
           created_at?: string
           default_meeting_min?: number
+          id?: string
+          is_default?: boolean
           lunch_at?: string
           lunch_length_min?: number
+          name: string
           notes?: string | null
           updated_at?: string
           user_id: string
@@ -88,8 +132,11 @@ export type Database = {
           break_length_min?: number
           created_at?: string
           default_meeting_min?: number
+          id?: string
+          is_default?: boolean
           lunch_at?: string
           lunch_length_min?: number
+          name?: string
           notes?: string | null
           updated_at?: string
           user_id?: string
