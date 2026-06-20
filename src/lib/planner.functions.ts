@@ -346,6 +346,7 @@ const optimizeSchema = z.object({
   workStart: z.string().optional(),
   workEnd: z.string().optional(),
   goals: z.string().max(500).optional(),
+  profileId: z.string().uuid().optional(),
 });
 
 export type DailyPlanItem = {
