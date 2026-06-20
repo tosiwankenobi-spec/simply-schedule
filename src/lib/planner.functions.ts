@@ -420,7 +420,7 @@ export const planTask = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("Missing LOVABLE_API_KEY");
-    const prefs = await loadPrefs(context.supabase, context.userId);
+    const prefs = await ensureDefaultProfile(context.supabase, context.userId);
     const now = data.now ?? new Date().toISOString();
     const tzOffsetMin = new Date().getTimezoneOffset();
 
