@@ -221,10 +221,10 @@ Return JSON: {"title":string,"starts_at":ISO8601 with offset,"ends_at":ISO8601 o
 
 const weekSchema = z.object({
   goals: z.string().min(1).max(2000),
-  startDate: z.string(), // YYYY-MM-DD
+  startDate: z.string(),
   days: z.number().int().min(1).max(14).default(7),
-  workStart: z.string().default("09:00"),
-  workEnd: z.string().default("18:00"),
+  workStart: z.string().optional(),
+  workEnd: z.string().optional(),
 });
 
 export const planWeek = createServerFn({ method: "POST" })
@@ -233,6 +233,9 @@ export const planWeek = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("Missing LOVABLE_API_KEY");
+    const prefs = await loadPrefs(context.supabase, context.userId);
+    const workStart = data.workStart ?? prefs.work_start;
+    const workEnd = data.workEnd ?? prefs.work_end;
     const tzOffsetMin = new Date().getTimezoneOffset();
 
     const start = new Date(`${data.startDate}T00:00:00`);
@@ -244,11 +247,14 @@ export const planWeek = createServerFn({ method: "POST" })
       .lt("starts_at", end.toISOString());
 
     const system = `Break the user's goals into concrete, time-blocked appointments across ${data.days} day(s) starting ${data.startDate}.
-- Working hours: ${data.workStart}–${data.workEnd}. User tz offset: ${-tzOffsetMin} min.
+- Working hours: ${workStart}–${workEnd}. User tz offset: ${-tzOffsetMin} min.
 - Avoid conflicts with existing appointments.
-- Make each block 30–90 min, action-oriented title (verb + object).
+- Each block should default to ${prefs.default_meeting_min} min (allow ${Math.max(30, prefs.default_meeting_min)}–90 min). Action-oriented title (verb + object).
 - Spread work sensibly; don't pile everything on one day.
 - 6–14 blocks total.
+
+${prefsBlock(prefs)}
+
 Return JSON: {"summary":string,"appointments":[{"title":string,"starts_at":ISO8601 w/ offset,"ends_at":ISO8601 w/ offset,"notes":string|null}]}`;
 
     const user = JSON.stringify({
