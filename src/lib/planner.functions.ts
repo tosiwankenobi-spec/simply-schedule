@@ -461,6 +461,7 @@ const weekSchema = z.object({
   days: z.number().int().min(1).max(14).default(7),
   workStart: z.string().optional(),
   workEnd: z.string().optional(),
+  profileId: z.string().uuid().optional(),
 });
 
 export const planWeek = createServerFn({ method: "POST" })
