@@ -56,6 +56,48 @@ export type Database = {
         }
         Relationships: []
       }
+      planner_preferences: {
+        Row: {
+          break_every_min: number
+          break_length_min: number
+          created_at: string
+          default_meeting_min: number
+          lunch_at: string
+          lunch_length_min: number
+          notes: string | null
+          updated_at: string
+          user_id: string
+          work_end: string
+          work_start: string
+        }
+        Insert: {
+          break_every_min?: number
+          break_length_min?: number
+          created_at?: string
+          default_meeting_min?: number
+          lunch_at?: string
+          lunch_length_min?: number
+          notes?: string | null
+          updated_at?: string
+          user_id: string
+          work_end?: string
+          work_start?: string
+        }
+        Update: {
+          break_every_min?: number
+          break_length_min?: number
+          created_at?: string
+          default_meeting_min?: number
+          lunch_at?: string
+          lunch_length_min?: number
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+          work_end?: string
+          work_start?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
