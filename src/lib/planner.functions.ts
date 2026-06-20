@@ -13,6 +13,19 @@ export type PlannerPrefs = {
   notes: string | null;
 };
 
+export type PlannerProfile = PlannerPrefs & {
+  id: string;
+  name: string;
+  is_default: boolean;
+};
+
+export type PlannerAssignment = {
+  id: string;
+  profile_id: string;
+  start_date: string;
+  end_date: string;
+};
+
 const DEFAULT_PREFS: PlannerPrefs = {
   work_start: "09:00",
   work_end: "18:00",
@@ -24,17 +37,83 @@ const DEFAULT_PREFS: PlannerPrefs = {
   notes: null,
 };
 
-async function loadPrefs(supabase: any, userId: string): Promise<PlannerPrefs> {
-  const { data } = await supabase
-    .from("planner_preferences")
-    .select("work_start,work_end,default_meeting_min,break_every_min,break_length_min,lunch_at,lunch_length_min,notes")
+const PROFILE_COLS =
+  "id,name,is_default,work_start,work_end,default_meeting_min,break_every_min,break_length_min,lunch_at,lunch_length_min,notes";
+
+async function ensureDefaultProfile(supabase: any, userId: string): Promise<PlannerProfile> {
+  const { data: existing } = await supabase
+    .from("planner_profiles")
+    .select(PROFILE_COLS)
     .eq("user_id", userId)
+    .eq("is_default", true)
     .maybeSingle();
-  return (data as PlannerPrefs) ?? DEFAULT_PREFS;
+  if (existing) return existing as PlannerProfile;
+
+  const { data: any1 } = await supabase
+    .from("planner_profiles")
+    .select(PROFILE_COLS)
+    .eq("user_id", userId)
+    .limit(1)
+    .maybeSingle();
+  if (any1) return any1 as PlannerProfile;
+
+  const { data: created, error } = await supabase
+    .from("planner_profiles")
+    .insert({ user_id: userId, name: "Default", is_default: true, ...DEFAULT_PREFS })
+    .select(PROFILE_COLS)
+    .single();
+  if (error) throw error;
+  return created as PlannerProfile;
 }
 
-function prefsBlock(p: PlannerPrefs) {
-  return `User planner preferences (HONOR THESE):
+async function resolvePrefsForDate(
+  supabase: any,
+  userId: string,
+  date?: string,
+): Promise<PlannerProfile> {
+  if (date) {
+    const { data: assigns } = await supabase
+      .from("planner_profile_assignments")
+      .select("profile_id,start_date,end_date,created_at")
+      .eq("user_id", userId)
+      .lte("start_date", date)
+      .gte("end_date", date)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    const a = (assigns ?? [])[0];
+    if (a) {
+      const { data: prof } = await supabase
+        .from("planner_profiles")
+        .select(PROFILE_COLS)
+        .eq("user_id", userId)
+        .eq("id", a.profile_id)
+        .maybeSingle();
+      if (prof) return prof as PlannerProfile;
+    }
+  }
+  return ensureDefaultProfile(supabase, userId);
+}
+
+async function loadProfileById(
+  supabase: any,
+  userId: string,
+  profileId?: string | null,
+  date?: string,
+): Promise<PlannerProfile> {
+  if (profileId) {
+    const { data: prof } = await supabase
+      .from("planner_profiles")
+      .select(PROFILE_COLS)
+      .eq("user_id", userId)
+      .eq("id", profileId)
+      .maybeSingle();
+    if (prof) return prof as PlannerProfile;
+  }
+  return resolvePrefsForDate(supabase, userId, date);
+}
+
+function prefsBlock(p: PlannerPrefs & { name?: string }) {
+  return `User planner preferences${p.name ? ` (profile: ${p.name})` : ""} — HONOR THESE:
 - Working hours: ${p.work_start}–${p.work_end}
 - Default meeting/block duration: ${p.default_meeting_min} min
 - Insert a short break (${p.break_length_min} min) roughly every ${p.break_every_min} min of focused work
@@ -42,13 +121,23 @@ function prefsBlock(p: PlannerPrefs) {
 ${p.notes ? `- Extra constraints from user: ${p.notes}` : ""}`;
 }
 
-export const getPlannerPrefs = createServerFn({ method: "GET" })
+// ============ Profile CRUD ============
+
+export const listPlannerProfiles = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<PlannerPrefs> => {
-    return loadPrefs(context.supabase, context.userId);
+  .handler(async ({ context }): Promise<PlannerProfile[]> => {
+    await ensureDefaultProfile(context.supabase, context.userId);
+    const { data, error } = await context.supabase
+      .from("planner_profiles")
+      .select(PROFILE_COLS)
+      .eq("user_id", context.userId)
+      .order("is_default", { ascending: false })
+      .order("name");
+    if (error) throw error;
+    return (data ?? []) as PlannerProfile[];
   });
 
-const savePrefsSchema = z.object({
+const profileFields = {
   work_start: z.string().regex(/^\d{2}:\d{2}$/),
   work_end: z.string().regex(/^\d{2}:\d{2}$/),
   default_meeting_min: z.number().int().min(5).max(480),
@@ -57,17 +146,163 @@ const savePrefsSchema = z.object({
   lunch_at: z.string().regex(/^\d{2}:\d{2}$/),
   lunch_length_min: z.number().int().min(0).max(180),
   notes: z.string().max(1000).nullable().optional(),
+};
+
+const upsertProfileSchema = z.object({
+  id: z.string().uuid().optional(),
+  name: z.string().min(1).max(60),
+  is_default: z.boolean().optional(),
+  ...profileFields,
 });
 
-export const savePlannerPrefs = createServerFn({ method: "POST" })
+export const upsertPlannerProfile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: unknown) => savePrefsSchema.parse(i))
+  .inputValidator((i: unknown) => upsertProfileSchema.parse(i))
+  .handler(async ({ data, context }) => {
+    const row = {
+      user_id: context.userId,
+      name: data.name,
+      is_default: data.is_default ?? false,
+      work_start: data.work_start,
+      work_end: data.work_end,
+      default_meeting_min: data.default_meeting_min,
+      break_every_min: data.break_every_min,
+      break_length_min: data.break_length_min,
+      lunch_at: data.lunch_at,
+      lunch_length_min: data.lunch_length_min,
+      notes: data.notes ?? null,
+    };
+
+    if (row.is_default) {
+      await context.supabase
+        .from("planner_profiles")
+        .update({ is_default: false })
+        .eq("user_id", context.userId)
+        .neq("id", data.id ?? "00000000-0000-0000-0000-000000000000");
+    }
+
+    if (data.id) {
+      const { data: updated, error } = await context.supabase
+        .from("planner_profiles")
+        .update(row)
+        .eq("id", data.id)
+        .eq("user_id", context.userId)
+        .select(PROFILE_COLS)
+        .single();
+      if (error) throw error;
+      return updated as PlannerProfile;
+    }
+    const { data: inserted, error } = await context.supabase
+      .from("planner_profiles")
+      .insert(row)
+      .select(PROFILE_COLS)
+      .single();
+    if (error) throw error;
+    return inserted as PlannerProfile;
+  });
+
+export const deletePlannerProfile = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({ id: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { count } = await context.supabase
+      .from("planner_profiles")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", context.userId);
+    if ((count ?? 0) <= 1) throw new Error("Can't delete your only profile.");
+
+    const { data: target } = await context.supabase
+      .from("planner_profiles")
+      .select("is_default")
+      .eq("id", data.id)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+
+    const { error } = await context.supabase
+      .from("planner_profiles")
+      .delete()
+      .eq("id", data.id)
+      .eq("user_id", context.userId);
+    if (error) throw error;
+
+    if (target?.is_default) {
+      const { data: next } = await context.supabase
+        .from("planner_profiles")
+        .select("id")
+        .eq("user_id", context.userId)
+        .order("name")
+        .limit(1)
+        .maybeSingle();
+      if (next) {
+        await context.supabase
+          .from("planner_profiles")
+          .update({ is_default: true })
+          .eq("id", next.id);
+      }
+    }
+    return { ok: true };
+  });
+
+// ============ Assignments ============
+
+export const listPlannerAssignments = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<PlannerAssignment[]> => {
+    const { data, error } = await context.supabase
+      .from("planner_profile_assignments")
+      .select("id,profile_id,start_date,end_date")
+      .eq("user_id", context.userId)
+      .order("start_date", { ascending: false });
+    if (error) throw error;
+    return (data ?? []) as PlannerAssignment[];
+  });
+
+const assignSchema = z.object({
+  profile_id: z.string().uuid(),
+  start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+
+export const addPlannerAssignment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => assignSchema.parse(i))
+  .handler(async ({ data, context }) => {
+    if (data.end_date < data.start_date) throw new Error("End must be on or after start.");
+    const { data: inserted, error } = await context.supabase
+      .from("planner_profile_assignments")
+      .insert({ user_id: context.userId, ...data })
+      .select("id,profile_id,start_date,end_date")
+      .single();
+    if (error) throw error;
+    return inserted as PlannerAssignment;
+  });
+
+export const deletePlannerAssignment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({ id: z.string().uuid() }).parse(i))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase
-      .from("planner_preferences")
-      .upsert({ user_id: context.userId, ...data, notes: data.notes ?? null });
+      .from("planner_profile_assignments")
+      .delete()
+      .eq("id", data.id)
+      .eq("user_id", context.userId);
     if (error) throw error;
     return { ok: true };
+  });
+
+export const getPrefsForDate = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }).parse(i))
+  .handler(async ({ data, context }): Promise<PlannerProfile> => {
+    return resolvePrefsForDate(context.supabase, context.userId, data.date);
+  });
+
+// Backwards-compatible: returns the default profile's prefs.
+export const getPlannerPrefs = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<PlannerPrefs> => {
+    const p = await ensureDefaultProfile(context.supabase, context.userId);
+    return p;
   });
 
 const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
@@ -111,6 +346,7 @@ const optimizeSchema = z.object({
   workStart: z.string().optional(),
   workEnd: z.string().optional(),
   goals: z.string().max(500).optional(),
+  profileId: z.string().uuid().optional(),
 });
 
 export type DailyPlanItem = {
@@ -126,7 +362,7 @@ export const optimizeDay = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<{ summary: string; items: DailyPlanItem[] }> => {
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("Missing LOVABLE_API_KEY");
-    const prefs = await loadPrefs(context.supabase, context.userId);
+    const prefs = await loadProfileById(context.supabase, context.userId, data.profileId ?? null, data.date);
     const workStart = data.workStart ?? prefs.work_start;
     const workEnd = data.workEnd ?? prefs.work_end;
 
@@ -184,7 +420,7 @@ export const planTask = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("Missing LOVABLE_API_KEY");
-    const prefs = await loadPrefs(context.supabase, context.userId);
+    const prefs = await ensureDefaultProfile(context.supabase, context.userId);
     const now = data.now ?? new Date().toISOString();
     const tzOffsetMin = new Date().getTimezoneOffset();
 
@@ -225,6 +461,7 @@ const weekSchema = z.object({
   days: z.number().int().min(1).max(14).default(7),
   workStart: z.string().optional(),
   workEnd: z.string().optional(),
+  profileId: z.string().uuid().optional(),
 });
 
 export const planWeek = createServerFn({ method: "POST" })
@@ -233,7 +470,7 @@ export const planWeek = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("Missing LOVABLE_API_KEY");
-    const prefs = await loadPrefs(context.supabase, context.userId);
+    const prefs = await loadProfileById(context.supabase, context.userId, data.profileId ?? null, data.startDate);
     const workStart = data.workStart ?? prefs.work_start;
     const workEnd = data.workEnd ?? prefs.work_end;
     const tzOffsetMin = new Date().getTimezoneOffset();
@@ -299,7 +536,7 @@ export const applyDayPlan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => applyDaySchema.parse(i))
   .handler(async ({ data, context }) => {
-    const prefs = await loadPrefs(context.supabase, context.userId);
+    const prefs = await resolvePrefsForDate(context.supabase, context.userId, data.date);
     // Only create new appointments for blocks/breaks; the "appointment" items
     // are already on the schedule (the AI was told not to move them).
     const candidates = data.items.filter((it) => it.kind !== "appointment");

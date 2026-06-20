@@ -9,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Sparkles, ArrowLeft, Wand2, CalendarRange, ListChecks, SlidersHorizontal } from "lucide-react";
-import { optimizeDay, planTask, planWeek, applyDayPlan, getPlannerPrefs, type DailyPlanItem } from "@/lib/planner.functions";
+import { optimizeDay, planTask, planWeek, applyDayPlan, listPlannerProfiles, getPrefsForDate, type DailyPlanItem, type PlannerProfile } from "@/lib/planner.functions";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const Route = createFileRoute("/_authenticated/planner")({
   component: PlannerPage,
@@ -59,8 +60,9 @@ function PlannerPage() {
 
 function DayOptimizer() {
   const qc = useQueryClient();
-  const { data: prefs } = useQuery({ queryKey: ["planner-prefs"], queryFn: () => getPlannerPrefs() });
+  const { data: profiles } = useQuery({ queryKey: ["planner-profiles"], queryFn: () => listPlannerProfiles() });
   const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [profileId, setProfileId] = useState<string>("");
   const [workStart, setWorkStart] = useState("09:00");
   const [workEnd, setWorkEnd] = useState("18:00");
   const [goals, setGoals] = useState("");
@@ -68,14 +70,27 @@ function DayOptimizer() {
   const [applying, setApplying] = useState(false);
   const [plan, setPlan] = useState<{ summary: string; items: DailyPlanItem[] } | null>(null);
 
+  // Resolve which profile applies on this date (via assignments → default).
+  const { data: dayPrefs } = useQuery({
+    queryKey: ["planner-prefs-for-date", date],
+    queryFn: () => getPrefsForDate({ data: { date } }),
+    enabled: !!date,
+  });
+
+  const activeProfile: PlannerProfile | undefined =
+    (profileId && profiles?.find((p) => p.id === profileId)) || dayPrefs || undefined;
+
   useEffect(() => {
-    if (prefs) { setWorkStart(prefs.work_start); setWorkEnd(prefs.work_end); }
-  }, [prefs]);
+    if (activeProfile) {
+      setWorkStart(activeProfile.work_start);
+      setWorkEnd(activeProfile.work_end);
+    }
+  }, [activeProfile?.id]);
 
   async function run() {
     setBusy(true);
     try {
-      const res = await optimizeDay({ data: { date, workStart, workEnd, goals: goals || undefined } });
+      const res = await optimizeDay({ data: { date, workStart, workEnd, goals: goals || undefined, profileId: profileId || undefined } });
       setPlan(res);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't build plan");
@@ -116,6 +131,19 @@ function DayOptimizer() {
           <Label htmlFor="we">Work end</Label>
           <Input id="we" type="time" value={workEnd} onChange={(e) => setWorkEnd(e.target.value)} />
         </div>
+      </div>
+      <div className="space-y-1.5">
+        <Label>Profile</Label>
+        <Select value={profileId || "__auto"} onValueChange={(v) => setProfileId(v === "__auto" ? "" : v)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__auto">Auto for date{dayPrefs ? ` · ${dayPrefs.name}` : ""}</SelectItem>
+            {(profiles ?? []).map((p) => (
+              <SelectItem key={p.id} value={p.id}>{p.name}{p.is_default ? " (default)" : ""}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-[11px] text-muted-foreground">Auto picks the profile assigned to this date, or your default. <Link to="/planner/preferences" className="underline">Manage profiles</Link>.</p>
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="g">Priorities (optional)</Label>
@@ -195,16 +223,18 @@ function QuickTask() {
 
 function WeekPlanner() {
   const qc = useQueryClient();
+  const { data: profiles } = useQuery({ queryKey: ["planner-profiles"], queryFn: () => listPlannerProfiles() });
   const [goals, setGoals] = useState("");
   const [startDate, setStartDate] = useState(format(addDays(new Date(), 1), "yyyy-MM-dd"));
   const [days, setDays] = useState(7);
+  const [profileId, setProfileId] = useState<string>("");
   const [busy, setBusy] = useState(false);
 
   async function run() {
     if (!goals.trim()) return;
     setBusy(true);
     try {
-      const res = await planWeek({ data: { goals, startDate, days } });
+      const res = await planWeek({ data: { goals, startDate, days, profileId: profileId || undefined } });
       toast.success(`Created ${res.created} block${res.created === 1 ? "" : "s"}`, { description: res.summary });
       qc.invalidateQueries({ queryKey: ["appointments"] });
       setGoals("");
@@ -230,6 +260,18 @@ function WeekPlanner() {
           <Label htmlFor="dn">Days</Label>
           <Input id="dn" type="number" min={1} max={14} value={days} onChange={(e) => setDays(Number(e.target.value) || 7)} />
         </div>
+      </div>
+      <div className="space-y-1.5">
+        <Label>Profile</Label>
+        <Select value={profileId || "__auto"} onValueChange={(v) => setProfileId(v === "__auto" ? "" : v)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__auto">Auto (use assigned/default for start date)</SelectItem>
+            {(profiles ?? []).map((p) => (
+              <SelectItem key={p.id} value={p.id}>{p.name}{p.is_default ? " (default)" : ""}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <Button onClick={run} disabled={busy || !goals.trim()} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
         {busy ? "Planning week…" : (<><Sparkles className="h-4 w-4 mr-1.5" /> Plan my week</>)}
