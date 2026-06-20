@@ -20,9 +20,14 @@ function PlannerPage() {
     <div className="relative min-h-screen bg-background">
       <div className="absolute inset-0 paper-grain opacity-30 pointer-events-none" />
       <div className="relative mx-auto max-w-2xl px-5 py-8 md:py-12">
-        <Link to="/app" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4 mr-1" /> Back to schedule
-        </Link>
+        <div className="flex items-center justify-between">
+          <Link to="/app" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-4 w-4 mr-1" /> Back to schedule
+          </Link>
+          <Link to="/planner/preferences" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
+            <SlidersHorizontal className="h-3.5 w-3.5 mr-1" /> Preferences
+          </Link>
+        </div>
 
         <div className="mt-6">
           <div className="inline-flex items-center gap-2 rounded-full bg-accent/10 px-3 py-1 text-xs text-accent">
@@ -32,7 +37,7 @@ function PlannerPage() {
             Let AI <span className="text-accent italic">shape</span> your time.
           </h1>
           <p className="mt-2 text-muted-foreground text-sm">
-            Optimize a day, capture a quick task, or break goals into a week of focused blocks.
+            Optimize a day, capture a quick task, or break goals into a week of focused blocks. Tune defaults in <Link to="/planner/preferences" className="underline">preferences</Link>.
           </p>
         </div>
 
