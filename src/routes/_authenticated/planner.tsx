@@ -1,15 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { format, addDays } from "date-fns";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Sparkles, ArrowLeft, Wand2, CalendarRange, ListChecks } from "lucide-react";
-import { optimizeDay, planTask, planWeek, applyDayPlan, type DailyPlanItem } from "@/lib/planner.functions";
+import { Sparkles, ArrowLeft, Wand2, CalendarRange, ListChecks, SlidersHorizontal } from "lucide-react";
+import { optimizeDay, planTask, planWeek, applyDayPlan, getPlannerPrefs, type DailyPlanItem } from "@/lib/planner.functions";
 
 export const Route = createFileRoute("/_authenticated/planner")({
   component: PlannerPage,
