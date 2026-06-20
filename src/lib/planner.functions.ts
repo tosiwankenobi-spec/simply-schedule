@@ -362,7 +362,7 @@ export const optimizeDay = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<{ summary: string; items: DailyPlanItem[] }> => {
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("Missing LOVABLE_API_KEY");
-    const prefs = await loadPrefs(context.supabase, context.userId);
+    const prefs = await loadProfileById(context.supabase, context.userId, data.profileId ?? null, data.date);
     const workStart = data.workStart ?? prefs.work_start;
     const workEnd = data.workEnd ?? prefs.work_end;
 
