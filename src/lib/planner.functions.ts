@@ -470,7 +470,7 @@ export const planWeek = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("Missing LOVABLE_API_KEY");
-    const prefs = await loadPrefs(context.supabase, context.userId);
+    const prefs = await loadProfileById(context.supabase, context.userId, data.profileId ?? null, data.startDate);
     const workStart = data.workStart ?? prefs.work_start;
     const workEnd = data.workEnd ?? prefs.work_end;
     const tzOffsetMin = new Date().getTimezoneOffset();
