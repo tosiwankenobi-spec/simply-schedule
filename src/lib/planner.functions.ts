@@ -184,13 +184,15 @@ export const planTask = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("Missing LOVABLE_API_KEY");
+    const prefs = await loadPrefs(context.supabase, context.userId);
     const now = data.now ?? new Date().toISOString();
     const tzOffsetMin = new Date().getTimezoneOffset();
 
     const system = `Turn the user's request into ONE scheduled appointment.
 Now: ${now}. User timezone offset: ${-tzOffsetMin} min from UTC.
 Resolve relative phrases ("tomorrow morning", "Friday afternoon", "in 2 hours") against now.
-Defaults: morning=09:00, afternoon=14:00, evening=19:00. Default duration 30 min unless stated.
+Defaults: morning=${prefs.work_start}, afternoon=14:00, evening=19:00. Default duration ${prefs.default_meeting_min} min unless stated.
+Stay within working hours ${prefs.work_start}–${prefs.work_end} unless the user specifies otherwise.
 Return JSON: {"title":string,"starts_at":ISO8601 with offset,"ends_at":ISO8601 or null,"location":string|null,"notes":string|null}`;
 
     const out = await callAI(system, data.text, key);
