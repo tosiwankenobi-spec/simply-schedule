@@ -536,7 +536,7 @@ export const applyDayPlan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => applyDaySchema.parse(i))
   .handler(async ({ data, context }) => {
-    const prefs = await loadPrefs(context.supabase, context.userId);
+    const prefs = await resolvePrefsForDate(context.supabase, context.userId, data.date);
     // Only create new appointments for blocks/breaks; the "appointment" items
     // are already on the schedule (the AI was told not to move them).
     const candidates = data.items.filter((it) => it.kind !== "appointment");
