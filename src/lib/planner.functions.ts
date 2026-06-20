@@ -299,6 +299,7 @@ export const applyDayPlan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => applyDaySchema.parse(i))
   .handler(async ({ data, context }) => {
+    const prefs = await loadPrefs(context.supabase, context.userId);
     // Only create new appointments for blocks/breaks; the "appointment" items
     // are already on the schedule (the AI was told not to move them).
     const candidates = data.items.filter((it) => it.kind !== "appointment");
@@ -311,8 +312,8 @@ export const applyDayPlan = createServerFn({ method: "POST" })
     const rows = candidates.map((it, idx) => {
       const [h, m] = it.time.split(":").map((n) => parseInt(n, 10));
       const start = new Date(`${data.date}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00${offset}`);
-      // Default duration: use provided, else infer from next item, else 30 min.
-      let durationMin = it.durationMin ?? 30;
+      const fallback = it.kind === "break" ? prefs.break_length_min : prefs.default_meeting_min;
+      let durationMin = it.durationMin ?? fallback;
       const next = candidates[idx + 1];
       if (!it.durationMin && next) {
         const [nh, nm] = next.time.split(":").map((n) => parseInt(n, 10));
