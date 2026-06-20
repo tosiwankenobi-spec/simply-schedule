@@ -60,8 +60,9 @@ function PlannerPage() {
 
 function DayOptimizer() {
   const qc = useQueryClient();
-  const { data: prefs } = useQuery({ queryKey: ["planner-prefs"], queryFn: () => getPlannerPrefs() });
+  const { data: profiles } = useQuery({ queryKey: ["planner-profiles"], queryFn: () => listPlannerProfiles() });
   const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [profileId, setProfileId] = useState<string>("");
   const [workStart, setWorkStart] = useState("09:00");
   const [workEnd, setWorkEnd] = useState("18:00");
   const [goals, setGoals] = useState("");
@@ -69,14 +70,27 @@ function DayOptimizer() {
   const [applying, setApplying] = useState(false);
   const [plan, setPlan] = useState<{ summary: string; items: DailyPlanItem[] } | null>(null);
 
+  // Resolve which profile applies on this date (via assignments → default).
+  const { data: dayPrefs } = useQuery({
+    queryKey: ["planner-prefs-for-date", date],
+    queryFn: () => getPrefsForDate({ data: { date } }),
+    enabled: !!date,
+  });
+
+  const activeProfile: PlannerProfile | undefined =
+    (profileId && profiles?.find((p) => p.id === profileId)) || dayPrefs || undefined;
+
   useEffect(() => {
-    if (prefs) { setWorkStart(prefs.work_start); setWorkEnd(prefs.work_end); }
-  }, [prefs]);
+    if (activeProfile) {
+      setWorkStart(activeProfile.work_start);
+      setWorkEnd(activeProfile.work_end);
+    }
+  }, [activeProfile?.id]);
 
   async function run() {
     setBusy(true);
     try {
-      const res = await optimizeDay({ data: { date, workStart, workEnd, goals: goals || undefined } });
+      const res = await optimizeDay({ data: { date, workStart, workEnd, goals: goals || undefined, profileId: profileId || undefined } });
       setPlan(res);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't build plan");
