@@ -59,6 +59,7 @@ function PlannerPage() {
 
 function DayOptimizer() {
   const qc = useQueryClient();
+  const { data: prefs } = useQuery({ queryKey: ["planner-prefs"], queryFn: () => getPlannerPrefs() });
   const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [workStart, setWorkStart] = useState("09:00");
   const [workEnd, setWorkEnd] = useState("18:00");
@@ -66,6 +67,10 @@ function DayOptimizer() {
   const [busy, setBusy] = useState(false);
   const [applying, setApplying] = useState(false);
   const [plan, setPlan] = useState<{ summary: string; items: DailyPlanItem[] } | null>(null);
+
+  useEffect(() => {
+    if (prefs) { setWorkStart(prefs.work_start); setWorkEnd(prefs.work_end); }
+  }, [prefs]);
 
   async function run() {
     setBusy(true);
