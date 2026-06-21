@@ -462,6 +462,7 @@ const weekSchema = z.object({
   workStart: z.string().optional(),
   workEnd: z.string().optional(),
   profileId: z.string().uuid().optional(),
+  resolution: z.enum(["skip", "shift", "force"]).default("shift"),
 });
 
 export const planWeek = createServerFn({ method: "POST" })
@@ -502,22 +503,42 @@ Return JSON: {"summary":string,"appointments":[{"title":string,"starts_at":ISO86
     const list = Array.isArray(out.appointments) ? out.appointments : [];
     if (list.length === 0) throw new Error("AI didn't produce any blocks. Try clearer goals.");
 
-    const rows = list
+    const proposed: ProposedRow[] = list
       .filter((a: any) => a?.title && a?.starts_at && !Number.isNaN(Date.parse(a.starts_at)))
       .slice(0, 20)
-      .map((a: any) => ({
-        user_id: context.userId,
-        title: String(a.title).slice(0, 200),
-        starts_at: a.starts_at,
-        ends_at: a.ends_at && !Number.isNaN(Date.parse(a.ends_at)) ? a.ends_at : null,
-        notes: a.notes ? String(a.notes).slice(0, 1000) : null,
-        source: "ai",
-      }));
+      .map((a: any) => {
+        const s = Date.parse(a.starts_at);
+        const e = a.ends_at && !Number.isNaN(Date.parse(a.ends_at))
+          ? Date.parse(a.ends_at)
+          : s + prefs.default_meeting_min * 60 * 1000;
+        return {
+          start: s,
+          end: e,
+          row: {
+            user_id: context.userId,
+            title: String(a.title).slice(0, 200),
+            starts_at: new Date(s).toISOString(),
+            ends_at: new Date(e).toISOString(),
+            notes: a.notes ? String(a.notes).slice(0, 1000) : null,
+            source: "ai",
+          },
+        };
+      });
 
-    const { error } = await context.supabase.from("appointments").insert(rows);
-    if (error) throw error;
-    return { summary: String(out.summary ?? "").slice(0, 400), created: rows.length };
+    const result = resolveConflicts(proposed, existing ?? [], data.resolution, prefs.default_meeting_min);
+    if (result.accepted.length > 0) {
+      const { error } = await context.supabase.from("appointments").insert(result.accepted);
+      if (error) throw error;
+    }
+    return {
+      summary: String(out.summary ?? "").slice(0, 400),
+      created: result.accepted.length,
+      skipped: result.skipped,
+      shifted: result.shifted,
+      conflicts: result.conflicts,
+    };
   });
+
 
 // ============ 4. Conflict resolution helpers ============
 
