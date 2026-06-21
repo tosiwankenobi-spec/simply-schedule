@@ -70,8 +70,9 @@ function DayOptimizer() {
   const [busy, setBusy] = useState(false);
   const [applying, setApplying] = useState(false);
   const [plan, setPlan] = useState<{ summary: string; items: DailyPlanItem[] } | null>(null);
+  const [conflicts, setConflicts] = useState<{ time: string; title: string; conflictsWith: string }[]>([]);
+  const [resolution, setResolution] = useState<"shift" | "skip" | "force">("shift");
 
-  // Resolve which profile applies on this date (via assignments → default).
   const { data: dayPrefs } = useQuery({
     queryKey: ["planner-prefs-for-date", date],
     queryFn: () => getPrefsForDate({ data: { date } }),
@@ -90,9 +91,15 @@ function DayOptimizer() {
 
   async function run() {
     setBusy(true);
+    setConflicts([]);
     try {
       const res = await optimizeDay({ data: { date, workStart, workEnd, goals: goals || undefined, profileId: profileId || undefined } });
       setPlan(res);
+      // Detect conflicts against existing appointments
+      try {
+        const pc = await previewDayConflicts({ data: { date, items: res.items } });
+        setConflicts(pc.conflicts);
+      } catch { /* non-fatal */ }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't build plan");
     } finally { setBusy(false); }
@@ -102,11 +109,20 @@ function DayOptimizer() {
     if (!plan) return;
     setApplying(true);
     try {
-      const res = await applyDayPlan({ data: { date, items: plan.items } });
-      if (res.created > 0) {
-        toast.success(`Added ${res.created} block${res.created === 1 ? "" : "s"} to your schedule`);
+      const res = await applyDayPlan({ data: { date, items: plan.items, resolution } });
+      const parts: string[] = [];
+      if (res.created > 0) parts.push(`added ${res.created}`);
+      if (res.shifted.length > 0) parts.push(`shifted ${res.shifted.length}`);
+      if (res.skipped.length > 0) parts.push(`skipped ${res.skipped.length}`);
+      if (res.created > 0 || res.shifted.length > 0) {
+        toast.success(`Schedule updated: ${parts.join(", ")}`);
         qc.invalidateQueries({ queryKey: ["appointments"] });
         setPlan(null);
+        setConflicts([]);
+      } else if (res.skipped.length > 0) {
+        toast.warning(`All ${res.skipped.length} blocks conflicted — nothing added`, {
+          description: "Try 'Shift after conflict' or 'Add anyway'.",
+        });
       } else {
         toast.message("Nothing new to add", { description: "The plan only referenced existing appointments." });
       }
@@ -116,6 +132,7 @@ function DayOptimizer() {
   }
 
   const newItemCount = plan?.items.filter((it) => it.kind !== "appointment").length ?? 0;
+  const conflictMap = new Map(conflicts.map((c) => [`${c.time}|${c.title}`, c.conflictsWith]));
 
   return (
     <div className="space-y-4">
@@ -158,23 +175,57 @@ function DayOptimizer() {
       {plan && (
         <div className="mt-6 rounded-xl border border-border bg-card p-5">
           <p className="font-serif text-lg text-foreground">{plan.summary}</p>
+
+          {conflicts.length > 0 && (
+            <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+              <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+              <div className="text-xs text-foreground/80">
+                <div className="font-medium text-amber-700">{conflicts.length} conflict{conflicts.length === 1 ? "" : "s"} with existing appointments</div>
+                <div className="text-muted-foreground mt-0.5">Choose how to handle them below.</div>
+              </div>
+            </div>
+          )}
+
           <ul className="mt-4 space-y-2">
-            {plan.items.map((it, i) => (
-              <li key={i} className="flex items-start gap-3 border-b border-border/60 pb-2 last:border-0">
-                <span className="font-mono text-xs text-muted-foreground w-14 pt-0.5">{it.time}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-foreground">{it.title}</span>
-                    <span className={`text-[10px] uppercase tracking-wide rounded-full px-1.5 py-0.5 ${
-                      it.kind === "appointment" ? "bg-accent/10 text-accent" :
-                      it.kind === "break" ? "bg-muted text-muted-foreground" : "bg-secondary text-foreground/70"
-                    }`}>{it.kind}</span>
+            {plan.items.map((it, i) => {
+              const conflict = it.kind !== "appointment" ? conflictMap.get(`${it.time}|${it.title}`) : undefined;
+              return (
+                <li key={i} className={`flex items-start gap-3 border-b border-border/60 pb-2 last:border-0 ${conflict ? "bg-amber-500/5 -mx-2 px-2 rounded" : ""}`}>
+                  <span className="font-mono text-xs text-muted-foreground w-14 pt-0.5">{it.time}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm text-foreground">{it.title}</span>
+                      <span className={`text-[10px] uppercase tracking-wide rounded-full px-1.5 py-0.5 ${
+                        it.kind === "appointment" ? "bg-accent/10 text-accent" :
+                        it.kind === "break" ? "bg-muted text-muted-foreground" : "bg-secondary text-foreground/70"
+                      }`}>{it.kind}</span>
+                      {conflict && (
+                        <span className="text-[10px] uppercase tracking-wide rounded-full px-1.5 py-0.5 bg-amber-500/20 text-amber-700 inline-flex items-center gap-1">
+                          <AlertTriangle className="h-2.5 w-2.5" /> conflicts: {conflict}
+                        </span>
+                      )}
+                    </div>
+                    {it.rationale && <p className="text-xs text-muted-foreground mt-0.5">{it.rationale}</p>}
                   </div>
-                  {it.rationale && <p className="text-xs text-muted-foreground mt-0.5">{it.rationale}</p>}
-                </div>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
+
+          {conflicts.length > 0 && (
+            <div className="mt-4 space-y-1.5">
+              <Label className="text-xs">When a block conflicts</Label>
+              <Select value={resolution} onValueChange={(v) => setResolution(v as typeof resolution)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="shift">Shift after the conflict</SelectItem>
+                  <SelectItem value="skip">Skip conflicting blocks</SelectItem>
+                  <SelectItem value="force">Add anyway (allow overlap)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div className="mt-5 flex gap-2">
             <Button
               onClick={apply}
@@ -183,7 +234,7 @@ function DayOptimizer() {
             >
               {applying ? "Adding…" : `Add ${newItemCount} block${newItemCount === 1 ? "" : "s"} to schedule`}
             </Button>
-            <Button variant="ghost" onClick={() => setPlan(null)} disabled={applying}>Discard</Button>
+            <Button variant="ghost" onClick={() => { setPlan(null); setConflicts([]); }} disabled={applying}>Discard</Button>
           </div>
         </div>
       )}
