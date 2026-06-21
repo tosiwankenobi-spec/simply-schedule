@@ -280,14 +280,19 @@ function WeekPlanner() {
   const [startDate, setStartDate] = useState(format(addDays(new Date(), 1), "yyyy-MM-dd"));
   const [days, setDays] = useState(7);
   const [profileId, setProfileId] = useState<string>("");
+  const [resolution, setResolution] = useState<"shift" | "skip" | "force">("shift");
   const [busy, setBusy] = useState(false);
 
   async function run() {
     if (!goals.trim()) return;
     setBusy(true);
     try {
-      const res = await planWeek({ data: { goals, startDate, days, profileId: profileId || undefined } });
-      toast.success(`Created ${res.created} block${res.created === 1 ? "" : "s"}`, { description: res.summary });
+      const res = await planWeek({ data: { goals, startDate, days, profileId: profileId || undefined, resolution } });
+      const bits: string[] = [];
+      if (res.created > 0) bits.push(`${res.created} added`);
+      if (res.shifted?.length) bits.push(`${res.shifted.length} shifted`);
+      if (res.skipped?.length) bits.push(`${res.skipped.length} skipped`);
+      toast.success(bits.join(" · ") || "Plan ready", { description: res.summary });
       qc.invalidateQueries({ queryKey: ["appointments"] });
       setGoals("");
     } catch (err) {
