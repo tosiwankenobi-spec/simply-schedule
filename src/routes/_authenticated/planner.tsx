@@ -9,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Sparkles, ArrowLeft, Wand2, CalendarRange, ListChecks, SlidersHorizontal } from "lucide-react";
-import { optimizeDay, planTask, planWeek, applyDayPlan, listPlannerProfiles, getPrefsForDate, type DailyPlanItem, type PlannerProfile } from "@/lib/planner.functions";
+import { optimizeDay, planTask, planWeek, applyDayPlan, previewDayConflicts, listPlannerProfiles, getPrefsForDate, type DailyPlanItem, type PlannerProfile } from "@/lib/planner.functions";
+import { AlertTriangle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const Route = createFileRoute("/_authenticated/planner")({
