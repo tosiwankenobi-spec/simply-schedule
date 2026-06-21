@@ -330,6 +330,17 @@ function WeekPlanner() {
           </SelectContent>
         </Select>
       </div>
+      <div className="space-y-1.5">
+        <Label>On conflict with existing appointments</Label>
+        <Select value={resolution} onValueChange={(v) => setResolution(v as typeof resolution)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="shift">Shift block after the conflict</SelectItem>
+            <SelectItem value="skip">Skip conflicting blocks</SelectItem>
+            <SelectItem value="force">Add anyway (allow overlap)</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
       <Button onClick={run} disabled={busy || !goals.trim()} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
         {busy ? "Planning week…" : (<><Sparkles className="h-4 w-4 mr-1.5" /> Plan my week</>)}
       </Button>
