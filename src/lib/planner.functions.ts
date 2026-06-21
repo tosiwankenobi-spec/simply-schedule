@@ -720,7 +720,7 @@ export const previewDayConflicts = createServerFn({ method: "POST" })
     }));
     const conflicts = proposed
       .map((p) => {
-        const hit = blocks.find((b) => p.start < b.e && p.end > b.s);
+        const hit = blocks.find((b: { s: number; e: number }) => p.start < b.e && p.end > b.s);
         return hit
           ? { time: new Date(p.start).toISOString(), title: p.row.title, conflictsWith: hit.title }
           : null;
