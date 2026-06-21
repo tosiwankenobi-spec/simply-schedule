@@ -462,6 +462,7 @@ const weekSchema = z.object({
   workStart: z.string().optional(),
   workEnd: z.string().optional(),
   profileId: z.string().uuid().optional(),
+  resolution: z.enum(["skip", "shift", "force"]).default("shift"),
 });
 
 export const planWeek = createServerFn({ method: "POST" })
@@ -502,27 +503,143 @@ Return JSON: {"summary":string,"appointments":[{"title":string,"starts_at":ISO86
     const list = Array.isArray(out.appointments) ? out.appointments : [];
     if (list.length === 0) throw new Error("AI didn't produce any blocks. Try clearer goals.");
 
-    const rows = list
+    const proposed: ProposedRow[] = list
       .filter((a: any) => a?.title && a?.starts_at && !Number.isNaN(Date.parse(a.starts_at)))
       .slice(0, 20)
-      .map((a: any) => ({
-        user_id: context.userId,
-        title: String(a.title).slice(0, 200),
-        starts_at: a.starts_at,
-        ends_at: a.ends_at && !Number.isNaN(Date.parse(a.ends_at)) ? a.ends_at : null,
-        notes: a.notes ? String(a.notes).slice(0, 1000) : null,
-        source: "ai",
-      }));
+      .map((a: any) => {
+        const s = Date.parse(a.starts_at);
+        const e = a.ends_at && !Number.isNaN(Date.parse(a.ends_at))
+          ? Date.parse(a.ends_at)
+          : s + prefs.default_meeting_min * 60 * 1000;
+        return {
+          start: s,
+          end: e,
+          row: {
+            user_id: context.userId,
+            title: String(a.title).slice(0, 200),
+            starts_at: new Date(s).toISOString(),
+            ends_at: new Date(e).toISOString(),
+            notes: a.notes ? String(a.notes).slice(0, 1000) : null,
+            source: "ai",
+          },
+        };
+      });
 
-    const { error } = await context.supabase.from("appointments").insert(rows);
-    if (error) throw error;
-    return { summary: String(out.summary ?? "").slice(0, 400), created: rows.length };
+    const result = resolveConflicts(proposed, existing ?? [], data.resolution, prefs.default_meeting_min);
+    if (result.accepted.length > 0) {
+      const { error } = await context.supabase.from("appointments").insert(result.accepted);
+      if (error) throw error;
+    }
+    return {
+      summary: String(out.summary ?? "").slice(0, 400),
+      created: result.accepted.length,
+      skipped: result.skipped,
+      shifted: result.shifted,
+      conflicts: result.conflicts,
+    };
   });
 
-// ============ 4. Apply a generated day plan ============
+
+// ============ 4. Conflict resolution helpers ============
+
+type ConflictResolution = "skip" | "shift" | "force";
+
+type ProposedRow = {
+  row: {
+    user_id: string;
+    title: string;
+    starts_at: string;
+    ends_at: string;
+    notes: string | null;
+    source: string;
+  };
+  start: number;
+  end: number;
+};
+
+type ResolveResult = {
+  accepted: ProposedRow["row"][];
+  skipped: { title: string; starts_at: string; conflictsWith: string }[];
+  shifted: { title: string; from: string; to: string; conflictsWith: string }[];
+  conflicts: { title: string; starts_at: string; conflictsWith: string }[];
+};
+
+function resolveConflicts(
+  proposed: ProposedRow[],
+  existing: { title: string; starts_at: string; ends_at: string | null }[],
+  mode: ConflictResolution,
+  defaultDurMin: number,
+): ResolveResult {
+  const blocks = existing.map((e) => ({
+    title: e.title,
+    s: Date.parse(e.starts_at),
+    e: e.ends_at ? Date.parse(e.ends_at) : Date.parse(e.starts_at) + defaultDurMin * 60 * 1000,
+  }));
+  const out: ResolveResult = { accepted: [], skipped: [], shifted: [], conflicts: [] };
+  const overlap = (s: number, e: number, x: { s: number; e: number }) => s < x.e && e > x.s;
+
+  for (const p of proposed.slice().sort((a, b) => a.start - b.start)) {
+    let s = p.start;
+    let e = p.end;
+    const dur = Math.max(60_000, e - s);
+    const hits = blocks.filter((x) => overlap(s, e, x));
+
+    if (hits.length === 0) {
+      const row = { ...p.row, starts_at: new Date(s).toISOString(), ends_at: new Date(e).toISOString() };
+      out.accepted.push(row);
+      blocks.push({ title: row.title, s, e });
+      continue;
+    }
+
+    const firstHit = hits.reduce((a, b) => (a.s < b.s ? a : b));
+    out.conflicts.push({
+      title: p.row.title,
+      starts_at: new Date(s).toISOString(),
+      conflictsWith: firstHit.title,
+    });
+
+    if (mode === "skip") {
+      out.skipped.push({ title: p.row.title, starts_at: new Date(s).toISOString(), conflictsWith: firstHit.title });
+      continue;
+    }
+    if (mode === "shift") {
+      const originalStart = s;
+      let placed = false;
+      for (let i = 0; i < 6; i++) {
+        const conflicting = blocks.filter((x) => overlap(s, e, x));
+        if (conflicting.length === 0) { placed = true; break; }
+        const latestEnd = Math.max(...conflicting.map((c) => c.e));
+        s = latestEnd;
+        e = s + dur;
+      }
+      if (!placed) {
+        out.skipped.push({ title: p.row.title, starts_at: new Date(originalStart).toISOString(), conflictsWith: firstHit.title });
+        continue;
+      }
+      const row = { ...p.row, starts_at: new Date(s).toISOString(), ends_at: new Date(e).toISOString() };
+      out.accepted.push(row);
+      out.shifted.push({
+        title: p.row.title,
+        from: new Date(originalStart).toISOString(),
+        to: new Date(s).toISOString(),
+        conflictsWith: firstHit.title,
+      });
+      blocks.push({ title: row.title, s, e });
+      continue;
+    }
+    // force
+    const row = { ...p.row, starts_at: new Date(s).toISOString(), ends_at: new Date(e).toISOString() };
+    out.accepted.push(row);
+    blocks.push({ title: row.title, s, e });
+  }
+  return out;
+}
+
+// ============ Apply a generated day plan ============
 
 const applyDaySchema = z.object({
   date: z.string(), // YYYY-MM-DD
+  resolution: z.enum(["skip", "shift", "force"]).default("skip"),
   items: z.array(z.object({
     time: z.string(), // "HH:mm"
     title: z.string().min(1).max(200),
@@ -532,46 +649,104 @@ const applyDaySchema = z.object({
   })).min(1).max(30),
 });
 
-export const applyDayPlan = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((i: unknown) => applyDaySchema.parse(i))
-  .handler(async ({ data, context }) => {
-    const prefs = await resolvePrefsForDate(context.supabase, context.userId, data.date);
-    // Only create new appointments for blocks/breaks; the "appointment" items
-    // are already on the schedule (the AI was told not to move them).
-    const candidates = data.items.filter((it) => it.kind !== "appointment");
+function tzOffsetString() {
+  const tzOffsetMin = new Date().getTimezoneOffset();
+  const sign = tzOffsetMin <= 0 ? "+" : "-";
+  const abs = Math.abs(tzOffsetMin);
+  return `${sign}${String(Math.floor(abs / 60)).padStart(2, "0")}:${String(abs % 60).padStart(2, "0")}`;
+}
 
-    const tzOffsetMin = new Date().getTimezoneOffset();
-    const sign = tzOffsetMin <= 0 ? "+" : "-";
-    const abs = Math.abs(tzOffsetMin);
-    const offset = `${sign}${String(Math.floor(abs / 60)).padStart(2, "0")}:${String(abs % 60).padStart(2, "0")}`;
-
-    const rows = candidates.map((it, idx) => {
-      const [h, m] = it.time.split(":").map((n) => parseInt(n, 10));
-      const start = new Date(`${data.date}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00${offset}`);
-      const fallback = it.kind === "break" ? prefs.break_length_min : prefs.default_meeting_min;
-      let durationMin = it.durationMin ?? fallback;
-      const next = candidates[idx + 1];
-      if (!it.durationMin && next) {
-        const [nh, nm] = next.time.split(":").map((n) => parseInt(n, 10));
-        const diff = (nh * 60 + nm) - (h * 60 + m);
-        if (diff > 0 && diff <= 240) durationMin = diff;
-      }
-      const end = new Date(start.getTime() + durationMin * 60 * 1000);
-      return {
-        user_id: context.userId,
+function buildProposed(
+  date: string,
+  candidates: { time: string; title: string; kind: "appointment" | "block" | "break"; rationale?: string | null; durationMin?: number }[],
+  prefs: PlannerPrefs,
+  userId: string,
+): ProposedRow[] {
+  const offset = tzOffsetString();
+  return candidates.map((it, idx) => {
+    const [h, m] = it.time.split(":").map((n) => parseInt(n, 10));
+    const start = new Date(`${date}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00${offset}`);
+    const fallback = it.kind === "break" ? prefs.break_length_min : prefs.default_meeting_min;
+    let durationMin = it.durationMin ?? fallback;
+    const next = candidates[idx + 1];
+    if (!it.durationMin && next) {
+      const [nh, nm] = next.time.split(":").map((n) => parseInt(n, 10));
+      const diff = (nh * 60 + nm) - (h * 60 + m);
+      if (diff > 0 && diff <= 240) durationMin = diff;
+    }
+    const end = new Date(start.getTime() + durationMin * 60 * 1000);
+    return {
+      start: start.getTime(),
+      end: end.getTime(),
+      row: {
+        user_id: userId,
         title: it.title.slice(0, 200),
         starts_at: start.toISOString(),
         ends_at: end.toISOString(),
         notes: it.rationale ? it.rationale.slice(0, 1000) : null,
         source: "ai",
-      };
-    });
-
-    if (rows.length === 0) {
-      return { created: 0 };
-    }
-    const { error } = await context.supabase.from("appointments").insert(rows);
-    if (error) throw error;
-    return { created: rows.length };
+      },
+    };
   });
+}
+
+async function loadDayExisting(supabase: any, date: string) {
+  const offset = tzOffsetString();
+  const dayStart = new Date(`${date}T00:00:00${offset}`);
+  const dayEnd = new Date(dayStart.getTime() + 24 * 3600 * 1000);
+  const { data } = await supabase
+    .from("appointments")
+    .select("title,starts_at,ends_at")
+    .gte("starts_at", dayStart.toISOString())
+    .lt("starts_at", dayEnd.toISOString());
+  return data ?? [];
+}
+
+export const applyDayPlan = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => applyDaySchema.parse(i))
+  .handler(async ({ data, context }) => {
+    const prefs = await resolvePrefsForDate(context.supabase, context.userId, data.date);
+    const candidates = data.items.filter((it) => it.kind !== "appointment");
+    const proposed = buildProposed(data.date, candidates, prefs, context.userId);
+    const existing = await loadDayExisting(context.supabase, data.date);
+    const result = resolveConflicts(proposed, existing, data.resolution, prefs.default_meeting_min);
+
+    if (result.accepted.length > 0) {
+      const { error } = await context.supabase.from("appointments").insert(result.accepted);
+      if (error) throw error;
+    }
+    return {
+      created: result.accepted.length,
+      skipped: result.skipped,
+      shifted: result.shifted,
+      conflicts: result.conflicts,
+    };
+  });
+
+// ============ 5. Preview conflicts (no writes) ============
+
+export const previewDayConflicts = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => applyDaySchema.parse(i))
+  .handler(async ({ data, context }) => {
+    const prefs = await resolvePrefsForDate(context.supabase, context.userId, data.date);
+    const candidates = data.items.filter((it) => it.kind !== "appointment");
+    const proposed = buildProposed(data.date, candidates, prefs, context.userId);
+    const existing = await loadDayExisting(context.supabase, data.date);
+    const blocks = existing.map((e: any) => ({
+      title: e.title,
+      s: Date.parse(e.starts_at),
+      e: e.ends_at ? Date.parse(e.ends_at) : Date.parse(e.starts_at) + prefs.default_meeting_min * 60 * 1000,
+    }));
+    const conflicts = proposed
+      .map((p) => {
+        const hit = blocks.find((b: { s: number; e: number }) => p.start < b.e && p.end > b.s);
+        return hit
+          ? { time: new Date(p.start).toISOString(), title: p.row.title, conflictsWith: hit.title }
+          : null;
+      })
+      .filter(Boolean) as { time: string; title: string; conflictsWith: string }[];
+    return { conflicts };
+  });
+
