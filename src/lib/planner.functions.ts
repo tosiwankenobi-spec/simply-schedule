@@ -839,3 +839,25 @@ export const previewDayConflicts = createServerFn({ method: "POST" })
     return { conflicts };
   });
 
+export const previewDayPlan = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => applyDaySchema.parse(i))
+  .handler(async ({ data, context }) => {
+    const prefs = await resolvePrefsForDate(context.supabase, context.userId, data.date);
+    const candidates = data.items.filter((it) => it.kind !== "appointment");
+    const proposed = buildProposed(data.date, candidates, prefs, context.userId);
+    const existing = await loadDayExisting(context.supabase, data.date);
+    const result = resolveConflicts(proposed, existing, data.resolution, prefs.default_meeting_min);
+    return {
+      accepted: result.accepted.map((r) => ({
+        title: r.title,
+        starts_at: r.starts_at,
+        ends_at: r.ends_at,
+      })),
+      skipped: result.skipped,
+      shifted: result.shifted,
+      conflicts: result.conflicts,
+      existingCount: existing.length,
+    };
+  });
+
