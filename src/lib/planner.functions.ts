@@ -463,7 +463,15 @@ const weekSchema = z.object({
   workEnd: z.string().optional(),
   profileId: z.string().uuid().optional(),
   resolution: z.enum(["skip", "shift", "force"]).default("shift"),
+  dryRun: z.boolean().optional().default(false),
 });
+
+export type WeekProposalItem = {
+  title: string;
+  starts_at: string;
+  ends_at: string;
+  notes: string | null;
+};
 
 export const planWeek = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -526,12 +534,93 @@ Return JSON: {"summary":string,"appointments":[{"title":string,"starts_at":ISO86
       });
 
     const result = resolveConflicts(proposed, existing ?? [], data.resolution, prefs.default_meeting_min);
+    const summary = String(out.summary ?? "").slice(0, 400);
+
+    if (data.dryRun) {
+      const proposals: WeekProposalItem[] = proposed.map((p) => ({
+        title: p.row.title,
+        starts_at: p.row.starts_at,
+        ends_at: p.row.ends_at,
+        notes: p.row.notes,
+      }));
+      return {
+        summary,
+        dryRun: true as const,
+        proposals,
+        preview: {
+          accepted: result.accepted.map((r) => ({ title: r.title, starts_at: r.starts_at, ends_at: r.ends_at })),
+          skipped: result.skipped,
+          shifted: result.shifted,
+          conflicts: result.conflicts,
+        },
+      };
+    }
+
     if (result.accepted.length > 0) {
       const { error } = await context.supabase.from("appointments").insert(result.accepted);
       if (error) throw error;
     }
     return {
-      summary: String(out.summary ?? "").slice(0, 400),
+      summary,
+      dryRun: false as const,
+      created: result.accepted.length,
+      skipped: result.skipped,
+      shifted: result.shifted,
+      conflicts: result.conflicts,
+    };
+  });
+
+const applyWeekSchema = z.object({
+  startDate: z.string(),
+  days: z.number().int().min(1).max(14),
+  resolution: z.enum(["skip", "shift", "force"]).default("shift"),
+  profileId: z.string().uuid().optional(),
+  items: z.array(z.object({
+    title: z.string().min(1).max(200),
+    starts_at: z.string(),
+    ends_at: z.string(),
+    notes: z.string().max(1000).nullable().optional(),
+  })).min(1).max(40),
+});
+
+export const applyWeekPlan = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => applyWeekSchema.parse(i))
+  .handler(async ({ data, context }) => {
+    const prefs = await loadProfileById(context.supabase, context.userId, data.profileId ?? null, data.startDate);
+    const start = new Date(`${data.startDate}T00:00:00`);
+    const end = new Date(start.getTime() + data.days * 24 * 3600 * 1000);
+    const { data: existing } = await context.supabase
+      .from("appointments")
+      .select("title,starts_at,ends_at")
+      .gte("starts_at", start.toISOString())
+      .lt("starts_at", end.toISOString());
+
+    const proposed: ProposedRow[] = data.items
+      .filter((a) => !Number.isNaN(Date.parse(a.starts_at)) && !Number.isNaN(Date.parse(a.ends_at)))
+      .map((a) => {
+        const s = Date.parse(a.starts_at);
+        const e = Date.parse(a.ends_at);
+        return {
+          start: s,
+          end: e,
+          row: {
+            user_id: context.userId,
+            title: a.title.slice(0, 200),
+            starts_at: new Date(s).toISOString(),
+            ends_at: new Date(e).toISOString(),
+            notes: a.notes ? a.notes.slice(0, 1000) : null,
+            source: "ai",
+          },
+        };
+      });
+
+    const result = resolveConflicts(proposed, existing ?? [], data.resolution, prefs.default_meeting_min);
+    if (result.accepted.length > 0) {
+      const { error } = await context.supabase.from("appointments").insert(result.accepted);
+      if (error) throw error;
+    }
+    return {
       created: result.accepted.length,
       skipped: result.skipped,
       shifted: result.shifted,
@@ -748,5 +837,27 @@ export const previewDayConflicts = createServerFn({ method: "POST" })
       })
       .filter(Boolean) as { time: string; title: string; conflictsWith: string }[];
     return { conflicts };
+  });
+
+export const previewDayPlan = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => applyDaySchema.parse(i))
+  .handler(async ({ data, context }) => {
+    const prefs = await resolvePrefsForDate(context.supabase, context.userId, data.date);
+    const candidates = data.items.filter((it) => it.kind !== "appointment");
+    const proposed = buildProposed(data.date, candidates, prefs, context.userId);
+    const existing = await loadDayExisting(context.supabase, data.date);
+    const result = resolveConflicts(proposed, existing, data.resolution, prefs.default_meeting_min);
+    return {
+      accepted: result.accepted.map((r) => ({
+        title: r.title,
+        starts_at: r.starts_at,
+        ends_at: r.ends_at,
+      })),
+      skipped: result.skipped,
+      shifted: result.shifted,
+      conflicts: result.conflicts,
+      existingCount: existing.length,
+    };
   });
 
