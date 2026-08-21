@@ -135,8 +135,17 @@ function AppPage() {
         <Tabs defaultValue="upcoming" className="mt-10">
           <TabsList className="bg-secondary">
             <TabsTrigger value="upcoming">Upcoming · {upcoming.length}</TabsTrigger>
+            <TabsTrigger value="week">Week</TabsTrigger>
             <TabsTrigger value="past">Past</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="week" className="mt-6">
+            <WeekGrid
+              items={appts ?? []}
+              onMove={(id, starts_at, ends_at) => move.mutate({ id, starts_at, ends_at })}
+            />
+          </TabsContent>
+
 
           <TabsContent value="upcoming" className="mt-6">
             {isLoading ? (
