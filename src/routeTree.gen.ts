@@ -13,6 +13,7 @@ import { Route as Char91indexChar93RouteImport } from './routes/[index]'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedTasksRouteImport } from './routes/_authenticated/tasks'
 import { Route as AuthenticatedPlannerRouteImport } from './routes/_authenticated/planner'
 import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/app'
 import { Route as AuthenticatedSetupGmailRouteImport } from './routes/_authenticated/setup.gmail'
@@ -36,6 +37,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedTasksRoute = AuthenticatedTasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedPlannerRoute = AuthenticatedPlannerRouteImport.update({
   id: '/planner',
@@ -65,6 +71,7 @@ export interface FileRoutesByFullPath {
   '/index': typeof Char91indexChar93Route
   '/app': typeof AuthenticatedAppRoute
   '/planner': typeof AuthenticatedPlannerRouteWithChildren
+  '/tasks': typeof AuthenticatedTasksRoute
   '/planner/preferences': typeof AuthenticatedPlannerPreferencesRoute
   '/setup/gmail': typeof AuthenticatedSetupGmailRoute
 }
@@ -74,6 +81,7 @@ export interface FileRoutesByTo {
   '/index': typeof Char91indexChar93Route
   '/app': typeof AuthenticatedAppRoute
   '/planner': typeof AuthenticatedPlannerRouteWithChildren
+  '/tasks': typeof AuthenticatedTasksRoute
   '/planner/preferences': typeof AuthenticatedPlannerPreferencesRoute
   '/setup/gmail': typeof AuthenticatedSetupGmailRoute
 }
@@ -85,6 +93,7 @@ export interface FileRoutesById {
   '/index': typeof Char91indexChar93Route
   '/_authenticated/app': typeof AuthenticatedAppRoute
   '/_authenticated/planner': typeof AuthenticatedPlannerRouteWithChildren
+  '/_authenticated/tasks': typeof AuthenticatedTasksRoute
   '/_authenticated/planner/preferences': typeof AuthenticatedPlannerPreferencesRoute
   '/_authenticated/setup/gmail': typeof AuthenticatedSetupGmailRoute
 }
@@ -96,6 +105,7 @@ export interface FileRouteTypes {
     | '/index'
     | '/app'
     | '/planner'
+    | '/tasks'
     | '/planner/preferences'
     | '/setup/gmail'
   fileRoutesByTo: FileRoutesByTo
@@ -105,6 +115,7 @@ export interface FileRouteTypes {
     | '/index'
     | '/app'
     | '/planner'
+    | '/tasks'
     | '/planner/preferences'
     | '/setup/gmail'
   id:
@@ -115,6 +126,7 @@ export interface FileRouteTypes {
     | '/index'
     | '/_authenticated/app'
     | '/_authenticated/planner'
+    | '/_authenticated/tasks'
     | '/_authenticated/planner/preferences'
     | '/_authenticated/setup/gmail'
   fileRoutesById: FileRoutesById
@@ -155,6 +167,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/tasks': {
+      id: '/_authenticated/tasks'
+      path: '/tasks'
+      fullPath: '/tasks'
+      preLoaderRoute: typeof AuthenticatedTasksRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/planner': {
       id: '/_authenticated/planner'
@@ -201,12 +220,14 @@ const AuthenticatedPlannerRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAppRoute: typeof AuthenticatedAppRoute
   AuthenticatedPlannerRoute: typeof AuthenticatedPlannerRouteWithChildren
+  AuthenticatedTasksRoute: typeof AuthenticatedTasksRoute
   AuthenticatedSetupGmailRoute: typeof AuthenticatedSetupGmailRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAppRoute: AuthenticatedAppRoute,
   AuthenticatedPlannerRoute: AuthenticatedPlannerRouteWithChildren,
+  AuthenticatedTasksRoute: AuthenticatedTasksRoute,
   AuthenticatedSetupGmailRoute: AuthenticatedSetupGmailRoute,
 }
 
