@@ -125,6 +125,9 @@ function AppPage() {
           <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
             <Link to="/setup/gmail"><Settings className="h-3.5 w-3.5 mr-1" /> Gmail setup</Link>
           </Button>
+          <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
+            <Link to="/setup/android"><Settings className="h-3.5 w-3.5 mr-1" /> Android setup</Link>
+          </Button>
         </div>
 
         <DailyBriefing />
