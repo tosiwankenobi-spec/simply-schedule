@@ -58,6 +58,22 @@ function AppPage() {
     },
   });
 
+  const move = useMutation({
+    mutationFn: async (v: { id: string; starts_at: string; ends_at: string | null }) => {
+      const { error } = await supabase
+        .from("appointments")
+        .update({ starts_at: v.starts_at, ends_at: v.ends_at })
+        .eq("id", v.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["appointments"] });
+      toast.success("Rescheduled");
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Couldn't move that"),
+  });
+
+
   const { upcoming, past } = useMemo(() => {
     const list = appts ?? [];
     const upcoming = list.filter((a) => !isPast(new Date(a.ends_at ?? a.starts_at)));
