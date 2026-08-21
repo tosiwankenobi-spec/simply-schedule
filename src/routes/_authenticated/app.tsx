@@ -12,7 +12,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { CalendarHeart, Sparkles, Plus, MapPin, Trash2, LogOut, Clock, Mail, Wand2, Settings } from "lucide-react";
+import { CalendarHeart, Sparkles, Plus, MapPin, Trash2, LogOut, Clock, Mail, Wand2, Settings, ListTodo } from "lucide-react";
+import { DailyBriefing } from "@/components/DailyBriefing";
+
 
 type Appointment = {
   id: string;
@@ -98,15 +100,21 @@ function AppPage() {
           <Button asChild variant="outline">
             <Link to="/planner"><Wand2 className="h-4 w-4 mr-1.5" /> AI planner</Link>
           </Button>
+          <Button asChild variant="outline">
+            <Link to="/tasks"><ListTodo className="h-4 w-4 mr-1.5" /> Tasks</Link>
+          </Button>
           <GmailImportButton />
           <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
             <Link to="/setup/gmail"><Settings className="h-3.5 w-3.5 mr-1" /> Gmail setup</Link>
           </Button>
         </div>
 
+        <DailyBriefing />
+
         <p className="mt-2 text-xs text-muted-foreground">
           Imports from the connected Gmail inbox. Only emails that clearly describe an appointment will be added.
         </p>
+
 
         <Tabs defaultValue="upcoming" className="mt-10">
           <TabsList className="bg-secondary">

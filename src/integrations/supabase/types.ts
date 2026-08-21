@@ -145,6 +145,59 @@ export type Database = {
         }
         Relationships: []
       }
+      tasks: {
+        Row: {
+          created_at: string
+          deadline: string | null
+          energy: string
+          estimated_min: number
+          id: string
+          notes: string | null
+          priority: number
+          scheduled_appointment_id: string | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          deadline?: string | null
+          energy?: string
+          estimated_min?: number
+          id?: string
+          notes?: string | null
+          priority?: number
+          scheduled_appointment_id?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          deadline?: string | null
+          energy?: string
+          estimated_min?: number
+          id?: string
+          notes?: string | null
+          priority?: number
+          scheduled_appointment_id?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_scheduled_appointment_id_fkey"
+            columns: ["scheduled_appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
