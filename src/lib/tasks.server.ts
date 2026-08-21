@@ -162,3 +162,37 @@ export function fitTasks(
   }
   return { placements, unplaced };
 }
+
+const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+
+export async function callAIJson(system: string, user: string, key: string) {
+  const res = await fetch(LOVABLE_AI_URL, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.3,
+    }),
+  });
+  if (res.status === 429) throw new Error("Rate limit reached, try again shortly.");
+  if (res.status === 402) throw new Error("AI credits exhausted — add credits in Settings.");
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`AI request failed (${res.status}): ${body.slice(0, 200)}`);
+  }
+  const json = await res.json();
+  let content: string = json?.choices?.[0]?.message?.content ?? "";
+  content = content.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
+  try {
+    return JSON.parse(content);
+  } catch {
+    const m = content.match(/\{[\s\S]*\}/);
+    if (!m) throw new Error("AI returned malformed JSON.");
+    return JSON.parse(m[0]);
+  }
+}
