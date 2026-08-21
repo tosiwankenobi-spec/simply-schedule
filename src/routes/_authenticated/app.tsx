@@ -14,6 +14,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { CalendarHeart, Sparkles, Plus, MapPin, Trash2, LogOut, Clock, Mail, Wand2, Settings, ListTodo } from "lucide-react";
 import { DailyBriefing } from "@/components/DailyBriefing";
+import { WeekGrid } from "@/components/WeekGrid";
+
 
 
 type Appointment = {
@@ -57,6 +59,22 @@ function AppPage() {
       toast.success("Removed");
     },
   });
+
+  const move = useMutation({
+    mutationFn: async (v: { id: string; starts_at: string; ends_at: string | null }) => {
+      const { error } = await supabase
+        .from("appointments")
+        .update({ starts_at: v.starts_at, ends_at: v.ends_at })
+        .eq("id", v.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["appointments"] });
+      toast.success("Rescheduled");
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Couldn't move that"),
+  });
+
 
   const { upcoming, past } = useMemo(() => {
     const list = appts ?? [];
@@ -119,8 +137,17 @@ function AppPage() {
         <Tabs defaultValue="upcoming" className="mt-10">
           <TabsList className="bg-secondary">
             <TabsTrigger value="upcoming">Upcoming · {upcoming.length}</TabsTrigger>
+            <TabsTrigger value="week">Week</TabsTrigger>
             <TabsTrigger value="past">Past</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="week" className="mt-6">
+            <WeekGrid
+              items={appts ?? []}
+              onMove={(id, starts_at, ends_at) => move.mutate({ id, starts_at, ends_at })}
+            />
+          </TabsContent>
+
 
           <TabsContent value="upcoming" className="mt-6">
             {isLoading ? (
