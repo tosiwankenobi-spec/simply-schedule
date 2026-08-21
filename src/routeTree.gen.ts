@@ -17,6 +17,7 @@ import { Route as AuthenticatedTasksRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedPlannerRouteImport } from './routes/_authenticated/planner'
 import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/app'
 import { Route as AuthenticatedSetupGmailRouteImport } from './routes/_authenticated/setup.gmail'
+import { Route as AuthenticatedSetupAndroidRouteImport } from './routes/_authenticated/setup.android'
 import { Route as AuthenticatedPlannerPreferencesRouteImport } from './routes/_authenticated/planner.preferences'
 
 const Char91indexChar93Route = Char91indexChar93RouteImport.update({
@@ -58,6 +59,12 @@ const AuthenticatedSetupGmailRoute = AuthenticatedSetupGmailRouteImport.update({
   path: '/setup/gmail',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSetupAndroidRoute =
+  AuthenticatedSetupAndroidRouteImport.update({
+    id: '/setup/android',
+    path: '/setup/android',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedPlannerPreferencesRoute =
   AuthenticatedPlannerPreferencesRouteImport.update({
     id: '/preferences',
@@ -73,6 +80,7 @@ export interface FileRoutesByFullPath {
   '/planner': typeof AuthenticatedPlannerRouteWithChildren
   '/tasks': typeof AuthenticatedTasksRoute
   '/planner/preferences': typeof AuthenticatedPlannerPreferencesRoute
+  '/setup/android': typeof AuthenticatedSetupAndroidRoute
   '/setup/gmail': typeof AuthenticatedSetupGmailRoute
 }
 export interface FileRoutesByTo {
@@ -83,6 +91,7 @@ export interface FileRoutesByTo {
   '/planner': typeof AuthenticatedPlannerRouteWithChildren
   '/tasks': typeof AuthenticatedTasksRoute
   '/planner/preferences': typeof AuthenticatedPlannerPreferencesRoute
+  '/setup/android': typeof AuthenticatedSetupAndroidRoute
   '/setup/gmail': typeof AuthenticatedSetupGmailRoute
 }
 export interface FileRoutesById {
@@ -95,6 +104,7 @@ export interface FileRoutesById {
   '/_authenticated/planner': typeof AuthenticatedPlannerRouteWithChildren
   '/_authenticated/tasks': typeof AuthenticatedTasksRoute
   '/_authenticated/planner/preferences': typeof AuthenticatedPlannerPreferencesRoute
+  '/_authenticated/setup/android': typeof AuthenticatedSetupAndroidRoute
   '/_authenticated/setup/gmail': typeof AuthenticatedSetupGmailRoute
 }
 export interface FileRouteTypes {
@@ -107,6 +117,7 @@ export interface FileRouteTypes {
     | '/planner'
     | '/tasks'
     | '/planner/preferences'
+    | '/setup/android'
     | '/setup/gmail'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -117,6 +128,7 @@ export interface FileRouteTypes {
     | '/planner'
     | '/tasks'
     | '/planner/preferences'
+    | '/setup/android'
     | '/setup/gmail'
   id:
     | '__root__'
@@ -128,6 +140,7 @@ export interface FileRouteTypes {
     | '/_authenticated/planner'
     | '/_authenticated/tasks'
     | '/_authenticated/planner/preferences'
+    | '/_authenticated/setup/android'
     | '/_authenticated/setup/gmail'
   fileRoutesById: FileRoutesById
 }
@@ -196,6 +209,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSetupGmailRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/setup/android': {
+      id: '/_authenticated/setup/android'
+      path: '/setup/android'
+      fullPath: '/setup/android'
+      preLoaderRoute: typeof AuthenticatedSetupAndroidRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/planner/preferences': {
       id: '/_authenticated/planner/preferences'
       path: '/preferences'
@@ -221,6 +241,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAppRoute: typeof AuthenticatedAppRoute
   AuthenticatedPlannerRoute: typeof AuthenticatedPlannerRouteWithChildren
   AuthenticatedTasksRoute: typeof AuthenticatedTasksRoute
+  AuthenticatedSetupAndroidRoute: typeof AuthenticatedSetupAndroidRoute
   AuthenticatedSetupGmailRoute: typeof AuthenticatedSetupGmailRoute
 }
 
@@ -228,6 +249,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAppRoute: AuthenticatedAppRoute,
   AuthenticatedPlannerRoute: AuthenticatedPlannerRouteWithChildren,
   AuthenticatedTasksRoute: AuthenticatedTasksRoute,
+  AuthenticatedSetupAndroidRoute: AuthenticatedSetupAndroidRoute,
   AuthenticatedSetupGmailRoute: AuthenticatedSetupGmailRoute,
 }
 
