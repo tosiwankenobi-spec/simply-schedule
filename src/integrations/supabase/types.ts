@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      android_oauth_config: {
+        Row: {
+          android_client_id: string | null
+          created_at: string
+          debug_sha1: string | null
+          id: string
+          notes: string | null
+          package_name: string | null
+          release_sha1: string | null
+          updated_at: string
+          user_id: string
+          web_client_id: string | null
+        }
+        Insert: {
+          android_client_id?: string | null
+          created_at?: string
+          debug_sha1?: string | null
+          id?: string
+          notes?: string | null
+          package_name?: string | null
+          release_sha1?: string | null
+          updated_at?: string
+          user_id: string
+          web_client_id?: string | null
+        }
+        Update: {
+          android_client_id?: string | null
+          created_at?: string
+          debug_sha1?: string | null
+          id?: string
+          notes?: string | null
+          package_name?: string | null
+          release_sha1?: string | null
+          updated_at?: string
+          user_id?: string
+          web_client_id?: string | null
+        }
+        Relationships: []
+      }
       appointments: {
         Row: {
           created_at: string
