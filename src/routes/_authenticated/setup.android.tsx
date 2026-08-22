@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Copy, Check, ExternalLink, Smartphone, AlertCircle } from "lucide-react";
+import { ArrowLeft, Copy, Check, ExternalLink, Smartphone, AlertCircle, ShieldCheck, X, Terminal } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/setup/android")({
