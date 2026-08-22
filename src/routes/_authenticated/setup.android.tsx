@@ -71,10 +71,109 @@ function validate(form: Form) {
   return errors;
 }
 
+type CheckResult = { label: string; ok: boolean; detail: string };
+
+function runOAuthChecks(form: Form): CheckResult[] {
+  const results: CheckResult[] = [];
+  const push = (label: string, ok: boolean, detail: string) => results.push({ label, ok, detail });
+
+  push(
+    "Package name",
+    !!form.package_name && PACKAGE_RE.test(form.package_name),
+    !form.package_name
+      ? "Missing. Add the applicationId used in capacitor.config.ts / build.gradle."
+      : PACKAGE_RE.test(form.package_name)
+        ? form.package_name
+        : "Invalid format — use reverse-domain style, e.g. app.chronos.planner.",
+  );
+
+  push(
+    "Debug SHA-1",
+    SHA1_RE.test(form.debug_sha1),
+    !form.debug_sha1
+      ? "Missing. Run the keytool debug command below and paste the SHA1 line."
+      : SHA1_RE.test(form.debug_sha1)
+        ? "Valid 20-byte fingerprint."
+        : "Not a valid SHA-1 — expected 40 hex characters as 20 colon-separated pairs.",
+  );
+
+  push(
+    "Release SHA-1",
+    SHA1_RE.test(form.release_sha1),
+    !form.release_sha1
+      ? "Missing. Optional for local testing, required for Play Store builds."
+      : SHA1_RE.test(form.release_sha1)
+        ? "Valid 20-byte fingerprint."
+        : "Not a valid SHA-1 — expected 40 hex characters as 20 colon-separated pairs.",
+  );
+
+  const bothSha = SHA1_RE.test(form.debug_sha1) && SHA1_RE.test(form.release_sha1);
+  if (bothSha) {
+    push(
+      "Fingerprints differ",
+      form.debug_sha1 !== form.release_sha1,
+      form.debug_sha1 !== form.release_sha1
+        ? "Debug and release certificates are distinct, as expected."
+        : "Debug and release SHA-1 are identical — you probably pasted the same keystore twice.",
+    );
+  }
+
+  push(
+    "Android client ID",
+    CLIENT_ID_RE.test(form.android_client_id),
+    !form.android_client_id
+      ? "Missing. Create an OAuth client of type Android in Google Cloud."
+      : CLIENT_ID_RE.test(form.android_client_id)
+        ? "Well-formed Google client ID."
+        : "Should end in .apps.googleusercontent.com, e.g. 1234567890-abc123.apps.googleusercontent.com.",
+  );
+
+  push(
+    "Web client ID",
+    CLIENT_ID_RE.test(form.web_client_id),
+    !form.web_client_id
+      ? "Missing. Needed for server-side token exchange and Gmail import."
+      : CLIENT_ID_RE.test(form.web_client_id)
+        ? "Well-formed Google client ID."
+        : "Should end in .apps.googleusercontent.com.",
+  );
+
+  const bothIds = CLIENT_ID_RE.test(form.android_client_id) && CLIENT_ID_RE.test(form.web_client_id);
+  if (bothIds) {
+    push(
+      "Client IDs are distinct",
+      form.android_client_id !== form.web_client_id,
+      form.android_client_id !== form.web_client_id
+        ? "Android and Web clients are separate, as required."
+        : "Same ID in both fields — Android sign-in needs its own Android-type client.",
+    );
+    const projA = form.android_client_id.split("-")[0];
+    const projW = form.web_client_id.split("-")[0];
+    push(
+      "Same Google project",
+      projA === projW,
+      projA === projW
+        ? "Both clients come from the same Google Cloud project."
+        : "The two client IDs come from different projects — sign-in will fail with an audience mismatch.",
+    );
+  }
+
+  push(
+    "No client secret pasted",
+    !/GOCSPX-/i.test(Object.values(form).join(" ")),
+    /GOCSPX-/i.test(Object.values(form).join(" "))
+      ? "A Google client secret was detected. Remove it — secrets must never be stored here."
+      : "No secret-looking value found in these fields.",
+  );
+
+  return results;
+}
+
 function AndroidSetupPage() {
   const qc = useQueryClient();
   const [form, setForm] = useState<Form>(EMPTY);
   const [touched, setTouched] = useState(false);
+  const [checks, setChecks] = useState<CheckResult[] | null>(null);
 
   const { data } = useQuery({
     queryKey: ["android-oauth-config"],
