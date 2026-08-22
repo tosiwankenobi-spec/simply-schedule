@@ -306,7 +306,7 @@ function AndroidSetupPage() {
             />
           </div>
 
-          <div className="flex items-center gap-3 pt-1">
+          <div className="flex flex-wrap items-center gap-3 pt-1">
             <Button
               onClick={() => {
                 setTouched(true);
@@ -320,11 +320,91 @@ function AndroidSetupPage() {
             >
               {save.isPending ? "Saving…" : "Save details"}
             </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                const results = runOAuthChecks(form);
+                setChecks(results);
+                const failed = results.filter((r) => !r.ok).length;
+                if (failed === 0) toast.success("All Google OAuth checks passed");
+                else toast.error(`${failed} check${failed === 1 ? "" : "s"} need attention`);
+              }}
+            >
+              <ShieldCheck className="h-4 w-4 mr-1.5" /> Test Google OAuth
+            </Button>
             <p className="text-xs text-muted-foreground">
               Never paste the OAuth <b>client secret</b> here — it belongs in project secrets, not the database.
             </p>
           </div>
+
+          {checks ? (
+            <div className="rounded-lg border border-border bg-background px-4 py-3">
+              <p className="text-sm font-medium text-foreground">
+                Check results · {checks.filter((c) => c.ok).length}/{checks.length} passed
+              </p>
+              <ul className="mt-2.5 space-y-2">
+                {checks.map((c) => (
+                  <li key={c.label} className="flex gap-2.5 text-sm">
+                    {c.ok ? (
+                      <Check className="h-4 w-4 mt-0.5 shrink-0 text-accent" />
+                    ) : (
+                      <X className="h-4 w-4 mt-0.5 shrink-0 text-destructive" />
+                    )}
+                    <span>
+                      <span className={c.ok ? "text-foreground" : "text-destructive"}>{c.label}</span>
+                      <span className="block text-xs text-muted-foreground">{c.detail}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-3 text-xs text-muted-foreground">
+                These checks validate the values you pasted and how they fit together. The final live handshake still
+                depends on the SHA-1 and package name being registered on the Android client in Google Cloud.
+              </p>
+            </div>
+          ) : null}
         </div>
+
+        <div className="mt-6 rounded-xl border border-border bg-card px-5 py-4 text-sm">
+          <p className="text-foreground font-medium flex items-center gap-2">
+            <Terminal className="h-4 w-4 text-accent" /> How to retrieve your SHA-1 fingerprints
+          </p>
+
+          <p className="mt-3 text-xs uppercase tracking-wide text-muted-foreground">Debug keystore (local testing)</p>
+          <p className="mt-1 text-muted-foreground text-xs">
+            Android Studio creates this automatically the first time you build. Password is always <code>android</code>.
+          </p>
+          <div className="mt-2 space-y-2">
+            <p className="text-xs text-muted-foreground">macOS / Linux</p>
+            <CopyRow value="keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android" />
+            <p className="text-xs text-muted-foreground">Windows (PowerShell)</p>
+            <CopyRow value="keytool -list -v -keystore $env:USERPROFILE\\.android\\debug.keystore -alias androiddebugkey -storepass android -keypass android" />
+            <p className="text-xs text-muted-foreground">Or from the project (Gradle)</p>
+            <CopyRow value="cd android && ./gradlew signingReport" />
+          </div>
+
+          <p className="mt-4 text-xs uppercase tracking-wide text-muted-foreground">Release keystore (Play Store)</p>
+          <p className="mt-1 text-muted-foreground text-xs">
+            Use your own upload keystore. Create one once, then keep it backed up — losing it means you cannot ship
+            updates.
+          </p>
+          <div className="mt-2 space-y-2">
+            <p className="text-xs text-muted-foreground">Create a release keystore</p>
+            <CopyRow value="keytool -genkeypair -v -keystore release.keystore -alias upload -keyalg RSA -keysize 2048 -validity 10000" />
+            <p className="text-xs text-muted-foreground">Read its fingerprint</p>
+            <CopyRow value="keytool -list -v -keystore release.keystore -alias upload" />
+          </div>
+          <p className="mt-2 text-muted-foreground text-xs">
+            If you use Play App Signing, Google re-signs your app: also copy the SHA-1 shown under{" "}
+            <b>Play Console → your app → Test and release → Setup → App signing</b> and register that one too.
+          </p>
+
+          <p className="mt-4 text-muted-foreground text-xs">
+            In the command output, look for the line starting with <code>SHA1:</code> and copy the colon-separated hex
+            value into the matching field above — pasting it without colons works too, it gets formatted on blur.
+          </p>
+        </div>
+
 
         <div className="mt-6 rounded-xl border border-dashed border-border bg-card/40 px-5 py-4 text-sm">
           <p className="text-foreground font-medium flex items-center gap-2">
