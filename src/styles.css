@@ -118,8 +118,8 @@
 /* Subtle paper grain */
 .paper-grain {
   background-image:
-    radial-gradient(oklch(0.85 0.03 70 / 0.35) 1px, transparent 1px),
-    radial-gradient(oklch(0.85 0.03 70 / 0.25) 1px, transparent 1px);
+    radial-gradient(oklch(0.72 0.05 170 / 0.22) 1px, transparent 1px),
+    radial-gradient(oklch(0.72 0.05 170 / 0.16) 1px, transparent 1px);
   background-size: 24px 24px, 17px 17px;
   background-position: 0 0, 8px 11px;
 }
