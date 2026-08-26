@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
-import type { TaskRow, Placement } from "./tasks.server";
+import type { TaskRow, Placement, PlanExplanation } from "./tasks.server";
 
 const TASK_COLS =
   "id,title,notes,estimated_min,priority,energy,deadline,status,scheduled_appointment_id,created_at";
@@ -90,6 +90,7 @@ export type AutoScheduleResult = {
   profile: string;
   placements: Placement[];
   unplaced: { id: string; title: string; estimated_min: number }[];
+  explain: PlanExplanation;
   applied: boolean;
 };
 
@@ -97,6 +98,8 @@ const autoSchema = z.object({
   date: z.string(),
   dryRun: z.boolean().default(true),
   taskIds: z.array(z.string().uuid()).optional(),
+  /** Browser Date#getTimezoneOffset(): minutes UTC is ahead of the user's local time. */
+  tzOffsetMin: z.number().int().min(-900).max(900).default(0),
 });
 
 
@@ -116,10 +119,14 @@ export const autoScheduleTasks = createServerFn({ method: "POST" })
       .gte("starts_at", dayStart.toISOString())
       .lt("starts_at", dayEnd.toISOString());
 
-    const busy = (appts ?? []).map((a: any) => {
-      const s = Date.parse(a.starts_at);
-      return { start: s, end: a.ends_at ? Date.parse(a.ends_at) : s + 30 * 60000 };
-    });
+    const busy = (appts ?? [])
+      .map((a: any) => {
+        const s = Date.parse(a.starts_at);
+        return { start: s, end: a.ends_at ? Date.parse(a.ends_at) : s + 30 * 60000 };
+      })
+      // All-day/multi-day entries (birthdays, holidays) are markers, not busy time.
+      .filter((b: { start: number; end: number }) => b.end - b.start < 20 * 3600 * 1000);
+
 
     let taskQuery = context.supabase
       .from("tasks")
@@ -131,8 +138,9 @@ export const autoScheduleTasks = createServerFn({ method: "POST" })
     }
     const { data: openTasks } = await taskQuery;
 
-    const gaps = computeGaps(data.date, prefs, busy, Date.now());
-    const { placements, unplaced } = fitTasks((openTasks ?? []) as TaskRow[], gaps, prefs);
+    const gaps = computeGaps(data.date, prefs, busy, Date.now(), data.tzOffsetMin);
+    const { placements, unplaced, explain } = fitTasks((openTasks ?? []) as TaskRow[], gaps, prefs);
+    explain.rules.push(`DBG busy=${JSON.stringify(busy)} gaps=${JSON.stringify(gaps)} now=${new Date().toISOString()} tz=${data.tzOffsetMin} appts=${(appts??[]).length}`);
 
 
     if (!data.dryRun && placements.length > 0) {
@@ -163,6 +171,7 @@ export const autoScheduleTasks = createServerFn({ method: "POST" })
       profile: prefs.name,
       placements,
       unplaced: unplaced.map((t) => ({ id: t.id, title: t.title, estimated_min: t.estimated_min })),
+      explain,
       applied: !data.dryRun,
     };
   });

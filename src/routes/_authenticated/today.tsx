@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { SyncAlert } from "@/components/SyncAlert";
+import { NotificationBell } from "@/components/NotificationBell";
+import { TaskNudge } from "@/components/TaskNudge";
 import { toast } from "sonner";
 import {
   CalendarDays,
@@ -84,14 +86,19 @@ function TodayPage() {
             <h1 className="font-serif text-3xl text-foreground">Today</h1>
             <p className="text-sm text-muted-foreground">{format(now, "EEEE, MMMM d")}</p>
           </div>
-          <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
-            <Link to="/app">
-              <CalendarDays className="h-4 w-4 mr-1" /> Full schedule
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
+              <Link to="/app">
+                <CalendarDays className="h-4 w-4 mr-1" /> Full schedule
+              </Link>
+            </Button>
+          </div>
         </div>
 
         <SyncAlert />
+
+        <div className="mt-4"><TaskNudge /></div>
 
         <section className="mt-6">
           <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Up next</h2>

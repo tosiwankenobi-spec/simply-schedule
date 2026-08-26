@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { WhyTheseBlocks } from "@/components/WhyTheseBlocks";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { ArrowLeft, CheckCircle2, Circle, Trash2, Wand2, Plus, Clock } from "lucide-react";
@@ -64,7 +65,7 @@ function TasksPage() {
   async function runPreview() {
     setBusy(true);
     try {
-      const res = await autoScheduleTasks({ data: { date, dryRun: true, taskIds } });
+      const res = await autoScheduleTasks({ data: { date, dryRun: true, taskIds, tzOffsetMin: new Date().getTimezoneOffset() } });
       setPreview(res);
       if (res.placements.length === 0) toast.message("No room in that day's free time for those tasks.");
     } catch (e) {
@@ -77,7 +78,7 @@ function TasksPage() {
   async function apply() {
     setBusy(true);
     try {
-      const res = await autoScheduleTasks({ data: { date, dryRun: false, taskIds } });
+      const res = await autoScheduleTasks({ data: { date, dryRun: false, taskIds, tzOffsetMin: new Date().getTimezoneOffset() } });
       setPreview(null);
       setSelected([]);
       invalidate();
@@ -165,6 +166,7 @@ function TasksPage() {
           {preview && (
             <div className="mt-5 space-y-3 border-t border-border pt-4">
               <p className="text-xs text-muted-foreground">Profile: {preview.profile}</p>
+              <WhyTheseBlocks result={preview} />
               {preview.placements.length > 0 && (
                 <ul className="space-y-1.5">
                   {preview.placements.map((p) => (
