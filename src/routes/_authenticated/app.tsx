@@ -97,7 +97,7 @@ function AppPage() {
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CalendarHeart className="h-5 w-5 text-accent" />
-            <span className="font-serif text-xl">Chronos</span>
+            <span className="font-serif text-xl">V-Chronos</span>
           </div>
           <Button variant="ghost" size="sm" onClick={signOut} className="text-muted-foreground">
             <LogOut className="h-4 w-4 mr-1" /> Sign out
