@@ -22,6 +22,7 @@ export type Database = {
           id: string
           notes: string | null
           package_name: string | null
+          play_sha1: string | null
           release_sha1: string | null
           updated_at: string
           user_id: string
@@ -34,6 +35,7 @@ export type Database = {
           id?: string
           notes?: string | null
           package_name?: string | null
+          play_sha1?: string | null
           release_sha1?: string | null
           updated_at?: string
           user_id: string
@@ -46,6 +48,7 @@ export type Database = {
           id?: string
           notes?: string | null
           package_name?: string | null
+          play_sha1?: string | null
           release_sha1?: string | null
           updated_at?: string
           user_id?: string
