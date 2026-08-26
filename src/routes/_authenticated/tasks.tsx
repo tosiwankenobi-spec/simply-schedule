@@ -39,6 +39,8 @@ function TasksPage() {
   const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [preview, setPreview] = useState<AutoScheduleResult | null>(null);
   const [busy, setBusy] = useState(false);
+  const [selected, setSelected] = useState<string[]>([]);
+
 
   const { data: tasks, isLoading } = useQuery({ queryKey: ["tasks"], queryFn: () => listTasks() });
 
