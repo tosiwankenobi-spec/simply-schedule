@@ -52,6 +52,12 @@ function AppPage() {
     },
   });
 
+  const pushToCalendar = useCallback(() => {
+    syncGoogleCalendar()
+      .then(() => qc.invalidateQueries({ queryKey: ["appointments"] }))
+      .catch(() => {/* surfaced by the manual sync button */});
+  }, [qc]);
+
   const del = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("appointments").delete().eq("id", id);
@@ -60,6 +66,7 @@ function AppPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["appointments"] });
       toast.success("Removed");
+      pushToCalendar();
     },
   });
 
@@ -74,9 +81,11 @@ function AppPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["appointments"] });
       toast.success("Rescheduled");
+      pushToCalendar();
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Couldn't move that"),
   });
+
 
 
   const { upcoming, past } = useMemo(() => {
