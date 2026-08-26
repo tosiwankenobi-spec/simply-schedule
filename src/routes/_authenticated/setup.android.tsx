@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -236,10 +236,10 @@ function AndroidSetupPage() {
   const [touched, setTouched] = useState(false);
   const [checks, setChecks] = useState<CheckResult[] | null>(null);
   const [keystore, setKeystore] = useState<KeystoreType>("debug");
-  const fieldRefs = {
-    debug_sha1: useRef<HTMLInputElement>(null),
-    release_sha1: useRef<HTMLInputElement>(null),
-    play_sha1: useRef<HTMLInputElement>(null),
+  const fieldRefs: Record<KeystoreType, React.RefObject<HTMLInputElement | null>> = {
+    debug: useRef<HTMLInputElement>(null),
+    release: useRef<HTMLInputElement>(null),
+    play: useRef<HTMLInputElement>(null),
   };
 
   const { data } = useQuery({
@@ -364,7 +364,7 @@ function AndroidSetupPage() {
             placeholder="app.chronos.planner"
           />
           <Field
-            ref={fieldRefs.debug_sha1}
+            ref={fieldRefs.debug}
             label="Debug SHA-1 fingerprint"
             hint="From: keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android"
             value={form.debug_sha1}
@@ -376,7 +376,7 @@ function AndroidSetupPage() {
             active={keystore === "debug"}
           />
           <Field
-            ref={fieldRefs.release_sha1}
+            ref={fieldRefs.release}
             label="Release SHA-1 fingerprint"
             hint="From your release keystore, or Play Console → Setup → App signing."
             value={form.release_sha1}
@@ -388,7 +388,7 @@ function AndroidSetupPage() {
             active={keystore === "release"}
           />
           <Field
-            ref={fieldRefs.play_sha1}
+            ref={fieldRefs.play}
             label="Play App Signing SHA-1 fingerprint"
             hint="From Play Console → Test and release → Setup → App signing. Only needed once Google re-signs your app."
             value={form.play_sha1}
