@@ -783,7 +783,7 @@ export async function readSyncStatus(
     .limit(25);
 
   const calendars = (states ?? []).map((s: any) => ({
-    calendarId: s.calendar_id ?? String(s.provider).replace(`${PROVIDER_PREFIX}:`, "") || "primary",
+    calendarId: s.calendar_id ?? (String(s.provider).replace(`${PROVIDER_PREFIX}:`, "") || "primary"),
     hasSyncToken: Boolean(s.sync_token),
     lastSyncedAt: s.last_synced_at ?? null,
     pagesSynced: s.pages_synced ?? 0,
