@@ -14,10 +14,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import logo from "@/assets/chronos-v-logo.png.asset.json";
-import { Sparkles, Plus, MapPin, Trash2, LogOut, Clock, Mail, Wand2, Settings, ListTodo, RefreshCw, Sun, Moon } from "lucide-react";
+import { Sparkles, Plus, MapPin, Trash2, LogOut, Clock, Mail, Wand2, Settings, ListTodo, RefreshCw, Sun, Moon, Bell } from "lucide-react";
 import { DailyBriefing } from "@/components/DailyBriefing";
 import { WeekGrid } from "@/components/WeekGrid";
 import { SyncAlert } from "@/components/SyncAlert";
+import { NotificationBell } from "@/components/NotificationBell";
+import { TaskNudge } from "@/components/TaskNudge";
+import { ExportIcsButton } from "@/components/ExportIcsButton";
 
 
 
@@ -112,9 +115,12 @@ function AppPage() {
             <img src={logo.url} alt="Chronos-V logo" className="h-7 w-7" />
             <span className="font-serif text-xl">Chronos-V</span>
           </div>
+          <div className="flex items-center gap-2">
+          <NotificationBell />
           <Button variant="ghost" size="sm" onClick={signOut} className="text-muted-foreground">
             <LogOut className="h-4 w-4 mr-1" /> Sign out
           </Button>
+          </div>
         </header>
 
         <div className="mt-10">
@@ -140,6 +146,7 @@ function AppPage() {
           <Button asChild variant="outline">
             <Link to="/tasks"><ListTodo className="h-4 w-4 mr-1.5" /> Tasks</Link>
           </Button>
+          <ExportIcsButton />
           <GmailImportButton />
           <SyncControl />
           <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
@@ -148,9 +155,14 @@ function AppPage() {
           <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
             <Link to="/setup/android"><Settings className="h-3.5 w-3.5 mr-1" /> Android setup</Link>
           </Button>
+          <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
+            <Link to="/setup/notifications"><Bell className="h-3.5 w-3.5 mr-1" /> Reminders</Link>
+          </Button>
         </div>
 
         <SyncAlert />
+
+        <div className="mt-4"><TaskNudge /></div>
 
         <DailyBriefing />
 

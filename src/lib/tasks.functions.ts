@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
-import type { TaskRow, Placement } from "./tasks.server";
+import type { TaskRow, Placement, PlanExplanation } from "./tasks.server";
 
 const TASK_COLS =
   "id,title,notes,estimated_min,priority,energy,deadline,status,scheduled_appointment_id,created_at";
@@ -90,6 +90,7 @@ export type AutoScheduleResult = {
   profile: string;
   placements: Placement[];
   unplaced: { id: string; title: string; estimated_min: number }[];
+  explain: PlanExplanation;
   applied: boolean;
 };
 
@@ -132,7 +133,7 @@ export const autoScheduleTasks = createServerFn({ method: "POST" })
     const { data: openTasks } = await taskQuery;
 
     const gaps = computeGaps(data.date, prefs, busy, Date.now());
-    const { placements, unplaced } = fitTasks((openTasks ?? []) as TaskRow[], gaps, prefs);
+    const { placements, unplaced, explain } = fitTasks((openTasks ?? []) as TaskRow[], gaps, prefs);
 
 
     if (!data.dryRun && placements.length > 0) {
@@ -163,6 +164,7 @@ export const autoScheduleTasks = createServerFn({ method: "POST" })
       profile: prefs.name,
       placements,
       unplaced: unplaced.map((t) => ({ id: t.id, title: t.title, estimated_min: t.estimated_min })),
+      explain,
       applied: !data.dryRun,
     };
   });

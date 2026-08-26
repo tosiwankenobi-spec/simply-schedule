@@ -19,6 +19,7 @@ import { Route as AuthenticatedTasksRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedPlannerRouteImport } from './routes/_authenticated/planner'
 import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/app'
 import { Route as AuthenticatedSetupSyncRouteImport } from './routes/_authenticated/setup.sync'
+import { Route as AuthenticatedSetupNotificationsRouteImport } from './routes/_authenticated/setup.notifications'
 import { Route as AuthenticatedSetupGmailRouteImport } from './routes/_authenticated/setup.gmail'
 import { Route as AuthenticatedSetupAndroidRouteImport } from './routes/_authenticated/setup.android'
 import { Route as AuthenticatedPlannerPreferencesRouteImport } from './routes/_authenticated/planner.preferences'
@@ -72,6 +73,12 @@ const AuthenticatedSetupSyncRoute = AuthenticatedSetupSyncRouteImport.update({
   path: '/setup/sync',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSetupNotificationsRoute =
+  AuthenticatedSetupNotificationsRouteImport.update({
+    id: '/setup/notifications',
+    path: '/setup/notifications',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSetupGmailRoute = AuthenticatedSetupGmailRouteImport.update({
   id: '/setup/gmail',
   path: '/setup/gmail',
@@ -102,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/planner/preferences': typeof AuthenticatedPlannerPreferencesRoute
   '/setup/android': typeof AuthenticatedSetupAndroidRoute
   '/setup/gmail': typeof AuthenticatedSetupGmailRoute
+  '/setup/notifications': typeof AuthenticatedSetupNotificationsRoute
   '/setup/sync': typeof AuthenticatedSetupSyncRoute
 }
 export interface FileRoutesByTo {
@@ -116,6 +124,7 @@ export interface FileRoutesByTo {
   '/planner/preferences': typeof AuthenticatedPlannerPreferencesRoute
   '/setup/android': typeof AuthenticatedSetupAndroidRoute
   '/setup/gmail': typeof AuthenticatedSetupGmailRoute
+  '/setup/notifications': typeof AuthenticatedSetupNotificationsRoute
   '/setup/sync': typeof AuthenticatedSetupSyncRoute
 }
 export interface FileRoutesById {
@@ -132,6 +141,7 @@ export interface FileRoutesById {
   '/_authenticated/planner/preferences': typeof AuthenticatedPlannerPreferencesRoute
   '/_authenticated/setup/android': typeof AuthenticatedSetupAndroidRoute
   '/_authenticated/setup/gmail': typeof AuthenticatedSetupGmailRoute
+  '/_authenticated/setup/notifications': typeof AuthenticatedSetupNotificationsRoute
   '/_authenticated/setup/sync': typeof AuthenticatedSetupSyncRoute
 }
 export interface FileRouteTypes {
@@ -148,6 +158,7 @@ export interface FileRouteTypes {
     | '/planner/preferences'
     | '/setup/android'
     | '/setup/gmail'
+    | '/setup/notifications'
     | '/setup/sync'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -162,6 +173,7 @@ export interface FileRouteTypes {
     | '/planner/preferences'
     | '/setup/android'
     | '/setup/gmail'
+    | '/setup/notifications'
     | '/setup/sync'
   id:
     | '__root__'
@@ -177,6 +189,7 @@ export interface FileRouteTypes {
     | '/_authenticated/planner/preferences'
     | '/_authenticated/setup/android'
     | '/_authenticated/setup/gmail'
+    | '/_authenticated/setup/notifications'
     | '/_authenticated/setup/sync'
   fileRoutesById: FileRoutesById
 }
@@ -259,6 +272,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSetupSyncRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/setup/notifications': {
+      id: '/_authenticated/setup/notifications'
+      path: '/setup/notifications'
+      fullPath: '/setup/notifications'
+      preLoaderRoute: typeof AuthenticatedSetupNotificationsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/setup/gmail': {
       id: '/_authenticated/setup/gmail'
       path: '/setup/gmail'
@@ -302,6 +322,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedTomorrowRoute: typeof AuthenticatedTomorrowRoute
   AuthenticatedSetupAndroidRoute: typeof AuthenticatedSetupAndroidRoute
   AuthenticatedSetupGmailRoute: typeof AuthenticatedSetupGmailRoute
+  AuthenticatedSetupNotificationsRoute: typeof AuthenticatedSetupNotificationsRoute
   AuthenticatedSetupSyncRoute: typeof AuthenticatedSetupSyncRoute
 }
 
@@ -313,6 +334,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedTomorrowRoute: AuthenticatedTomorrowRoute,
   AuthenticatedSetupAndroidRoute: AuthenticatedSetupAndroidRoute,
   AuthenticatedSetupGmailRoute: AuthenticatedSetupGmailRoute,
+  AuthenticatedSetupNotificationsRoute: AuthenticatedSetupNotificationsRoute,
   AuthenticatedSetupSyncRoute: AuthenticatedSetupSyncRoute,
 }
 

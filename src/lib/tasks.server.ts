@@ -19,6 +19,19 @@ export type Placement = {
   starts_at: string;
   ends_at: string;
   estimated_min: number;
+  /** Human-readable justification for this exact slot. */
+  reason?: string;
+};
+
+export type GapInfo = { start: string; end: string; minutes: number; used_min: number };
+
+export type PlanExplanation = {
+  /** Free windows the engine had to work with, after busy time + lunch. */
+  gaps: GapInfo[];
+  /** The constraints that shaped the plan, in the order they were applied. */
+  rules: string[];
+  /** Why each task that did not fit was left out. */
+  skipped: { id: string; title: string; reason: string }[];
 };
 
 export type Prefs = {
@@ -133,34 +146,93 @@ export function fitTasks(
   tasks: TaskRow[],
   gaps: Busy[],
   prefs: Prefs,
-): { placements: Placement[]; unplaced: TaskRow[] } {
+): { placements: Placement[]; unplaced: TaskRow[]; explain: PlanExplanation } {
   const placements: Placement[] = [];
   const unplaced: TaskRow[] = [];
   const cursors = gaps.map((g) => g.start);
+  const consumed = gaps.map(() => 0);
   const breakMs = prefs.break_length_min * 60000;
+  const skipped: PlanExplanation["skipped"] = [];
 
-  for (const task of rankTasks(tasks)) {
+  const ranked = rankTasks(tasks);
+  for (const task of ranked) {
     const need = Math.max(10, task.estimated_min || prefs.default_meeting_min) * 60000;
     let placed = false;
+    let bestShortfall = Number.POSITIVE_INFINITY;
     for (let i = 0; i < gaps.length; i++) {
       const gap = gaps[i]!;
       const start = cursors[i]!;
-      if (start + need <= gap.end) {
+      const room = gap.end - start;
+      if (room >= need) {
+        const isFirstInGap = consumed[i] === 0;
+        const bits = [
+          `gap ${i + 1} of ${gaps.length} (${fmtRange(gap.start, gap.end)})`,
+          isFirstInGap ? "first free slot of that window" : `queued after the previous block + ${prefs.break_length_min}m break`,
+          task.deadline ? `deadline ${task.deadline}` : `priority ${PRIORITY_WORD[task.priority] ?? task.priority}`,
+        ];
         placements.push({
           task_id: task.id,
           title: task.title,
           starts_at: new Date(start).toISOString(),
           ends_at: new Date(start + need).toISOString(),
           estimated_min: Math.round(need / 60000),
+          reason: bits.join(" · "),
         });
         cursors[i] = start + need + breakMs;
+        consumed[i] = (consumed[i] ?? 0) + need;
         placed = true;
         break;
       }
+      bestShortfall = Math.min(bestShortfall, Math.max(0, need - room));
     }
-    if (!placed) unplaced.push(task);
+    if (!placed) {
+      unplaced.push(task);
+      skipped.push({
+        id: task.id,
+        title: task.title,
+        reason:
+          gaps.length === 0
+            ? "no free time left inside your working hours on this day"
+            : `needs ${Math.round(need / 60000)}m — the largest remaining window is ${Math.round(
+                (need - (bestShortfall === Number.POSITIVE_INFINITY ? need : bestShortfall)) / 60000,
+              )}m short`,
+      });
+    }
   }
-  return { placements, unplaced };
+
+  const rules = [
+    `Working hours ${prefs.work_start}–${prefs.work_end} (profile "${prefs.name}") — nothing is placed outside them.`,
+    `Existing appointments were treated as busy and skipped over.`,
+    prefs.lunch_length_min > 0
+      ? `Lunch protected at ${prefs.lunch_at} for ${prefs.lunch_length_min}m.`
+      : `No lunch block reserved in this profile.`,
+    `${prefs.break_length_min}m break inserted after each placed block.`,
+    `Order: earliest deadline first, then priority, then oldest task.`,
+    `Blocks are never placed in the past — today's plan starts from now.`,
+  ];
+
+  return {
+    placements,
+    unplaced,
+    explain: {
+      gaps: gaps.map((g, i) => ({
+        start: new Date(g.start).toISOString(),
+        end: new Date(g.end).toISOString(),
+        minutes: Math.round((g.end - g.start) / 60000),
+        used_min: Math.round((consumed[i] ?? 0) / 60000),
+      })),
+      rules,
+      skipped,
+    },
+  };
+}
+
+const PRIORITY_WORD: Record<number, string> = { 1: "high", 2: "normal", 3: "low" };
+
+function fmtRange(start: number, end: number) {
+  const f = (ms: number) =>
+    new Date(ms).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  return `${f(start)}–${f(end)}`;
 }
 
 const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";

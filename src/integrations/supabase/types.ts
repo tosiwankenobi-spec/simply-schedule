@@ -113,6 +113,96 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_log: {
+        Row: {
+          body: string
+          channels: string[]
+          created_at: string
+          dedupe_key: string
+          emailed_at: string | null
+          id: string
+          kind: string
+          seen_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          channels?: string[]
+          created_at?: string
+          dedupe_key: string
+          emailed_at?: string | null
+          id?: string
+          kind: string
+          seen_at?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          channels?: string[]
+          created_at?: string
+          dedupe_key?: string
+          emailed_at?: string | null
+          id?: string
+          kind?: string
+          seen_at?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notification_prefs: {
+        Row: {
+          appointment_lead_min: number[]
+          created_at: string
+          email_enabled: boolean
+          email_to: string | null
+          id: string
+          nudge_enabled: boolean
+          nudge_interval_min: number
+          overdue_grace_min: number
+          overdue_tasks_enabled: boolean
+          push_enabled: boolean
+          quiet_end: string
+          quiet_start: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          appointment_lead_min?: number[]
+          created_at?: string
+          email_enabled?: boolean
+          email_to?: string | null
+          id?: string
+          nudge_enabled?: boolean
+          nudge_interval_min?: number
+          overdue_grace_min?: number
+          overdue_tasks_enabled?: boolean
+          push_enabled?: boolean
+          quiet_end?: string
+          quiet_start?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          appointment_lead_min?: number[]
+          created_at?: string
+          email_enabled?: boolean
+          email_to?: string | null
+          id?: string
+          nudge_enabled?: boolean
+          nudge_interval_min?: number
+          overdue_grace_min?: number
+          overdue_tasks_enabled?: boolean
+          push_enabled?: boolean
+          quiet_end?: string
+          quiet_start?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       pending_calendar_deletions: {
         Row: {
           calendar_event_id: string
