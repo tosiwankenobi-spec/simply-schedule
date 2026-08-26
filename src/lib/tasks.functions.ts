@@ -117,10 +117,14 @@ export const autoScheduleTasks = createServerFn({ method: "POST" })
       .gte("starts_at", dayStart.toISOString())
       .lt("starts_at", dayEnd.toISOString());
 
-    const busy = (appts ?? []).map((a: any) => {
-      const s = Date.parse(a.starts_at);
-      return { start: s, end: a.ends_at ? Date.parse(a.ends_at) : s + 30 * 60000 };
-    });
+    const busy = (appts ?? [])
+      .map((a: any) => {
+        const s = Date.parse(a.starts_at);
+        return { start: s, end: a.ends_at ? Date.parse(a.ends_at) : s + 30 * 60000 };
+      })
+      // All-day/multi-day entries (birthdays, holidays) are markers, not busy time.
+      .filter((b: { start: number; end: number }) => b.end - b.start < 20 * 3600 * 1000);
+
 
     let taskQuery = context.supabase
       .from("tasks")
