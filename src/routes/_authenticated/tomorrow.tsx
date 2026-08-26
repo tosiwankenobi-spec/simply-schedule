@@ -71,7 +71,7 @@ function TomorrowPage() {
     setBusy(true);
     setPreview(null);
     try {
-      const res = await autoScheduleTasks({ data: { date: dateStr, dryRun: true, taskIds: selected } });
+      const res = await autoScheduleTasks({ data: { date: dateStr, dryRun: true, taskIds: selected, tzOffsetMin: new Date().getTimezoneOffset() } });
       setPreview(res);
       if (res.placements.length === 0) toast.message("No room in tomorrow's working hours for those tasks.");
     } catch (e) {
@@ -84,7 +84,7 @@ function TomorrowPage() {
   async function apply() {
     setBusy(true);
     try {
-      const res = await autoScheduleTasks({ data: { date: dateStr, dryRun: false, taskIds: selected } });
+      const res = await autoScheduleTasks({ data: { date: dateStr, dryRun: false, taskIds: selected, tzOffsetMin: new Date().getTimezoneOffset() } });
       setPreview(null);
       setSelected([]);
       qc.invalidateQueries({ queryKey: ["tasks"] });

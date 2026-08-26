@@ -98,6 +98,8 @@ const autoSchema = z.object({
   date: z.string(),
   dryRun: z.boolean().default(true),
   taskIds: z.array(z.string().uuid()).optional(),
+  /** Browser Date#getTimezoneOffset(): minutes UTC is ahead of the user's local time. */
+  tzOffsetMin: z.number().int().min(-900).max(900).default(0),
 });
 
 
@@ -136,8 +138,7 @@ export const autoScheduleTasks = createServerFn({ method: "POST" })
     }
     const { data: openTasks } = await taskQuery;
 
-    const gaps = computeGaps(data.date, prefs, busy, Date.now());
-    console.log("DBG plan", data.date, JSON.stringify(prefs), JSON.stringify(busy), JSON.stringify(gaps), new Date().toString());
+    const gaps = computeGaps(data.date, prefs, busy, Date.now(), data.tzOffsetMin);
     const { placements, unplaced, explain } = fitTasks((openTasks ?? []) as TaskRow[], gaps, prefs);
 
 

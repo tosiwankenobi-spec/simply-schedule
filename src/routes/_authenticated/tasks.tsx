@@ -65,7 +65,7 @@ function TasksPage() {
   async function runPreview() {
     setBusy(true);
     try {
-      const res = await autoScheduleTasks({ data: { date, dryRun: true, taskIds } });
+      const res = await autoScheduleTasks({ data: { date, dryRun: true, taskIds, tzOffsetMin: new Date().getTimezoneOffset() } });
       setPreview(res);
       if (res.placements.length === 0) toast.message("No room in that day's free time for those tasks.");
     } catch (e) {
@@ -78,7 +78,7 @@ function TasksPage() {
   async function apply() {
     setBusy(true);
     try {
-      const res = await autoScheduleTasks({ data: { date, dryRun: false, taskIds } });
+      const res = await autoScheduleTasks({ data: { date, dryRun: false, taskIds, tzOffsetMin: new Date().getTimezoneOffset() } });
       setPreview(null);
       setSelected([]);
       invalidate();
