@@ -68,7 +68,7 @@ function AuthPage() {
       <div className="relative mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
         <div className="mb-10 flex items-center gap-2 text-foreground">
           <CalendarHeart className="h-5 w-5 text-accent" />
-          <span className="font-serif text-xl">Aperture</span>
+          <span className="font-serif text-xl">Chronos</span>
         </div>
         <h1 className="font-serif text-4xl leading-tight text-foreground">
           {mode === "signin" ? "Welcome back." : "Make space for what matters."}

@@ -22,9 +22,9 @@ export const Route = createFileRoute("/_authenticated/tasks")({
   component: TasksPage,
   head: () => ({
     meta: [
-      { title: "Task backlog · Aperture planner" },
+      { title: "Task backlog · Chronos AI Planner" },
       { name: "description", content: "Capture tasks with priority, effort and deadlines, then let AI auto-schedule them into your free time." },
-      { property: "og:title", content: "Task backlog · Aperture planner" },
+      { property: "og:title", content: "Task backlog · Chronos AI Planner" },
       { property: "og:description", content: "Capture tasks and let AI auto-schedule them into your free time." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
