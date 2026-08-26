@@ -744,7 +744,14 @@ export type SyncStatus = {
   connected: boolean;
   gmailConnected: boolean;
   lastSyncedAt: string | null;
+  /** True when Google rejected the credentials (401/403) — the user must reconnect. */
+  needsReauth: boolean;
+  /** Most recent unresolved sync error, if any. */
+  lastError: string | null;
+  /** Minutes since the last successful sync, or null if never synced. */
+  minutesSinceSync: number | null;
   settings: SyncSettings;
+
   calendars: Array<{
     calendarId: string;
     hasSyncToken: boolean;
