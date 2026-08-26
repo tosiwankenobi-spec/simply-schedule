@@ -261,7 +261,7 @@ function AndroidSetupPage() {
   useEffect(() => {
     if (data) {
       setForm({
-        package_name: data.package_name ?? "",
+        package_name: data.package_name || EMPTY.package_name,
         debug_sha1: data.debug_sha1 ?? "",
         release_sha1: data.release_sha1 ?? "",
         play_sha1: data.play_sha1 ?? "",
@@ -578,9 +578,10 @@ const Field = React.forwardRef<
     active?: boolean;
   }
 >(function Field({ label, hint, value, onChange, onBlurFormat, error, placeholder, mono, active }, ref) {
+  const fieldId = `field-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
   return (
     <div className="space-y-1.5">
-      <Label className="flex items-center gap-2">
+      <Label htmlFor={fieldId} className="flex items-center gap-2">
         {label}
         {active ? (
           <span className="rounded bg-accent/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent">
@@ -589,6 +590,7 @@ const Field = React.forwardRef<
         ) : null}
       </Label>
       <Input
+        id={fieldId}
         ref={ref}
         value={value}
         maxLength={255}
