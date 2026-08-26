@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { CalendarHeart } from "lucide-react";
+import logo from "@/assets/v-chronos-logo.png.asset.json";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -67,7 +67,7 @@ function AuthPage() {
       <div className="absolute inset-0 paper-grain opacity-40 pointer-events-none" />
       <div className="relative mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
         <div className="mb-10 flex items-center gap-2 text-foreground">
-          <CalendarHeart className="h-5 w-5 text-accent" />
+          <img src={logo.url} alt="V-Chronos logo" className="h-7 w-7" />
           <span className="font-serif text-xl">V-Chronos</span>
         </div>
         <h1 className="font-serif text-4xl leading-tight text-foreground">
