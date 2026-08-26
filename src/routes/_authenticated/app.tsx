@@ -195,6 +195,7 @@ const AUTO_SYNC_MS = 5 * 60 * 1000;
 function SyncControl() {
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
+  const [lastError, setLastError] = useState<string | null>(null);
   const running = useRef(false);
 
   const { data: status } = useQuery({
@@ -203,9 +204,14 @@ function SyncControl() {
     refetchInterval: AUTO_SYNC_MS,
   });
 
+  const autoEnabled = status?.settings?.auto_sync_enabled ?? true;
+  const autoRef = useRef(autoEnabled);
+  autoRef.current = autoEnabled;
+
   const run = useCallback(
     async (manual: boolean) => {
       if (running.current) return;
+      if (!manual && !autoRef.current) return;
       running.current = true;
       if (manual) setBusy(true);
       const t = manual ? toast.loading("Syncing with Google Calendar…") : null;
@@ -214,19 +220,29 @@ function SyncControl() {
         qc.invalidateQueries({ queryKey: ["appointments"] });
         qc.invalidateQueries({ queryKey: ["sync-status"] });
         if (t) toast.dismiss(t);
-        if (manual) {
+        const firstError = res.errors[0] ?? null;
+        setLastError(firstError);
+        if (firstError) {
+          toast.warning("Sync finished with issues", { description: firstError });
+        } else if (manual) {
           const pulledIn = res.updatedLocal + res.removedLocal;
           const pushedOut = res.pushedNew + res.pushedUpdates + res.pushedDeletes;
           toast.success("Calendar in sync", {
             description:
               pulledIn + pushedOut === 0
-                ? "Everything was already up to date."
-                : `${pulledIn} change${pulledIn === 1 ? "" : "s"} in, ${pushedOut} out.`,
+                ? `Everything was already up to date${res.conflicts ? ` · ${res.conflicts} conflict(s) resolved` : ""}.`
+                : `${pulledIn} change${pulledIn === 1 ? "" : "s"} in, ${pushedOut} out${
+                    res.conflicts ? `, ${res.conflicts} conflict(s) resolved` : ""
+                  }.`,
           });
         }
       } catch (err) {
         if (t) toast.dismiss(t);
-        if (manual) toast.error(err instanceof Error ? err.message : "Calendar sync failed");
+        const msg = err instanceof Error ? err.message : "Calendar sync failed";
+        setLastError(msg);
+        toast.error(msg, {
+          description: "It will retry automatically on the next sync.",
+        });
       } finally {
         running.current = false;
         setBusy(false);
@@ -249,17 +265,25 @@ function SyncControl() {
   const last = status?.lastSyncedAt ? new Date(status.lastSyncedAt) : null;
 
   return (
-    <Button
-      variant="outline"
-      onClick={() => void run(true)}
-      disabled={busy}
-      title={last ? `Last synced ${format(last, "MMM d, h:mm a")}` : "Two-way Google Calendar sync"}
-    >
-      <RefreshCw className={`h-4 w-4 mr-1.5 ${busy ? "animate-spin" : ""}`} />
-      {busy ? "Syncing…" : "Sync calendar"}
-    </Button>
+    <>
+      <Button
+        variant="outline"
+        onClick={() => void run(true)}
+        disabled={busy}
+        title={last ? `Last synced ${format(last, "MMM d, h:mm a")}` : "Two-way Google Calendar sync"}
+      >
+        <RefreshCw className={`h-4 w-4 mr-1.5 ${busy ? "animate-spin" : ""}`} />
+        {busy ? "Syncing…" : "Sync calendar"}
+      </Button>
+      <Button asChild variant="ghost" size="sm" className={lastError ? "text-destructive" : "text-muted-foreground"}>
+        <Link to="/setup/sync">
+          <Settings className="h-3.5 w-3.5 mr-1" /> {lastError ? "Sync issue" : "Sync settings"}
+        </Link>
+      </Button>
+    </>
   );
 }
+
 
 
 function GmailImportButton() {

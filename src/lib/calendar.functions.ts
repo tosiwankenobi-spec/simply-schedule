@@ -1,8 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import type { SyncResult } from "./calendar.server";
+import type { SyncResult, SyncStatus, SyncSettings, CalendarOption, ConflictPolicy } from "./calendar.server";
 
-export type { SyncResult };
+export type { SyncResult, SyncStatus, SyncSettings, CalendarOption, ConflictPolicy };
 
 export const syncGoogleCalendar = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -13,7 +13,36 @@ export const syncGoogleCalendar = createServerFn({ method: "POST" })
 
 export const getSyncStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .handler(async ({ context }): Promise<SyncStatus> => {
     const { readSyncStatus } = await import("./calendar.server");
     return readSyncStatus(context.supabase as never, context.userId);
+  });
+
+export const listGoogleCalendars = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<CalendarOption[]> => {
+    const { listCalendars } = await import("./calendar.server");
+    return listCalendars(context.supabase as never, context.userId);
+  });
+
+export const saveSyncSettings = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: Partial<SyncSettings>) => input)
+  .handler(async ({ data, context }): Promise<SyncSettings> => {
+    const { saveSettings } = await import("./calendar.server");
+    return saveSettings(context.supabase as never, context.userId, data);
+  });
+
+export const clearSyncLogEntries = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { clearSyncLog } = await import("./calendar.server");
+    return clearSyncLog(context.supabase as never, context.userId);
+  });
+
+export const resetCalendarSyncTokens = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { resetSyncTokens } = await import("./calendar.server");
+    return resetSyncTokens(context.supabase as never, context.userId);
   });
