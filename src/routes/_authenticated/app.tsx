@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import logo from "@/assets/v-chronos-logo.png.asset.json";
+import logo from "@/assets/chronos-v-logo.png.asset.json";
 import { Sparkles, Plus, MapPin, Trash2, LogOut, Clock, Mail, Wand2, Settings, ListTodo } from "lucide-react";
 import { DailyBriefing } from "@/components/DailyBriefing";
 import { WeekGrid } from "@/components/WeekGrid";
@@ -97,8 +97,8 @@ function AppPage() {
       <div className="relative mx-auto max-w-2xl px-5 py-8 md:py-12">
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img src={logo.url} alt="V-Chronos logo" className="h-7 w-7" />
-            <span className="font-serif text-xl">V-Chronos</span>
+            <img src={logo.url} alt="Chronos-V logo" className="h-7 w-7" />
+            <span className="font-serif text-xl">Chronos-V</span>
           </div>
           <Button variant="ghost" size="sm" onClick={signOut} className="text-muted-foreground">
             <LogOut className="h-4 w-4 mr-1" /> Sign out
@@ -107,7 +107,7 @@ function AppPage() {
 
         <div className="mt-10">
           <h1 className="font-serif text-4xl md:text-5xl text-foreground leading-tight">
-            Your schedule, <span className="text-accent italic">distilled</span>.
+            Your schedule, <span className="text-accent italic">synthesized</span>.
           </h1>
           <p className="mt-2 text-muted-foreground text-sm">
             {format(new Date(), "EEEE, MMMM d")}
