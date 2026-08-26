@@ -58,12 +58,14 @@ function TasksPage() {
     onSuccess: invalidate,
   });
 
+  const taskIds = selected.length > 0 ? selected : undefined;
+
   async function runPreview() {
     setBusy(true);
     try {
-      const res = await autoScheduleTasks({ data: { date, dryRun: true } });
+      const res = await autoScheduleTasks({ data: { date, dryRun: true, taskIds } });
       setPreview(res);
-      if (res.placements.length === 0) toast.message("No open tasks fit in that day's free time.");
+      if (res.placements.length === 0) toast.message("No room in that day's free time for those tasks.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't build a plan");
     } finally {
@@ -74,8 +76,9 @@ function TasksPage() {
   async function apply() {
     setBusy(true);
     try {
-      const res = await autoScheduleTasks({ data: { date, dryRun: false } });
+      const res = await autoScheduleTasks({ data: { date, dryRun: false, taskIds } });
       setPreview(null);
+      setSelected([]);
       invalidate();
       toast.success(`Scheduled ${res.placements.length} task${res.placements.length === 1 ? "" : "s"}`);
     } catch (e) {
@@ -84,6 +87,7 @@ function TasksPage() {
       setBusy(false);
     }
   }
+
 
   const open = (tasks ?? []).filter((t) => t.status === "open");
   const scheduled = (tasks ?? []).filter((t) => t.status === "scheduled");
