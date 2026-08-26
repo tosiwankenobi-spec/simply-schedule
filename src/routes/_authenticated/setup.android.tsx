@@ -261,7 +261,7 @@ function AndroidSetupPage() {
   useEffect(() => {
     if (data) {
       setForm({
-        package_name: data.package_name ?? "",
+        package_name: data.package_name || EMPTY.package_name,
         debug_sha1: data.debug_sha1 ?? "",
         release_sha1: data.release_sha1 ?? "",
         play_sha1: data.play_sha1 ?? "",
