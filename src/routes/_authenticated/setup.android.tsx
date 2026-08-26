@@ -14,9 +14,9 @@ export const Route = createFileRoute("/_authenticated/setup/android")({
   component: AndroidSetupPage,
   head: () => ({
     meta: [
-      { title: "Android OAuth setup · Chronos AI Planner" },
-      { name: "description", content: "Save your Android package name, SHA-1 fingerprints and Google OAuth client IDs for Chronos AI Planner." },
-      { property: "og:title", content: "Android OAuth setup · Chronos AI Planner" },
+      { title: "Android OAuth setup · V-Chronos" },
+      { name: "description", content: "Save your Android package name, SHA-1 fingerprints and Google OAuth client IDs for V-Chronos." },
+      { property: "og:title", content: "Android OAuth setup · V-Chronos" },
       { property: "og:description", content: "Validate and store your Android SHA-1 and Google OAuth client details." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

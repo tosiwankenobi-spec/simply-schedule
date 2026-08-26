@@ -1,13 +1,13 @@
 {
-  "name": "Chronos AI Planner",
-  "short_name": "Chronos",
+  "name": "V-Chronos",
+  "short_name": "V-Chronos",
   "description": "Plan appointments by typing, pasting, or speaking. AI fills in the rest.",
   "start_url": "/app",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#faf3e3",
-  "theme_color": "#c86a3c",
+  "background_color": "#F8F7F4",
+  "theme_color": "#002E28",
   "icons": [
     { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
