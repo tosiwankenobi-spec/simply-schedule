@@ -92,25 +92,37 @@ export async function prefsForDate(supabase: any, userId: string, date: string):
   return (def as Prefs) ?? FALLBACK;
 }
 
-function atTime(date: string, hhmm: string) {
+/**
+ * Absolute ms for a wall-clock time on `date`, interpreted in the user's
+ * timezone. `tzOffsetMin` is the browser's Date#getTimezoneOffset() value
+ * (minutes UTC ahead of local), so we never depend on the server's own zone.
+ */
+function atTime(date: string, hhmm: string, tzOffsetMin: number) {
   const [h, m] = hhmm.split(":").map(Number);
-  const d = new Date(`${date}T00:00:00`);
-  d.setHours(h ?? 0, m ?? 0, 0, 0);
-  return d.getTime();
+  const hh = String(h ?? 0).padStart(2, "0");
+  const mm = String(m ?? 0).padStart(2, "0");
+  return Date.parse(`${date}T${hh}:${mm}:00Z`) + tzOffsetMin * 60000;
 }
 
 type Busy = { start: number; end: number };
 
-export function computeGaps(date: string, prefs: Prefs, busy: Busy[], nowMs: number): Busy[] {
-  const dayStart = Math.max(atTime(date, prefs.work_start), nowMs);
-  const dayEnd = atTime(date, prefs.work_end);
+export function computeGaps(
+  date: string,
+  prefs: Prefs,
+  busy: Busy[],
+  nowMs: number,
+  tzOffsetMin = 0,
+): Busy[] {
+  const dayStart = Math.max(atTime(date, prefs.work_start, tzOffsetMin), nowMs);
+  const dayEnd = atTime(date, prefs.work_end, tzOffsetMin);
   if (dayEnd <= dayStart) return [];
 
   const blocks: Busy[] = [...busy];
   if (prefs.lunch_length_min > 0) {
-    const ls = atTime(date, prefs.lunch_at);
+    const ls = atTime(date, prefs.lunch_at, tzOffsetMin);
     blocks.push({ start: ls, end: ls + prefs.lunch_length_min * 60000 });
   }
+
 
   const merged: Busy[] = [];
   for (const b of blocks.sort((a, b) => a.start - b.start)) {
