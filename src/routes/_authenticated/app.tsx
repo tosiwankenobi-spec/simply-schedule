@@ -1,10 +1,11 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { format, isToday, isTomorrow, isPast, startOfDay, addDays } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { parseAppointmentWithAI } from "@/lib/appointments.functions";
 import { importFromGmail } from "@/lib/gmail.functions";
+import { syncGoogleCalendar, getSyncStatus } from "@/lib/calendar.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,9 +14,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import logo from "@/assets/chronos-v-logo.png.asset.json";
-import { Sparkles, Plus, MapPin, Trash2, LogOut, Clock, Mail, Wand2, Settings, ListTodo } from "lucide-react";
+import { Sparkles, Plus, MapPin, Trash2, LogOut, Clock, Mail, Wand2, Settings, ListTodo, RefreshCw } from "lucide-react";
 import { DailyBriefing } from "@/components/DailyBriefing";
 import { WeekGrid } from "@/components/WeekGrid";
+
 
 
 
@@ -50,6 +52,12 @@ function AppPage() {
     },
   });
 
+  const pushToCalendar = useCallback(() => {
+    syncGoogleCalendar()
+      .then(() => qc.invalidateQueries({ queryKey: ["appointments"] }))
+      .catch(() => {/* surfaced by the manual sync button */});
+  }, [qc]);
+
   const del = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("appointments").delete().eq("id", id);
@@ -58,6 +66,7 @@ function AppPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["appointments"] });
       toast.success("Removed");
+      pushToCalendar();
     },
   });
 
@@ -72,9 +81,11 @@ function AppPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["appointments"] });
       toast.success("Rescheduled");
+      pushToCalendar();
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Couldn't move that"),
   });
+
 
 
   const { upcoming, past } = useMemo(() => {
@@ -123,6 +134,7 @@ function AppPage() {
             <Link to="/tasks"><ListTodo className="h-4 w-4 mr-1.5" /> Tasks</Link>
           </Button>
           <GmailImportButton />
+          <SyncControl />
           <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
             <Link to="/setup/gmail"><Settings className="h-3.5 w-3.5 mr-1" /> Gmail setup</Link>
           </Button>
@@ -134,8 +146,10 @@ function AppPage() {
         <DailyBriefing />
 
         <p className="mt-2 text-xs text-muted-foreground">
-          Imports from the connected Gmail inbox. Only emails that clearly describe an appointment will be added.
+          Two-way sync keeps Google Calendar and this schedule in step — changes you make here are pushed up,
+          and calendar edits flow back automatically. Gmail import only adds emails that clearly describe an appointment.
         </p>
+
 
 
         <Tabs defaultValue="upcoming" className="mt-10">
@@ -175,6 +189,78 @@ function AppPage() {
     </div>
   );
 }
+
+const AUTO_SYNC_MS = 5 * 60 * 1000;
+
+function SyncControl() {
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  const running = useRef(false);
+
+  const { data: status } = useQuery({
+    queryKey: ["sync-status"],
+    queryFn: () => getSyncStatus(),
+    refetchInterval: AUTO_SYNC_MS,
+  });
+
+  const run = useCallback(
+    async (manual: boolean) => {
+      if (running.current) return;
+      running.current = true;
+      if (manual) setBusy(true);
+      const t = manual ? toast.loading("Syncing with Google Calendar…") : null;
+      try {
+        const res = await syncGoogleCalendar();
+        qc.invalidateQueries({ queryKey: ["appointments"] });
+        qc.invalidateQueries({ queryKey: ["sync-status"] });
+        if (t) toast.dismiss(t);
+        if (manual) {
+          const pulledIn = res.updatedLocal + res.removedLocal;
+          const pushedOut = res.pushedNew + res.pushedUpdates + res.pushedDeletes;
+          toast.success("Calendar in sync", {
+            description:
+              pulledIn + pushedOut === 0
+                ? "Everything was already up to date."
+                : `${pulledIn} change${pulledIn === 1 ? "" : "s"} in, ${pushedOut} out.`,
+          });
+        }
+      } catch (err) {
+        if (t) toast.dismiss(t);
+        if (manual) toast.error(err instanceof Error ? err.message : "Calendar sync failed");
+      } finally {
+        running.current = false;
+        setBusy(false);
+      }
+    },
+    [qc],
+  );
+
+  useEffect(() => {
+    void run(false);
+    const id = setInterval(() => void run(false), AUTO_SYNC_MS);
+    const onFocus = () => void run(false);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [run]);
+
+  const last = status?.lastSyncedAt ? new Date(status.lastSyncedAt) : null;
+
+  return (
+    <Button
+      variant="outline"
+      onClick={() => void run(true)}
+      disabled={busy}
+      title={last ? `Last synced ${format(last, "MMM d, h:mm a")}` : "Two-way Google Calendar sync"}
+    >
+      <RefreshCw className={`h-4 w-4 mr-1.5 ${busy ? "animate-spin" : ""}`} />
+      {busy ? "Syncing…" : "Sync calendar"}
+    </Button>
+  );
+}
+
 
 function GmailImportButton() {
   const qc = useQueryClient();

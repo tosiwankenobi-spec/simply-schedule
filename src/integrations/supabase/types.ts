@@ -58,10 +58,13 @@ export type Database = {
       }
       appointments: {
         Row: {
+          calendar_etag: string | null
+          calendar_event_id: string | null
           created_at: string
           ends_at: string | null
           external_id: string | null
           id: string
+          last_synced_at: string | null
           location: string | null
           notes: string | null
           source: string
@@ -71,10 +74,13 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          calendar_etag?: string | null
+          calendar_event_id?: string | null
           created_at?: string
           ends_at?: string | null
           external_id?: string | null
           id?: string
+          last_synced_at?: string | null
           location?: string | null
           notes?: string | null
           source?: string
@@ -84,16 +90,40 @@ export type Database = {
           user_id: string
         }
         Update: {
+          calendar_etag?: string | null
+          calendar_event_id?: string | null
           created_at?: string
           ends_at?: string | null
           external_id?: string | null
           id?: string
+          last_synced_at?: string | null
           location?: string | null
           notes?: string | null
           source?: string
           starts_at?: string
           title?: string
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      pending_calendar_deletions: {
+        Row: {
+          calendar_event_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          calendar_event_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          calendar_event_id?: string
+          created_at?: string
+          id?: string
           user_id?: string
         }
         Relationships: []
@@ -184,6 +214,39 @@ export type Database = {
           user_id?: string
           work_end?: string
           work_start?: string
+        }
+        Relationships: []
+      }
+      sync_state: {
+        Row: {
+          created_at: string
+          cursor: string | null
+          id: string
+          last_synced_at: string | null
+          provider: string
+          sync_token: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          cursor?: string | null
+          id?: string
+          last_synced_at?: string | null
+          provider: string
+          sync_token?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          cursor?: string | null
+          id?: string
+          last_synced_at?: string | null
+          provider?: string
+          sync_token?: string | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.queue_calendar_deletion() FROM PUBLIC, anon, authenticated;
