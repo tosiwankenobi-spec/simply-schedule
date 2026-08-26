@@ -11,6 +11,16 @@ export const syncGoogleCalendar = createServerFn({ method: "POST" })
     return runCalendarSync(context.supabase as never, context.userId);
   });
 
+/** One-click recovery: clear stale tokens/errors, then run a full sync. */
+export const reconnectCalendarSync = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<SyncResult> => {
+    const { runCalendarSync, resetSyncTokens } = await import("./calendar.server");
+    await resetSyncTokens(context.supabase as never, context.userId);
+    return runCalendarSync(context.supabase as never, context.userId);
+  });
+
+
 export const getSyncStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<SyncStatus> => {

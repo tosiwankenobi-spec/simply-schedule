@@ -96,7 +96,9 @@ export type AutoScheduleResult = {
 const autoSchema = z.object({
   date: z.string(),
   dryRun: z.boolean().default(true),
+  taskIds: z.array(z.string().uuid()).optional(),
 });
+
 
 export const autoScheduleTasks = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -119,14 +121,19 @@ export const autoScheduleTasks = createServerFn({ method: "POST" })
       return { start: s, end: a.ends_at ? Date.parse(a.ends_at) : s + 30 * 60000 };
     });
 
-    const { data: openTasks } = await context.supabase
+    let taskQuery = context.supabase
       .from("tasks")
       .select(TASK_COLS)
       .eq("user_id", context.userId)
       .eq("status", "open");
+    if (data.taskIds && data.taskIds.length > 0) {
+      taskQuery = taskQuery.in("id", data.taskIds);
+    }
+    const { data: openTasks } = await taskQuery;
 
     const gaps = computeGaps(data.date, prefs, busy, Date.now());
     const { placements, unplaced } = fitTasks((openTasks ?? []) as TaskRow[], gaps, prefs);
+
 
     if (!data.dryRun && placements.length > 0) {
       for (const p of placements) {
