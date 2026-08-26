@@ -60,6 +60,7 @@ export type Database = {
         Row: {
           calendar_etag: string | null
           calendar_event_id: string | null
+          calendar_id: string | null
           created_at: string
           ends_at: string | null
           external_id: string | null
@@ -67,6 +68,7 @@ export type Database = {
           last_synced_at: string | null
           location: string | null
           notes: string | null
+          remote_updated_at: string | null
           source: string
           starts_at: string
           title: string
@@ -76,6 +78,7 @@ export type Database = {
         Insert: {
           calendar_etag?: string | null
           calendar_event_id?: string | null
+          calendar_id?: string | null
           created_at?: string
           ends_at?: string | null
           external_id?: string | null
@@ -83,6 +86,7 @@ export type Database = {
           last_synced_at?: string | null
           location?: string | null
           notes?: string | null
+          remote_updated_at?: string | null
           source?: string
           starts_at: string
           title: string
@@ -92,6 +96,7 @@ export type Database = {
         Update: {
           calendar_etag?: string | null
           calendar_event_id?: string | null
+          calendar_id?: string | null
           created_at?: string
           ends_at?: string | null
           external_id?: string | null
@@ -99,6 +104,7 @@ export type Database = {
           last_synced_at?: string | null
           location?: string | null
           notes?: string | null
+          remote_updated_at?: string | null
           source?: string
           starts_at?: string
           title?: string
@@ -217,32 +223,107 @@ export type Database = {
         }
         Relationships: []
       }
+      sync_log: {
+        Row: {
+          calendar_id: string | null
+          created_at: string
+          detail: Json | null
+          id: string
+          kind: string
+          level: string
+          message: string
+          user_id: string
+        }
+        Insert: {
+          calendar_id?: string | null
+          created_at?: string
+          detail?: Json | null
+          id?: string
+          kind: string
+          level?: string
+          message: string
+          user_id: string
+        }
+        Update: {
+          calendar_id?: string | null
+          created_at?: string
+          detail?: Json | null
+          id?: string
+          kind?: string
+          level?: string
+          message?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      sync_settings: {
+        Row: {
+          auto_sync_enabled: boolean
+          conflict_policy: string
+          created_at: string
+          id: string
+          selected_calendar_ids: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auto_sync_enabled?: boolean
+          conflict_policy?: string
+          created_at?: string
+          id?: string
+          selected_calendar_ids?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auto_sync_enabled?: boolean
+          conflict_policy?: string
+          created_at?: string
+          id?: string
+          selected_calendar_ids?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       sync_state: {
         Row: {
+          calendar_id: string | null
           created_at: string
           cursor: string | null
+          events_seen: number
           id: string
+          last_error: string | null
           last_synced_at: string | null
+          pages_synced: number
           provider: string
           sync_token: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          calendar_id?: string | null
           created_at?: string
           cursor?: string | null
+          events_seen?: number
           id?: string
+          last_error?: string | null
           last_synced_at?: string | null
+          pages_synced?: number
           provider: string
           sync_token?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          calendar_id?: string | null
           created_at?: string
           cursor?: string | null
+          events_seen?: number
           id?: string
+          last_error?: string | null
           last_synced_at?: string | null
+          pages_synced?: number
           provider?: string
           sync_token?: string | null
           updated_at?: string
