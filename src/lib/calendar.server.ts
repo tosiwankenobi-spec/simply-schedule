@@ -805,14 +805,31 @@ export async function readSyncStatus(
       .sort()
       .pop() ?? null;
 
+  const errorFromState = calendars.map((c) => c.lastError).find(Boolean) ?? null;
+  const errorFromLog =
+    (log ?? []).find((l: any) => l.level === "error")?.message ?? null;
+  const lastError = errorFromState ?? errorFromLog ?? null;
+
+  const AUTH_HINT = /\b(401|403)\b|denied|invalid_grant|unauthori[sz]ed|reconnect|permission/i;
+  const needsReauth =
+    !process.env["GOOGLE_CALENDAR_API_KEY"] || (lastError ? AUTH_HINT.test(lastError) : false);
+
+  const minutesSinceSync = lastSyncedAt
+    ? Math.max(0, Math.round((Date.now() - Date.parse(lastSyncedAt)) / 60000))
+    : null;
+
   return {
     connected: Boolean(process.env["GOOGLE_CALENDAR_API_KEY"]),
     gmailConnected: Boolean(process.env["GOOGLE_MAIL_API_KEY"]),
     lastSyncedAt,
+    needsReauth,
+    lastError,
+    minutesSinceSync,
     settings,
     calendars,
     log: (log ?? []) as SyncStatus["log"],
   };
+
 }
 
 export async function clearSyncLog(supabase: SupabaseClient, userId: string) {
