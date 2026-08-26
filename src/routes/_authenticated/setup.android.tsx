@@ -612,7 +612,86 @@ const Field = React.forwardRef<
   );
 });
 
+function TroubleshootingPanel({ form }: { form: Form }) {
+  const [origin, setOrigin] = useState("");
+  useEffect(() => setOrigin(window.location.origin), []);
+
+  const pkg = form.package_name || EMPTY.package_name;
+  const androidId = form.android_client_id;
+  const reversedId = androidId ? androidId.split(".").reverse().join(".") : "";
+
+  const rows: { label: string; value: string; where: string }[] = [
+    { label: "Package name", value: pkg, where: "Google Cloud → Credentials → Android OAuth client → Package name" },
+    { label: "Debug SHA-1", value: form.debug_sha1, where: "Android client → SHA-1 certificate fingerprint" },
+    { label: "Release SHA-1", value: form.release_sha1, where: "Android client → second fingerprint (or a second client)" },
+    { label: "Play App Signing SHA-1", value: form.play_sha1, where: "Android client → fingerprint from Play Console app signing" },
+    { label: "Android client ID", value: androidId, where: "Used by the native Google Sign-In flow" },
+    { label: "Web client ID", value: form.web_client_id, where: "Used for server-side token exchange and Gmail import" },
+    { label: "Authorized JavaScript origin", value: origin, where: "Web OAuth client → Authorized JavaScript origins" },
+    { label: "Authorized redirect URI", value: origin ? `${origin}/auth` : "", where: "Web OAuth client → Authorized redirect URIs" },
+    { label: "OAuth callback URI", value: origin ? `${origin}/~oauth/callback` : "", where: "Web OAuth client → Authorized redirect URIs" },
+    { label: "Android reversed-client scheme", value: reversedId, where: "Custom URL scheme, if your native flow needs one" },
+  ];
+
+  return (
+    <div className="mt-6 rounded-xl border border-border bg-card px-5 py-4 text-sm">
+      <p className="text-foreground font-medium flex items-center gap-2">
+        <Wrench className="h-4 w-4 text-accent" /> Troubleshooting · exact values to register
+      </p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Every value Google Cloud asks for, exactly as this app uses it. Copy each one straight into the matching field —
+        mismatched characters, trailing slashes or a wrong fingerprint are the usual cause of{" "}
+        <code>redirect_uri_mismatch</code> and <code>DEVELOPER_ERROR</code>.
+      </p>
+
+      <div className="mt-4 space-y-3">
+        {rows.map((row) => (
+          <div key={row.label}>
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="text-xs font-medium text-foreground">{row.label}</p>
+              {!row.value ? (
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">not set yet</span>
+              ) : null}
+            </div>
+            {row.value ? (
+              <div className="mt-1">
+                <CopyRow value={row.value} />
+              </div>
+            ) : (
+              <div className="mt-1 rounded-md border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
+                Fill this in above to get a copyable value.
+              </div>
+            )}
+            <p className="mt-1 text-[11px] text-muted-foreground">{row.where}</p>
+          </div>
+        ))}
+      </div>
+
+      <p className="mt-4 text-xs uppercase tracking-wide text-muted-foreground">Common errors</p>
+      <ul className="mt-1.5 space-y-1.5 text-xs text-muted-foreground list-disc pl-5">
+        <li>
+          <code>redirect_uri_mismatch</code> — the origin or redirect URI above is missing from the Web client, or was
+          saved with a trailing slash.
+        </li>
+        <li>
+          <code>DEVELOPER_ERROR</code> / code 10 on device — the SHA-1 of the build you installed is not on the Android
+          client. Debug builds need the debug fingerprint; Play installs need the Play App Signing fingerprint.
+        </li>
+        <li>
+          <code>access_denied</code> — your Google account is not listed under OAuth consent screen → Test users while
+          the app is in Testing.
+        </li>
+        <li>
+          <code>invalid_client</code> — the client ID belongs to a different Google Cloud project than the one the
+          consent screen is configured in.
+        </li>
+      </ul>
+    </div>
+  );
+}
+
 function CopyRow({ value }: { value: string }) {
+
   const [copied, setCopied] = useState(false);
   async function copy() {
     await navigator.clipboard.writeText(value);
