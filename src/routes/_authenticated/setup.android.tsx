@@ -530,6 +530,10 @@ function AndroidSetupPage() {
           </p>
         </div>
 
+        <TroubleshootingPanel form={form} />
+
+
+
         <div className="mt-6 rounded-xl border border-dashed border-border bg-card/40 px-5 py-4 text-sm">
           <p className="text-foreground font-medium flex items-center gap-2">
             <AlertCircle className="h-4 w-4 text-accent" /> Where these go in Google Cloud
