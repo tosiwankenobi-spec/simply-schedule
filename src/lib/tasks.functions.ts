@@ -96,7 +96,9 @@ export type AutoScheduleResult = {
 const autoSchema = z.object({
   date: z.string(),
   dryRun: z.boolean().default(true),
+  taskIds: z.array(z.string().uuid()).optional(),
 });
+
 
 export const autoScheduleTasks = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
