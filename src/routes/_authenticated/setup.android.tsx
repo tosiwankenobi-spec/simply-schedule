@@ -41,7 +41,7 @@ type Form = {
 };
 
 const EMPTY: Form = {
-  package_name: "",
+  package_name: "app.chronos.planner",
   debug_sha1: "",
   release_sha1: "",
   play_sha1: "",

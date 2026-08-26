@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
 /**
- * Native Android shell for Aperture.
+ * Native Android shell for Chronos AI Planner.
  *
  * The app is a server-rendered web app, so the native shell loads the hosted
  * site instead of bundling a static build. Point `server.url` at your published
@@ -13,8 +13,8 @@ import type { CapacitorConfig } from "@capacitor/cli";
  *   3. bunx cap open android   -> Run / Build APK from Android Studio
  */
 const config: CapacitorConfig = {
-  appId: "app.lovable.aperture",
-  appName: "Aperture",
+  appId: "app.chronos.planner",
+  appName: "Chronos AI Planner",
   webDir: "public",
   server: {
     url: "https://project--3efdbf41-41b9-4a36-a987-83eec491b4cd.lovable.app",
