@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { WhyTheseBlocks } from "@/components/WhyTheseBlocks";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { ArrowLeft, CheckCircle2, Circle, Trash2, Wand2, Plus, Clock } from "lucide-react";
@@ -165,6 +166,7 @@ function TasksPage() {
           {preview && (
             <div className="mt-5 space-y-3 border-t border-border pt-4">
               <p className="text-xs text-muted-foreground">Profile: {preview.profile}</p>
+              <WhyTheseBlocks result={preview} />
               {preview.placements.length > 0 && (
                 <ul className="space-y-1.5">
                   {preview.placements.map((p) => (
