@@ -190,6 +190,78 @@ function AppPage() {
   );
 }
 
+const AUTO_SYNC_MS = 5 * 60 * 1000;
+
+function SyncControl() {
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  const running = useRef(false);
+
+  const { data: status } = useQuery({
+    queryKey: ["sync-status"],
+    queryFn: () => getSyncStatus(),
+    refetchInterval: AUTO_SYNC_MS,
+  });
+
+  const run = useCallback(
+    async (manual: boolean) => {
+      if (running.current) return;
+      running.current = true;
+      if (manual) setBusy(true);
+      const t = manual ? toast.loading("Syncing with Google Calendar…") : null;
+      try {
+        const res = await syncGoogleCalendar();
+        qc.invalidateQueries({ queryKey: ["appointments"] });
+        qc.invalidateQueries({ queryKey: ["sync-status"] });
+        if (t) toast.dismiss(t);
+        if (manual) {
+          const pulledIn = res.updatedLocal + res.removedLocal;
+          const pushedOut = res.pushedNew + res.pushedUpdates + res.pushedDeletes;
+          toast.success("Calendar in sync", {
+            description:
+              pulledIn + pushedOut === 0
+                ? "Everything was already up to date."
+                : `${pulledIn} change${pulledIn === 1 ? "" : "s"} in, ${pushedOut} out.`,
+          });
+        }
+      } catch (err) {
+        if (t) toast.dismiss(t);
+        if (manual) toast.error(err instanceof Error ? err.message : "Calendar sync failed");
+      } finally {
+        running.current = false;
+        setBusy(false);
+      }
+    },
+    [qc],
+  );
+
+  useEffect(() => {
+    void run(false);
+    const id = setInterval(() => void run(false), AUTO_SYNC_MS);
+    const onFocus = () => void run(false);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [run]);
+
+  const last = status?.lastSyncedAt ? new Date(status.lastSyncedAt) : null;
+
+  return (
+    <Button
+      variant="outline"
+      onClick={() => void run(true)}
+      disabled={busy}
+      title={last ? `Last synced ${format(last, "MMM d, h:mm a")}` : "Two-way Google Calendar sync"}
+    >
+      <RefreshCw className={`h-4 w-4 mr-1.5 ${busy ? "animate-spin" : ""}`} />
+      {busy ? "Syncing…" : "Sync calendar"}
+    </Button>
+  );
+}
+
+
 function GmailImportButton() {
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
