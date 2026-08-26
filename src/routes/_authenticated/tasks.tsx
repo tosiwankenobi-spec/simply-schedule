@@ -109,16 +109,57 @@ function TasksPage() {
         <NewTaskForm onSaved={invalidate} />
 
         <section className="mt-10 rounded-xl border border-border bg-card p-5">
-          <h2 className="font-serif text-xl">Auto-schedule</h2>
+          <h2 className="font-serif text-xl">Smart scheduling</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Pick the tasks you want placed — or leave all unticked to consider the whole backlog. Blocks land in the
+            free gaps inside your working hours, longest deadline pressure and highest priority first.
+          </p>
           <div className="mt-3 flex flex-wrap items-end gap-2">
             <div className="space-y-1.5">
               <Label htmlFor="asd">Day</Label>
               <Input id="asd" type="date" value={date} onChange={(e) => { setDate(e.target.value); setPreview(null); }} className="w-44" />
             </div>
             <Button onClick={runPreview} disabled={busy || open.length === 0} className="bg-accent text-accent-foreground hover:bg-accent/90">
-              <Wand2 className="h-4 w-4 mr-1.5" /> {busy ? "Working…" : "Preview plan"}
+              <Wand2 className="h-4 w-4 mr-1.5" /> {busy ? "Working…" : "Propose time blocks"}
             </Button>
           </div>
+
+          {open.length > 0 && (
+            <div className="mt-4">
+              <div className="flex items-baseline justify-between">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Select tasks {selected.length > 0 ? `· ${selected.length}` : "· all"}
+                </p>
+                <button
+                  className="text-xs text-muted-foreground underline"
+                  onClick={() => { setSelected(selected.length === open.length ? [] : open.map((t) => t.id)); setPreview(null); }}
+                >
+                  {selected.length === open.length ? "Clear" : "Select all"}
+                </button>
+              </div>
+              <ul className="mt-2 space-y-1.5">
+                {open.map((t) => (
+                  <li key={t.id} className="flex items-center gap-3 rounded-lg border border-border px-3 py-2">
+                    <Checkbox
+                      id={`sel-${t.id}`}
+                      checked={selected.includes(t.id)}
+                      onCheckedChange={() => {
+                        setPreview(null);
+                        setSelected((s) => (s.includes(t.id) ? s.filter((x) => x !== t.id) : [...s, t.id]));
+                      }}
+                    />
+                    <label htmlFor={`sel-${t.id}`} className="min-w-0 flex-1 cursor-pointer truncate text-sm">
+                      {t.title}
+                    </label>
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {t.estimated_min}m · {PRIORITY_LABEL[t.priority]}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
 
           {preview && (
             <div className="mt-5 space-y-3 border-t border-border pt-4">
