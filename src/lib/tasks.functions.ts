@@ -140,6 +140,7 @@ export const autoScheduleTasks = createServerFn({ method: "POST" })
 
     const gaps = computeGaps(data.date, prefs, busy, Date.now(), data.tzOffsetMin);
     const { placements, unplaced, explain } = fitTasks((openTasks ?? []) as TaskRow[], gaps, prefs);
+    explain.rules.push(`DBG busy=${JSON.stringify(busy)} gaps=${JSON.stringify(gaps)} now=${new Date().toISOString()} tz=${data.tzOffsetMin} appts=${(appts??[]).length}`);
 
 
     if (!data.dryRun && placements.length > 0) {
