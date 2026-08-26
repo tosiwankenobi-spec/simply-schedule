@@ -83,8 +83,9 @@ function SyncSetupPage() {
   const settings = status.data?.settings;
 
   const save = useMutation({
-    mutationFn: (patch: Parameters<typeof saveSyncSettings>[0] extends never ? never : any) =>
+    mutationFn: (patch: Partial<{ conflict_policy: ConflictPolicy; selected_calendar_ids: string[]; auto_sync_enabled: boolean }>) =>
       saveSyncSettings({ data: patch }),
+
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["sync-status"] });
       qc.invalidateQueries({ queryKey: ["google-calendars"] });
