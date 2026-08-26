@@ -43,60 +43,61 @@
 :root {
   --radius: 0.5rem;
 
-  /* Warm paper palette */
-  --paper: oklch(0.965 0.018 80);            /* #FBF6EE */
-  --ink: oklch(0.21 0.025 50);               /* #2B2118 */
-  --ember: oklch(0.66 0.16 38);              /* #D97757 */
-  --leaf: oklch(0.52 0.07 145);              /* #5B7553 */
+  /* Verolane brand palette: deep forest green, circuit teal, mint, warm off-white */
+  --paper: oklch(0.972 0.005 95);            /* #F8F7F4 */
+  --ink: oklch(0.26 0.045 175);              /* #002E28 deep forest */
+  --ember: oklch(0.62 0.11 178);             /* circuit teal */
+  --leaf: oklch(0.70 0.13 152);              /* logo green */
 
   --background: var(--paper);
   --foreground: var(--ink);
 
-  --card: oklch(0.985 0.012 80);
+  --card: oklch(0.99 0.003 95);
   --card-foreground: var(--ink);
 
-  --popover: oklch(0.985 0.012 80);
+  --popover: oklch(0.99 0.003 95);
   --popover-foreground: var(--ink);
 
   --primary: var(--ink);
   --primary-foreground: var(--paper);
 
-  --secondary: oklch(0.92 0.022 75);
+  --secondary: oklch(0.93 0.015 165);
   --secondary-foreground: var(--ink);
 
-  --muted: oklch(0.92 0.018 78);
-  --muted-foreground: oklch(0.45 0.025 55);
+  --muted: oklch(0.94 0.010 160);
+  --muted-foreground: oklch(0.47 0.030 175);
 
   --accent: var(--ember);
-  --accent-foreground: var(--paper);
+  --accent-foreground: oklch(0.99 0.003 95);
 
-  --destructive: oklch(0.56 0.21 25);
+  --destructive: oklch(0.56 0.19 25);
   --destructive-foreground: var(--paper);
 
-  --border: oklch(0.86 0.022 75);
-  --input: oklch(0.88 0.02 75);
+  --border: oklch(0.88 0.016 165);
+  --input: oklch(0.90 0.014 165);
   --ring: var(--ember);
 }
 
 .dark {
-  --background: oklch(0.18 0.018 50);
-  --foreground: oklch(0.95 0.018 80);
-  --card: oklch(0.22 0.02 50);
-  --card-foreground: oklch(0.95 0.018 80);
-  --popover: oklch(0.22 0.02 50);
-  --popover-foreground: oklch(0.95 0.018 80);
-  --primary: oklch(0.95 0.018 80);
-  --primary-foreground: oklch(0.18 0.018 50);
-  --secondary: oklch(0.28 0.02 50);
-  --secondary-foreground: oklch(0.95 0.018 80);
-  --muted: oklch(0.28 0.02 50);
-  --muted-foreground: oklch(0.7 0.02 60);
-  --accent: var(--ember);
-  --accent-foreground: oklch(0.95 0.018 80);
-  --border: oklch(0.32 0.02 55);
-  --input: oklch(0.32 0.02 55);
-  --ring: var(--ember);
+  --background: oklch(0.20 0.035 175);
+  --foreground: oklch(0.96 0.008 150);
+  --card: oklch(0.24 0.038 175);
+  --card-foreground: oklch(0.96 0.008 150);
+  --popover: oklch(0.24 0.038 175);
+  --popover-foreground: oklch(0.96 0.008 150);
+  --primary: oklch(0.96 0.008 150);
+  --primary-foreground: oklch(0.20 0.035 175);
+  --secondary: oklch(0.29 0.04 172);
+  --secondary-foreground: oklch(0.96 0.008 150);
+  --muted: oklch(0.29 0.04 172);
+  --muted-foreground: oklch(0.74 0.03 160);
+  --accent: oklch(0.70 0.13 160);
+  --accent-foreground: oklch(0.18 0.035 175);
+  --border: oklch(0.33 0.04 172);
+  --input: oklch(0.33 0.04 172);
+  --ring: var(--accent);
 }
+
 
 @layer base {
   * {
