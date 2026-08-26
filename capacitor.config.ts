@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
 /**
- * Native Android shell for V-V-Chronos.
+ * Native Android shell for V-Chronos.
  *
  * The app is a server-rendered web app, so the native shell loads the hosted
  * site instead of bundling a static build. Point `server.url` at your published
@@ -14,7 +14,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
  */
 const config: CapacitorConfig = {
   appId: "app.chronos.planner",
-  appName: "V-V-Chronos",
+  appName: "V-Chronos",
   webDir: "public",
   server: {
     url: "https://project--3efdbf41-41b9-4a36-a987-83eec491b4cd.lovable.app",
