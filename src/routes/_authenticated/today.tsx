@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { SyncAlert } from "@/components/SyncAlert";
+import { NotificationBell } from "@/components/NotificationBell";
+import { TaskNudge } from "@/components/TaskNudge";
 import { toast } from "sonner";
 import {
   CalendarDays,

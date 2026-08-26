@@ -5,6 +5,7 @@ import { format, addDays, isSameDay } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { listTasks, autoScheduleTasks, dailyBriefing, type AutoScheduleResult, type Briefing } from "@/lib/tasks.functions";
 import { Button } from "@/components/ui/button";
+import { WhyTheseBlocks } from "@/components/WhyTheseBlocks";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { ArrowLeft, Clock, Moon, Sparkles, Wand2 } from "lucide-react";
@@ -210,6 +211,7 @@ function TomorrowPage() {
           {preview && (
             <div className="mt-5 space-y-3 border-t border-border pt-4">
               <p className="text-xs text-muted-foreground">Profile: {preview.profile}</p>
+              <WhyTheseBlocks result={preview} />
               {preview.placements.map((p) => (
                 <div key={p.task_id} className="flex items-center justify-between text-sm">
                   <span className="min-w-0 truncate">{p.title}</span>
