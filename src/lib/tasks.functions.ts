@@ -137,6 +137,7 @@ export const autoScheduleTasks = createServerFn({ method: "POST" })
     const { data: openTasks } = await taskQuery;
 
     const gaps = computeGaps(data.date, prefs, busy, Date.now());
+    console.log("DBG plan", data.date, JSON.stringify(prefs), JSON.stringify(busy), JSON.stringify(gaps), new Date().toString());
     const { placements, unplaced, explain } = fitTasks((openTasks ?? []) as TaskRow[], gaps, prefs);
 
 
