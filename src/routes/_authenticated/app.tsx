@@ -14,9 +14,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import logo from "@/assets/chronos-v-logo.png.asset.json";
-import { Sparkles, Plus, MapPin, Trash2, LogOut, Clock, Mail, Wand2, Settings, ListTodo, RefreshCw } from "lucide-react";
+import { Sparkles, Plus, MapPin, Trash2, LogOut, Clock, Mail, Wand2, Settings, ListTodo, RefreshCw, Sun, Moon } from "lucide-react";
 import { DailyBriefing } from "@/components/DailyBriefing";
 import { WeekGrid } from "@/components/WeekGrid";
+import { SyncAlert } from "@/components/SyncAlert";
 
 
 
@@ -128,6 +129,12 @@ function AppPage() {
         <div className="mt-6 flex flex-wrap gap-2">
           <NewAppointmentDialog open={open} onOpenChange={setOpen} />
           <Button asChild variant="outline">
+            <Link to="/today"><Sun className="h-4 w-4 mr-1.5" /> Today</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link to="/tomorrow"><Moon className="h-4 w-4 mr-1.5" /> Plan tomorrow</Link>
+          </Button>
+          <Button asChild variant="outline">
             <Link to="/planner"><Wand2 className="h-4 w-4 mr-1.5" /> AI planner</Link>
           </Button>
           <Button asChild variant="outline">
@@ -142,6 +149,8 @@ function AppPage() {
             <Link to="/setup/android"><Settings className="h-3.5 w-3.5 mr-1" /> Android setup</Link>
           </Button>
         </div>
+
+        <SyncAlert />
 
         <DailyBriefing />
 
