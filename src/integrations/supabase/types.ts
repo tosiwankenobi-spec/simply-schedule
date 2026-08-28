@@ -64,6 +64,12 @@ export type Database = {
           created_at: string
           ends_at: string | null
           external_id: string | null
+          gmail_from: string | null
+          gmail_message_id: string | null
+          gmail_replied_at: string | null
+          gmail_reply_state: string | null
+          gmail_subject: string | null
+          gmail_thread_id: string | null
           id: string
           last_synced_at: string | null
           location: string | null
@@ -82,6 +88,12 @@ export type Database = {
           created_at?: string
           ends_at?: string | null
           external_id?: string | null
+          gmail_from?: string | null
+          gmail_message_id?: string | null
+          gmail_replied_at?: string | null
+          gmail_reply_state?: string | null
+          gmail_subject?: string | null
+          gmail_thread_id?: string | null
           id?: string
           last_synced_at?: string | null
           location?: string | null
@@ -100,6 +112,12 @@ export type Database = {
           created_at?: string
           ends_at?: string | null
           external_id?: string | null
+          gmail_from?: string | null
+          gmail_message_id?: string | null
+          gmail_replied_at?: string | null
+          gmail_reply_state?: string | null
+          gmail_subject?: string | null
+          gmail_thread_id?: string | null
           id?: string
           last_synced_at?: string | null
           location?: string | null
@@ -351,6 +369,7 @@ export type Database = {
           auto_sync_enabled: boolean
           conflict_policy: string
           created_at: string
+          gmail_sync_enabled: boolean
           id: string
           selected_calendar_ids: string[]
           updated_at: string
@@ -360,6 +379,7 @@ export type Database = {
           auto_sync_enabled?: boolean
           conflict_policy?: string
           created_at?: string
+          gmail_sync_enabled?: boolean
           id?: string
           selected_calendar_ids?: string[]
           updated_at?: string
@@ -369,6 +389,7 @@ export type Database = {
           auto_sync_enabled?: boolean
           conflict_policy?: string
           created_at?: string
+          gmail_sync_enabled?: boolean
           id?: string
           selected_calendar_ids?: string[]
           updated_at?: string
