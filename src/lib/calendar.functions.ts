@@ -21,12 +21,12 @@ export const reconnectCalendarSync = createServerFn({ method: "POST" })
   });
 
 
-export const getSyncStatus = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<SyncStatus> => {
-    const { readSyncStatus } = await import("./calendar.server");
-    return readSyncStatus(context.supabase as never, context.userId);
-  });
+export const getSyncStatus = createServerFn({ method: "POST" }).handler(
+  async (): Promise<SyncStatus> => {
+    const { readSyncStatusSafe } = await import("./calendar.server");
+    return readSyncStatusSafe();
+  },
+);
 
 export const listGoogleCalendars = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
