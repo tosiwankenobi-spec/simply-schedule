@@ -846,3 +846,50 @@ export async function resetSyncTokens(supabase: SupabaseClient, userId: string) 
   await logEvent(supabase, userId, "info", "sync_token", "Sync tokens cleared — next sync does a full refresh.");
   return { ok: true };
 }
+
+/**
+ * Auth-tolerant status read. The dashboard polls sync status on a timer, so an
+ * expired/absent session must degrade to a quiet "disconnected" state instead of
+ * throwing a 500 out of the auth middleware and blanking the page.
+ */
+export async function readSyncStatusSafe(): Promise<SyncStatus> {
+  const fallback: SyncStatus = {
+    connected: false,
+    gmailConnected: false,
+    lastSyncedAt: null,
+    needsReauth: false,
+    lastError: null,
+    minutesSinceSync: null,
+    settings: { ...DEFAULT_SETTINGS },
+    calendars: [],
+    log: [],
+  };
+
+  try {
+    const [{ getRequest }, { createClient }] = await Promise.all([
+      import("@tanstack/react-start/server"),
+      import("@supabase/supabase-js"),
+    ]);
+
+    const url = process.env["SUPABASE_URL"];
+    const key = process.env["SUPABASE_PUBLISHABLE_KEY"];
+    if (!url || !key) return fallback;
+
+    const header = getRequest()?.headers?.get("authorization") ?? "";
+    const token = header.startsWith("Bearer ") ? header.slice(7) : "";
+    if (!token) return fallback;
+
+    const client = createClient(url, key, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+      auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
+    });
+
+    const { data, error } = await client.auth.getClaims(token);
+    const userId = data?.claims?.sub;
+    if (error || !userId) return fallback;
+
+    return await readSyncStatus(client as never, userId);
+  } catch {
+    return fallback;
+  }
+}
