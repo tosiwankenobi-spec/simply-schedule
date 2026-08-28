@@ -18,6 +18,8 @@ export type SyncSettings = {
   conflict_policy: ConflictPolicy;
   selected_calendar_ids: string[];
   auto_sync_enabled: boolean;
+  /** Gmail incremental sync runs on its own switch, independent of Calendar. */
+  gmail_sync_enabled: boolean;
 };
 
 export type CalendarOption = {
@@ -61,6 +63,7 @@ const DEFAULT_SETTINGS: SyncSettings = {
   conflict_policy: "newest",
   selected_calendar_ids: ["primary"],
   auto_sync_enabled: true,
+  gmail_sync_enabled: true,
 };
 
 function keys(): Keys {
@@ -77,7 +80,7 @@ function keys(): Keys {
 
 type Level = "info" | "warn" | "error";
 
-async function logEvent(
+export async function logEvent(
   supabase: SupabaseClient,
   userId: string,
   level: Level,
@@ -203,7 +206,7 @@ export async function getSettings(
 ): Promise<SyncSettings> {
   const { data } = await supabase
     .from("sync_settings")
-    .select("conflict_policy, selected_calendar_ids, auto_sync_enabled")
+    .select("conflict_policy, selected_calendar_ids, auto_sync_enabled, gmail_sync_enabled")
     .eq("user_id", userId)
     .maybeSingle();
   if (!data) return { ...DEFAULT_SETTINGS };
@@ -214,6 +217,7 @@ export async function getSettings(
         ? data.selected_calendar_ids
         : ["primary"],
     auto_sync_enabled: data.auto_sync_enabled ?? true,
+    gmail_sync_enabled: (data as { gmail_sync_enabled?: boolean }).gmail_sync_enabled ?? true,
   };
 }
 
