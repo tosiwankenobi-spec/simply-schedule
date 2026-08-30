@@ -17,6 +17,7 @@ import logo from "@/assets/chronos-v-logo.png.asset.json";
 import { Sparkles, Plus, MapPin, Trash2, LogOut, Clock, Mail, Wand2, Settings, ListTodo, RefreshCw, Sun, Moon, Bell } from "lucide-react";
 import { DailyBriefing } from "@/components/DailyBriefing";
 import { WeekGrid } from "@/components/WeekGrid";
+import { QuickAddAppointment } from "@/components/QuickAddAppointment";
 import { SyncAlert } from "@/components/SyncAlert";
 import { NotificationBell } from "@/components/NotificationBell";
 import { TaskNudge } from "@/components/TaskNudge";
@@ -172,6 +173,8 @@ function AppPage() {
         </p>
 
 
+
+        <QuickAddAppointment />
 
         <Tabs defaultValue="upcoming" className="mt-10">
           <TabsList className="bg-secondary">
