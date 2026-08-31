@@ -1,6 +1,6 @@
-# Simply Schedule
+# Chronos-V
 
-AI, uh, schedule planner. Uh, schedule planner. Finds appointments. You can use your email, your calendar, and you can add them manually.
+Chronos-V is an AI schedule planner that finds appointments from email and calendar sources while also supporting quick manual entry.
 
 This project was built with [Lovable](https://lovable.dev).
 
