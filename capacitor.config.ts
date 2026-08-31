@@ -13,7 +13,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
  *   3. bunx cap open android   -> Run / Build APK from Android Studio
  */
 const config: CapacitorConfig = {
-  appId: "app.chronos.planner",
+  appId: "ca.verolane.chronosv",
   appName: "Chronos-V",
   webDir: "public",
   server: {

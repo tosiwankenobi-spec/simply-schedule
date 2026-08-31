@@ -41,7 +41,7 @@ type Form = {
 };
 
 const EMPTY: Form = {
-  package_name: "app.chronos.planner",
+  package_name: "ca.verolane.chronosv",
   debug_sha1: "",
   release_sha1: "",
   play_sha1: "",
@@ -59,7 +59,7 @@ function normalizeSha1(raw: string) {
 function validate(form: Form) {
   const errors: Partial<Record<keyof Form, string>> = {};
   if (form.package_name && !PACKAGE_RE.test(form.package_name)) {
-    errors.package_name = "Use reverse-domain form, e.g. app.chronos.planner";
+    errors.package_name = "Use reverse-domain form, e.g. ca.verolane.chronosv";
   }
   if (form.debug_sha1 && !SHA1_RE.test(form.debug_sha1)) {
     errors.debug_sha1 = "Must be 40 hex characters (20 colon-separated pairs).";
@@ -92,7 +92,7 @@ function runOAuthChecks(form: Form): CheckResult[] {
       ? "Missing. Add the applicationId used in capacitor.config.ts / build.gradle."
       : PACKAGE_RE.test(form.package_name)
         ? form.package_name
-        : "Invalid format — use reverse-domain style, e.g. app.chronos.planner.",
+        : "Invalid format — use reverse-domain style, e.g. ca.verolane.chronosv.",
   );
 
   push(
@@ -361,7 +361,7 @@ function AndroidSetupPage() {
             value={form.package_name}
             onChange={(v) => set("package_name", v)}
             error={touched ? errors.package_name : undefined}
-            placeholder="app.chronos.planner"
+            placeholder="ca.verolane.chronosv"
           />
           <Field
             ref={fieldRefs.debug}
