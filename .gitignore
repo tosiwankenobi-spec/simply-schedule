@@ -16,6 +16,12 @@ dist-ssr
 .nitro
 *.local
 
+# Local environment files may contain credentials. Keep the checked-in
+# placeholder file so developers know which public values are required.
+.env
+.env.*
+!.env.example
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
