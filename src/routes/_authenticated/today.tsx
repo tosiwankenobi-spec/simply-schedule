@@ -2,8 +2,15 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { format, isSameDay, differenceInMinutes } from "date-fns";
-import { supabase } from "@/integrations/supabase/client";
 import { listTasks, upsertTask, setTaskStatus } from "@/lib/tasks.functions";
+import {
+  eventEnd,
+  eventStart,
+  eventsOnDay,
+  upcomingEvents,
+  useScheduleEvents,
+} from "@/lib/schedule-hub";
+import { AllDayBadge, CommitmentBadge, SourceBadge } from "@/components/ScheduleBadges";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,41 +48,24 @@ export const Route = createFileRoute("/_authenticated/today")({
   }),
 });
 
-type Appointment = {
-  id: string;
-  title: string;
-  location: string | null;
-  starts_at: string;
-  ends_at: string | null;
-};
-
 function TodayPage() {
   const now = new Date();
 
-  const { data: appts } = useQuery({
-    queryKey: ["appointments"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("appointments")
-        .select("*")
-        .order("starts_at", { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as Appointment[];
-    },
-  });
+  const { data: events, isLoading, isError, error, refetch } = useScheduleEvents();
 
   const { data: tasks } = useQuery({ queryKey: ["tasks"], queryFn: () => listTasks() });
 
   const { next, todayList, overdue } = useMemo(() => {
-    const list = appts ?? [];
-    const upcoming = list.filter((a) => new Date(a.ends_at ?? a.starts_at) >= now);
-    const todayList = list.filter((a) => isSameDay(new Date(a.starts_at), now));
+    const list = events ?? [];
+    const upcoming = upcomingEvents(list, now).filter((e) => !e.is_all_day);
+    const todayList = eventsOnDay(list, now);
     const today = format(now, "yyyy-MM-dd");
     const overdue = (tasks ?? []).filter(
       (t) => t.status !== "done" && t.deadline && t.deadline < today,
     );
     return { next: upcoming[0] ?? null, todayList, overdue };
-  }, [appts, tasks, now]);
+  }, [events, tasks, now]);
+
 
   return (
     <div className="relative min-h-screen bg-background pb-28">
@@ -102,14 +92,26 @@ function TodayPage() {
 
         <section className="mt-6">
           <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Up next</h2>
-          {next ? (
+          {isLoading ? (
+            <div className="h-28 animate-pulse rounded-2xl border border-border bg-card" />
+          ) : isError ? (
+            <div className="rounded-2xl border border-destructive/40 bg-destructive/5 px-5 py-5 text-sm">
+              <p className="text-foreground">Couldn't load your schedule.</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {error instanceof Error ? error.message : "Unknown error"}
+              </p>
+              <Button variant="outline" size="sm" className="mt-3" onClick={() => refetch()}>
+                Try again
+              </Button>
+            </div>
+          ) : next ? (
             <div className="rounded-2xl border border-accent/40 bg-card px-5 py-5">
               <p className="font-serif text-xl text-foreground">{next.title}</p>
               <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
                 <span className="inline-flex items-center gap-1.5">
                   <Clock className="h-3.5 w-3.5" />
-                  {format(new Date(next.starts_at), "h:mm a")}
-                  {next.ends_at ? ` – ${format(new Date(next.ends_at), "h:mm a")}` : ""}
+                  {format(eventStart(next), "h:mm a")}
+                  {next.ends_at ? ` – ${format(eventEnd(next), "h:mm a")}` : ""}
                 </span>
                 {next.location && (
                   <span className="inline-flex items-center gap-1.5">
@@ -117,7 +119,11 @@ function TodayPage() {
                   </span>
                 )}
               </div>
-              <p className="mt-3 text-xs text-accent">{relativeLabel(now, new Date(next.starts_at))}</p>
+              <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                <SourceBadge event={next} />
+                <CommitmentBadge event={next} />
+              </div>
+              <p className="mt-3 text-xs text-accent">{relativeLabel(now, eventStart(next))}</p>
             </div>
           ) : (
             <p className="rounded-2xl border border-dashed border-border px-5 py-8 text-center text-sm text-muted-foreground">
@@ -130,24 +136,37 @@ function TodayPage() {
           <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Rest of today · {todayList.length}
           </h2>
-          {todayList.length === 0 ? (
+          {isLoading ? (
+            <div className="space-y-2">
+              <div className="h-14 animate-pulse rounded-xl border border-border bg-card" />
+              <div className="h-14 animate-pulse rounded-xl border border-border bg-card" />
+            </div>
+          ) : todayList.length === 0 ? (
             <p className="text-sm text-muted-foreground">No appointments today.</p>
           ) : (
             <ul className="space-y-2">
               {todayList.map((a) => (
                 <li
                   key={a.id}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3"
+                  className="flex flex-col gap-1.5 rounded-xl border border-border bg-card px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
                 >
-                  <span className="min-w-0 truncate text-sm text-foreground">{a.title}</span>
+                  <div className="min-w-0">
+                    <span className="block truncate text-sm text-foreground">{a.title}</span>
+                    <span className="mt-1 flex flex-wrap items-center gap-1.5">
+                      <SourceBadge event={a} />
+                      <CommitmentBadge event={a} />
+                      {a.is_all_day && <AllDayBadge />}
+                    </span>
+                  </div>
                   <span className="shrink-0 text-xs text-muted-foreground">
-                    {format(new Date(a.starts_at), "h:mm a")}
+                    {a.is_all_day ? "All day" : format(eventStart(a), "h:mm a")}
                   </span>
                 </li>
               ))}
             </ul>
           )}
         </section>
+
 
         <OverdueSection items={overdue} />
 

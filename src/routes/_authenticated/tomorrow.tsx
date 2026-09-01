@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, useEffect } from "react";
-import { format, addDays, isSameDay } from "date-fns";
-import { supabase } from "@/integrations/supabase/client";
+import { format, addDays } from "date-fns";
+import { eventStart, eventEnd, eventsOnDay, useScheduleEvents } from "@/lib/schedule-hub";
+import { SourceBadge, CommitmentBadge, AllDayBadge } from "@/components/ScheduleBadges";
 import { listTasks, autoScheduleTasks, dailyBriefing, type AutoScheduleResult, type Briefing } from "@/lib/tasks.functions";
 import { Button } from "@/components/ui/button";
 import { WhyTheseBlocks } from "@/components/WhyTheseBlocks";
@@ -27,8 +28,6 @@ export const Route = createFileRoute("/_authenticated/tomorrow")({
   }),
 });
 
-type Appointment = { id: string; title: string; starts_at: string; ends_at: string | null };
-
 function TomorrowPage() {
   const qc = useQueryClient();
   const tomorrow = addDays(new Date(), 1);
@@ -40,20 +39,13 @@ function TomorrowPage() {
   const [brief, setBrief] = useState<Briefing | null>(null);
   const [briefBusy, setBriefBusy] = useState(false);
 
-  const { data: appts } = useQuery({
-    queryKey: ["appointments"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("appointments").select("*").order("starts_at");
-      if (error) throw error;
-      return (data ?? []) as Appointment[];
-    },
-  });
+  const { data: events, isLoading: apptsLoading, isError: apptsError } = useScheduleEvents();
 
   const { data: tasks } = useQuery({ queryKey: ["tasks"], queryFn: () => listTasks() });
 
   const dayAppts = useMemo(
-    () => (appts ?? []).filter((a) => isSameDay(new Date(a.starts_at), tomorrow)),
-    [appts, tomorrow],
+    () => eventsOnDay(events ?? [], tomorrow),
+    [events, tomorrow],
   );
   const openTasks = useMemo(() => (tasks ?? []).filter((t) => t.status === "open"), [tasks]);
 
@@ -125,16 +117,31 @@ function TomorrowPage() {
 
         <section className="mt-8 rounded-xl border border-border bg-card p-5">
           <h2 className="font-serif text-xl">Tomorrow's commitments · {dayAppts.length}</h2>
-          {dayAppts.length === 0 ? (
+          {apptsLoading ? (
+            <div className="mt-3 space-y-2">
+              <div className="h-6 animate-pulse rounded bg-secondary" />
+              <div className="h-6 animate-pulse rounded bg-secondary" />
+            </div>
+          ) : apptsError ? (
+            <p className="mt-2 text-sm text-destructive">Couldn't load tomorrow's schedule.</p>
+          ) : dayAppts.length === 0 ? (
             <p className="mt-2 text-sm text-muted-foreground">Nothing scheduled yet — the day is wide open.</p>
           ) : (
             <ul className="mt-3 space-y-1.5">
               {dayAppts.map((a) => (
-                <li key={a.id} className="flex items-center justify-between gap-3 text-sm">
-                  <span className="min-w-0 truncate">{a.title}</span>
+                <li key={a.id} className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                  <span className="min-w-0">
+                    <span className="block truncate">{a.title}</span>
+                    <span className="mt-1 flex flex-wrap items-center gap-1.5">
+                      <SourceBadge event={a} />
+                      <CommitmentBadge event={a} />
+                      {a.is_all_day && <AllDayBadge />}
+                    </span>
+                  </span>
                   <span className="shrink-0 text-muted-foreground">
-                    {format(new Date(a.starts_at), "h:mm a")}
-                    {a.ends_at ? ` – ${format(new Date(a.ends_at), "h:mm a")}` : ""}
+                    {a.is_all_day
+                      ? "All day"
+                      : `${format(eventStart(a), "h:mm a")}${a.ends_at ? ` – ${format(eventEnd(a), "h:mm a")}` : ""}`}
                   </span>
                 </li>
               ))}
