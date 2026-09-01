@@ -493,11 +493,92 @@ export type Database = {
             referencedRelation: "appointments"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "tasks_scheduled_appointment_id_fkey"
+            columns: ["scheduled_appointment_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_hub_events"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
     Views: {
-      [_ in never]: never
+      schedule_hub_events: {
+        Row: {
+          calendar_event_id: string | null
+          calendar_id: string | null
+          commitment_type: string | null
+          created_at: string | null
+          duration_min: number | null
+          ends_at: string | null
+          id: string | null
+          is_all_day: boolean | null
+          location: string | null
+          notes: string | null
+          privacy_level: string | null
+          provider: string | null
+          provider_account_id: string | null
+          recurrence_rule: string | null
+          source: string | null
+          source_label: string | null
+          starts_at: string | null
+          sync_status: string | null
+          timezone: string | null
+          title: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          calendar_event_id?: string | null
+          calendar_id?: string | null
+          commitment_type?: never
+          created_at?: string | null
+          duration_min?: never
+          ends_at?: string | null
+          id?: string | null
+          is_all_day?: never
+          location?: string | null
+          notes?: string | null
+          privacy_level?: never
+          provider?: never
+          provider_account_id?: never
+          recurrence_rule?: never
+          source?: string | null
+          source_label?: never
+          starts_at?: string | null
+          sync_status?: never
+          timezone?: never
+          title?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          calendar_event_id?: string | null
+          calendar_id?: string | null
+          commitment_type?: never
+          created_at?: string | null
+          duration_min?: never
+          ends_at?: string | null
+          id?: string | null
+          is_all_day?: never
+          location?: string | null
+          notes?: string | null
+          privacy_level?: never
+          provider?: never
+          provider_account_id?: never
+          recurrence_rule?: never
+          source?: string | null
+          source_label?: never
+          starts_at?: string | null
+          sync_status?: never
+          timezone?: never
+          title?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never
