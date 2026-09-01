@@ -2,8 +2,15 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { format, isSameDay, differenceInMinutes } from "date-fns";
-import { supabase } from "@/integrations/supabase/client";
 import { listTasks, upsertTask, setTaskStatus } from "@/lib/tasks.functions";
+import {
+  eventEnd,
+  eventStart,
+  eventsOnDay,
+  upcomingEvents,
+  useScheduleEvents,
+} from "@/lib/schedule-hub";
+import { AllDayBadge, CommitmentBadge, SourceBadge } from "@/components/ScheduleBadges";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,41 +48,24 @@ export const Route = createFileRoute("/_authenticated/today")({
   }),
 });
 
-type Appointment = {
-  id: string;
-  title: string;
-  location: string | null;
-  starts_at: string;
-  ends_at: string | null;
-};
-
 function TodayPage() {
   const now = new Date();
 
-  const { data: appts } = useQuery({
-    queryKey: ["appointments"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("appointments")
-        .select("*")
-        .order("starts_at", { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as Appointment[];
-    },
-  });
+  const { data: events, isLoading, isError, error, refetch } = useScheduleEvents();
 
   const { data: tasks } = useQuery({ queryKey: ["tasks"], queryFn: () => listTasks() });
 
   const { next, todayList, overdue } = useMemo(() => {
-    const list = appts ?? [];
-    const upcoming = list.filter((a) => new Date(a.ends_at ?? a.starts_at) >= now);
-    const todayList = list.filter((a) => isSameDay(new Date(a.starts_at), now));
+    const list = events ?? [];
+    const upcoming = upcomingEvents(list, now).filter((e) => !e.is_all_day);
+    const todayList = eventsOnDay(list, now);
     const today = format(now, "yyyy-MM-dd");
     const overdue = (tasks ?? []).filter(
       (t) => t.status !== "done" && t.deadline && t.deadline < today,
     );
     return { next: upcoming[0] ?? null, todayList, overdue };
-  }, [appts, tasks, now]);
+  }, [events, tasks, now]);
+
 
   return (
     <div className="relative min-h-screen bg-background pb-28">
