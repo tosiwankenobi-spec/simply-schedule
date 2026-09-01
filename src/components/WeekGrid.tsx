@@ -1,16 +1,9 @@
 import { useMemo, useRef, useState } from "react";
 import { addDays, format, isSameDay, startOfWeek } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, MapPin } from "lucide-react";
-
-export type WeekAppointment = {
-  id: string;
-  title: string;
-  location: string | null;
-  starts_at: string;
-  ends_at: string | null;
-  source: string;
-};
+import { ChevronLeft, ChevronRight, Lock, MapPin } from "lucide-react";
+import { toast } from "sonner";
+import { eventEnd, eventStart, isMovable, type ScheduleEvent } from "@/lib/schedule-hub";
 
 const SLOT_MIN = 30;
 const PX_PER_MIN = 1; // 30px per slot
@@ -21,7 +14,7 @@ export function WeekGrid({
   items,
   onMove,
 }: {
-  items: WeekAppointment[];
+  items: ScheduleEvent[];
   onMove: (id: string, startsAt: string, endsAt: string | null) => void;
 }) {
   const [anchor, setAnchor] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
@@ -35,6 +28,9 @@ export function WeekGrid({
     [],
   );
   const gridHeight = (END_HOUR - START_HOUR) * 60 * PX_PER_MIN;
+
+  const timed = useMemo(() => items.filter((a) => !a.is_all_day), [items]);
+  const allDay = useMemo(() => items.filter((a) => a.is_all_day), [items]);
 
   function minutesFromTop(date: Date) {
     return (date.getHours() - START_HOUR) * 60 + date.getMinutes();
@@ -58,10 +54,15 @@ export function WeekGrid({
     if (min === null) return;
     const appt = items.find((a) => a.id === dragId);
     if (!appt) return;
+    if (!isMovable(appt)) {
+      toast.message("That block is fixed", {
+        description: `${appt.source_label} owns this event — reschedule it there and it will sync back.`,
+      });
+      return;
+    }
 
-    const start = new Date(appt.starts_at);
-    const end = appt.ends_at ? new Date(appt.ends_at) : null;
-    const durationMs = end ? end.getTime() - start.getTime() : null;
+    const start = eventStart(appt);
+    const durationMs = eventEnd(appt).getTime() - start.getTime();
 
     const target = new Date(days[dayIdx]!);
     target.setHours(START_HOUR, 0, 0, 0);
@@ -71,13 +72,13 @@ export function WeekGrid({
     onMove(
       appt.id,
       target.toISOString(),
-      durationMs !== null ? new Date(target.getTime() + durationMs).toISOString() : null,
+      appt.ends_at ? new Date(target.getTime() + durationMs).toISOString() : null,
     );
   }
 
   return (
     <div>
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="icon" aria-label="Previous week" onClick={() => setAnchor(addDays(anchor, -7))}>
             <ChevronLeft className="h-4 w-4" />
@@ -85,7 +86,7 @@ export function WeekGrid({
           <Button variant="ghost" size="icon" aria-label="Next week" onClick={() => setAnchor(addDays(anchor, 7))}>
             <ChevronRight className="h-4 w-4" />
           </Button>
-          <span className="ml-2 font-serif text-lg">
+          <span className="ml-1 font-serif text-base sm:text-lg">
             {format(anchor, "MMM d")} – {format(addDays(anchor, 6), "MMM d, yyyy")}
           </span>
         </div>
@@ -99,10 +100,12 @@ export function WeekGrid({
         </Button>
       </div>
 
-      <p className="mb-2 text-xs text-muted-foreground">Drag any block to a new day or time.</p>
+      <p className="mb-2 text-xs text-muted-foreground">
+        Drag flexible blocks to a new day or time. Fixed events from an external calendar stay put.
+      </p>
 
-      <div className="overflow-x-auto rounded-xl border border-border bg-card">
-        <div className="min-w-[640px]">
+      <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+        <div className="min-w-[640px] rounded-xl border border-border bg-card">
           <div className="grid grid-cols-[48px_repeat(7,1fr)] border-b border-border">
             <div />
             {days.map((d) => (
@@ -115,6 +118,28 @@ export function WeekGrid({
               </div>
             ))}
           </div>
+
+          {allDay.length > 0 && (
+            <div className="grid grid-cols-[48px_repeat(7,1fr)] border-b border-border bg-secondary/40">
+              <div className="px-1 py-1 text-right text-[10px] text-muted-foreground">all‑day</div>
+              {days.map((day) => {
+                const dayAllDay = allDay.filter((a) => isSameDay(eventStart(a), day));
+                return (
+                  <div key={day.toISOString()} className="min-h-7 border-l border-border p-1">
+                    {dayAllDay.map((a) => (
+                      <div
+                        key={a.id}
+                        title={`${a.title} · ${a.source_label}`}
+                        className="mb-0.5 truncate rounded bg-muted px-1 text-[10px] text-foreground"
+                      >
+                        {a.title}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           <div className="grid grid-cols-[48px_repeat(7,1fr)]">
             <div className="relative" style={{ height: gridHeight }}>
@@ -130,7 +155,7 @@ export function WeekGrid({
             </div>
 
             {days.map((day, dayIdx) => {
-              const dayItems = items.filter((a) => isSameDay(new Date(a.starts_at), day));
+              const dayItems = timed.filter((a) => isSameDay(eventStart(a), day));
               return (
                 <div
                   key={day.toISOString()}
@@ -161,28 +186,34 @@ export function WeekGrid({
                   )}
 
                   {dayItems.map((a) => {
-                    const start = new Date(a.starts_at);
-                    const end = a.ends_at ? new Date(a.ends_at) : new Date(start.getTime() + 30 * 60000);
+                    const start = eventStart(a);
+                    const end = eventEnd(a);
                     const top = minutesFromTop(start) * PX_PER_MIN;
                     const height = Math.max(
                       20,
                       ((end.getTime() - start.getTime()) / 60000) * PX_PER_MIN,
                     );
+                    const movable = isMovable(a);
                     return (
                       <div
                         key={a.id}
-                        draggable
-                        onDragStart={() => setDragId(a.id)}
+                        draggable={movable}
+                        onDragStart={() => movable && setDragId(a.id)}
                         onDragEnd={() => { setDragId(null); setHover(null); }}
-                        title={`${a.title} · ${format(start, "h:mm a")}`}
-                        className={`absolute inset-x-1 cursor-grab overflow-hidden rounded-md border px-1.5 py-1 text-[11px] leading-tight active:cursor-grabbing ${
+                        title={`${a.title} · ${format(start, "h:mm a")} · ${a.source_label}${movable ? "" : " (fixed)"}`}
+                        className={`absolute inset-x-1 overflow-hidden rounded-md border px-1.5 py-1 text-[11px] leading-tight ${
+                          movable ? "cursor-grab active:cursor-grabbing" : "cursor-default border-dashed"
+                        } ${
                           a.source === "task"
                             ? "border-accent/50 bg-accent/15 text-foreground"
                             : "border-border bg-secondary text-foreground"
                         } ${dragId === a.id ? "opacity-50" : ""}`}
                         style={{ top: Math.max(0, top), height }}
                       >
-                        <span className="block truncate font-medium">{a.title}</span>
+                        <span className="flex items-center gap-1 truncate font-medium">
+                          {!movable && <Lock className="h-2.5 w-2.5 shrink-0 text-muted-foreground" />}
+                          <span className="truncate">{a.title}</span>
+                        </span>
                         <span className="block truncate text-muted-foreground">
                           {format(start, "h:mm")}
                           {a.location ? (
@@ -191,6 +222,9 @@ export function WeekGrid({
                               {a.location}
                             </span>
                           ) : null}
+                        </span>
+                        <span className="block truncate text-[9px] uppercase tracking-wide text-muted-foreground">
+                          {a.source_label}
                         </span>
                       </div>
                     );
