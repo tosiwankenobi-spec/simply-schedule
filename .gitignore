@@ -22,6 +22,9 @@ dist-ssr
 .env.*
 !.env.example
 
+# Supabase CLI local link and version metadata.
+supabase/.temp/
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
