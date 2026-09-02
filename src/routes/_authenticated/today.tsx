@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { format, isSameDay, differenceInMinutes } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
 import { listTasks, upsertTask, setTaskStatus } from "@/lib/tasks.functions";
 import {
   eventEnd,
