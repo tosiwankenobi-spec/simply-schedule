@@ -13,6 +13,7 @@ import { Route as Char91indexChar93RouteImport } from './routes/[index]'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedWeeklyResetRouteImport } from './routes/_authenticated/weekly-reset'
 import { Route as AuthenticatedTomorrowRouteImport } from './routes/_authenticated/tomorrow'
 import { Route as AuthenticatedTodayRouteImport } from './routes/_authenticated/today'
 import { Route as AuthenticatedTasksRouteImport } from './routes/_authenticated/tasks'
@@ -43,6 +44,12 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedWeeklyResetRoute =
+  AuthenticatedWeeklyResetRouteImport.update({
+    id: '/weekly-reset',
+    path: '/weekly-reset',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedTomorrowRoute = AuthenticatedTomorrowRouteImport.update({
   id: '/tomorrow',
   path: '/tomorrow',
@@ -106,6 +113,7 @@ export interface FileRoutesByFullPath {
   '/tasks': typeof AuthenticatedTasksRoute
   '/today': typeof AuthenticatedTodayRoute
   '/tomorrow': typeof AuthenticatedTomorrowRoute
+  '/weekly-reset': typeof AuthenticatedWeeklyResetRoute
   '/planner/preferences': typeof AuthenticatedPlannerPreferencesRoute
   '/setup/android': typeof AuthenticatedSetupAndroidRoute
   '/setup/gmail': typeof AuthenticatedSetupGmailRoute
@@ -121,6 +129,7 @@ export interface FileRoutesByTo {
   '/tasks': typeof AuthenticatedTasksRoute
   '/today': typeof AuthenticatedTodayRoute
   '/tomorrow': typeof AuthenticatedTomorrowRoute
+  '/weekly-reset': typeof AuthenticatedWeeklyResetRoute
   '/planner/preferences': typeof AuthenticatedPlannerPreferencesRoute
   '/setup/android': typeof AuthenticatedSetupAndroidRoute
   '/setup/gmail': typeof AuthenticatedSetupGmailRoute
@@ -138,6 +147,7 @@ export interface FileRoutesById {
   '/_authenticated/tasks': typeof AuthenticatedTasksRoute
   '/_authenticated/today': typeof AuthenticatedTodayRoute
   '/_authenticated/tomorrow': typeof AuthenticatedTomorrowRoute
+  '/_authenticated/weekly-reset': typeof AuthenticatedWeeklyResetRoute
   '/_authenticated/planner/preferences': typeof AuthenticatedPlannerPreferencesRoute
   '/_authenticated/setup/android': typeof AuthenticatedSetupAndroidRoute
   '/_authenticated/setup/gmail': typeof AuthenticatedSetupGmailRoute
@@ -155,6 +165,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/today'
     | '/tomorrow'
+    | '/weekly-reset'
     | '/planner/preferences'
     | '/setup/android'
     | '/setup/gmail'
@@ -170,6 +181,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/today'
     | '/tomorrow'
+    | '/weekly-reset'
     | '/planner/preferences'
     | '/setup/android'
     | '/setup/gmail'
@@ -186,6 +198,7 @@ export interface FileRouteTypes {
     | '/_authenticated/tasks'
     | '/_authenticated/today'
     | '/_authenticated/tomorrow'
+    | '/_authenticated/weekly-reset'
     | '/_authenticated/planner/preferences'
     | '/_authenticated/setup/android'
     | '/_authenticated/setup/gmail'
@@ -229,6 +242,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/weekly-reset': {
+      id: '/_authenticated/weekly-reset'
+      path: '/weekly-reset'
+      fullPath: '/weekly-reset'
+      preLoaderRoute: typeof AuthenticatedWeeklyResetRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/tomorrow': {
       id: '/_authenticated/tomorrow'
@@ -320,6 +340,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedTasksRoute: typeof AuthenticatedTasksRoute
   AuthenticatedTodayRoute: typeof AuthenticatedTodayRoute
   AuthenticatedTomorrowRoute: typeof AuthenticatedTomorrowRoute
+  AuthenticatedWeeklyResetRoute: typeof AuthenticatedWeeklyResetRoute
   AuthenticatedSetupAndroidRoute: typeof AuthenticatedSetupAndroidRoute
   AuthenticatedSetupGmailRoute: typeof AuthenticatedSetupGmailRoute
   AuthenticatedSetupNotificationsRoute: typeof AuthenticatedSetupNotificationsRoute
@@ -332,6 +353,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedTasksRoute: AuthenticatedTasksRoute,
   AuthenticatedTodayRoute: AuthenticatedTodayRoute,
   AuthenticatedTomorrowRoute: AuthenticatedTomorrowRoute,
+  AuthenticatedWeeklyResetRoute: AuthenticatedWeeklyResetRoute,
   AuthenticatedSetupAndroidRoute: AuthenticatedSetupAndroidRoute,
   AuthenticatedSetupGmailRoute: AuthenticatedSetupGmailRoute,
   AuthenticatedSetupNotificationsRoute: AuthenticatedSetupNotificationsRoute,

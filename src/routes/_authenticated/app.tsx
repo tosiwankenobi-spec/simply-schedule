@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import logo from "@/assets/chronos-v-logo.png.asset.json";
-import { Sparkles, Plus, MapPin, Trash2, LogOut, Clock, Mail, Wand2, Settings, ListTodo, RefreshCw, Sun, Moon, Bell } from "lucide-react";
+import { Sparkles, Plus, MapPin, Trash2, LogOut, Clock, Mail, Wand2, Settings, ListTodo, RefreshCw, Sun, Moon, Bell, CalendarCheck } from "lucide-react";
 import { DailyBriefing } from "@/components/DailyBriefing";
 import { WeekGrid } from "@/components/WeekGrid";
 import { useScheduleEvents } from "@/lib/schedule-hub";
@@ -149,6 +149,9 @@ function AppPage() {
           </Button>
           <Button asChild variant="outline">
             <Link to="/tasks"><ListTodo className="h-4 w-4 mr-1.5" /> Tasks</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link to="/weekly-reset"><CalendarCheck className="h-4 w-4 mr-1.5" /> Weekly reset</Link>
           </Button>
           <ExportIcsButton />
           <GmailImportButton />
