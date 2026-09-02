@@ -82,7 +82,7 @@ function GmailSetupPage() {
           </Step>
 
           <Step n={7} title="Send testers the Connect link">
-            <p>Once the Client ID &amp; Secret are saved in this app, each tester signs in and clicks <b>Connect Gmail</b> on their schedule. They'll go through Google's consent screen with their own account — and imports will pull from <i>their</i> inbox.</p>
+            <p>Once the Client ID &amp; Secret are saved in this app, each tester signs in and clicks <b>Connect Gmail</b> on their schedule. They'll go through Google's consent screen with their own account — and Smart Inbox will suggest appointments from <i>their</i> inbox for approval.</p>
           </Step>
         </ol>
 

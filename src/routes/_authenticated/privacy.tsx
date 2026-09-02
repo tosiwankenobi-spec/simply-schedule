@@ -316,8 +316,8 @@ function PrivacyPage() {
               importedItems={data.gmail.importedItems}
               lastAccessedAt={data.gmail.lastAccessedAt}
               reads="Recent inbox messages that match appointment-related terms, including sender, subject, date, and message text."
-              reason="To detect likely appointments. Matching message text is sent through Lovable's configured AI gateway during a scan; ambiguous messages are skipped."
-              stores="Accepted appointment details, message/thread identifiers needed for deduplication, and a short sync activity log. Raw email bodies are not stored in Chronos-V."
+              reason="To suggest likely appointments for your review. Nothing is added until you approve it. Matching message text is sent through Lovable's configured AI gateway during a scan; ambiguous messages are skipped."
+              stores="Approved appointment details, message/thread identifiers needed for deduplication, dismissed message identifiers for 30 days, and a short sync activity log. Raw email bodies are not stored in Chronos-V."
               busy={busy}
               onAccessChange={(provider, enabled) => access.mutate({ provider, enabled })}
               onDelete={(provider) => remove.mutate(provider)}

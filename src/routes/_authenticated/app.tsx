@@ -4,7 +4,6 @@ import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { format, isToday, isTomorrow, isPast, startOfDay, addDays } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { parseAppointmentWithAI } from "@/lib/appointments.functions";
-import { importFromGmail } from "@/lib/gmail.functions";
 import { syncGoogleCalendar, getSyncStatus } from "@/lib/calendar.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -184,7 +183,11 @@ function AppPage() {
             </Link>
           </Button>
           <ExportIcsButton />
-          <GmailImportButton />
+          <Button asChild variant="outline">
+            <Link to="/inbox">
+              <Mail className="h-4 w-4 mr-1.5" /> Smart inbox
+            </Link>
+          </Button>
           <SyncControl />
           <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
             <Link to="/setup/gmail">
@@ -218,8 +221,8 @@ function AppPage() {
 
         <p className="mt-2 text-xs text-muted-foreground">
           Two-way sync keeps Google Calendar and this schedule in step — changes you make here are
-          pushed up, and calendar edits flow back automatically. Gmail import only adds emails that
-          clearly describe an appointment.
+          pushed up, and calendar edits flow back automatically. Smart Inbox asks before adding any
+          appointment it detects in Gmail.
         </p>
 
         <QuickCapture />
@@ -359,40 +362,6 @@ function SyncControl() {
         </Link>
       </Button>
     </>
-  );
-}
-
-function GmailImportButton() {
-  const qc = useQueryClient();
-  const [busy, setBusy] = useState(false);
-  async function run() {
-    setBusy(true);
-    const t = toast.loading("Scanning your inbox…");
-    try {
-      const res = await importFromGmail();
-      toast.dismiss(t);
-      if (res.imported > 0) {
-        toast.success(
-          `Imported ${res.imported} appointment${res.imported === 1 ? "" : "s"} from Gmail`,
-        );
-        qc.invalidateQueries({ queryKey: ["appointments"] });
-      } else {
-        toast.message("No new appointments found", {
-          description: `Scanned ${res.scanned} recent emails.`,
-        });
-      }
-    } catch (err) {
-      toast.dismiss(t);
-      toast.error(err instanceof Error ? err.message : "Couldn't import from Gmail");
-    } finally {
-      setBusy(false);
-    }
-  }
-  return (
-    <Button variant="outline" onClick={run} disabled={busy}>
-      <Mail className="h-4 w-4 mr-1.5" />
-      {busy ? "Scanning…" : "Import from Gmail"}
-    </Button>
   );
 }
 

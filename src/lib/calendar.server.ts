@@ -103,9 +103,23 @@ export async function logEvent(
 }
 
 async function trimLog(supabase: SupabaseClient, userId: string) {
-  const cutoff = new Date(Date.now() - 7 * 86400000).toISOString();
+  const standardCutoff = new Date(Date.now() - 7 * 86400000).toISOString();
+  const dismissalCutoff = new Date(Date.now() - 30 * 86400000).toISOString();
   try {
-    await supabase.from("sync_log").delete().eq("user_id", userId).lt("created_at", cutoff);
+    await Promise.all([
+      supabase
+        .from("sync_log")
+        .delete()
+        .eq("user_id", userId)
+        .neq("kind", "gmail_dismissed")
+        .lt("created_at", standardCutoff),
+      supabase
+        .from("sync_log")
+        .delete()
+        .eq("user_id", userId)
+        .eq("kind", "gmail_dismissed")
+        .lt("created_at", dismissalCutoff),
+    ]);
   } catch {
     /* best effort */
   }

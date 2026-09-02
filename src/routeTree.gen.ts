@@ -19,6 +19,7 @@ import { Route as AuthenticatedTodayRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedTasksRouteImport } from './routes/_authenticated/tasks'
 import { Route as AuthenticatedPrivacyRouteImport } from './routes/_authenticated/privacy'
 import { Route as AuthenticatedPlannerRouteImport } from './routes/_authenticated/planner'
+import { Route as AuthenticatedInboxRouteImport } from './routes/_authenticated/inbox'
 import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/app'
 import { Route as AuthenticatedSetupSyncRouteImport } from './routes/_authenticated/setup.sync'
 import { Route as AuthenticatedSetupNotificationsRouteImport } from './routes/_authenticated/setup.notifications'
@@ -76,6 +77,11 @@ const AuthenticatedPlannerRoute = AuthenticatedPlannerRouteImport.update({
   path: '/planner',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedInboxRoute = AuthenticatedInboxRouteImport.update({
+  id: '/inbox',
+  path: '/inbox',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedAppRoute = AuthenticatedAppRouteImport.update({
   id: '/app',
   path: '/app',
@@ -115,6 +121,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/index': typeof Char91indexChar93Route
   '/app': typeof AuthenticatedAppRoute
+  '/inbox': typeof AuthenticatedInboxRoute
   '/planner': typeof AuthenticatedPlannerRouteWithChildren
   '/privacy': typeof AuthenticatedPrivacyRoute
   '/tasks': typeof AuthenticatedTasksRoute
@@ -132,6 +139,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/index': typeof Char91indexChar93Route
   '/app': typeof AuthenticatedAppRoute
+  '/inbox': typeof AuthenticatedInboxRoute
   '/planner': typeof AuthenticatedPlannerRouteWithChildren
   '/privacy': typeof AuthenticatedPrivacyRoute
   '/tasks': typeof AuthenticatedTasksRoute
@@ -151,6 +159,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/index': typeof Char91indexChar93Route
   '/_authenticated/app': typeof AuthenticatedAppRoute
+  '/_authenticated/inbox': typeof AuthenticatedInboxRoute
   '/_authenticated/planner': typeof AuthenticatedPlannerRouteWithChildren
   '/_authenticated/privacy': typeof AuthenticatedPrivacyRoute
   '/_authenticated/tasks': typeof AuthenticatedTasksRoute
@@ -170,6 +179,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/index'
     | '/app'
+    | '/inbox'
     | '/planner'
     | '/privacy'
     | '/tasks'
@@ -187,6 +197,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/index'
     | '/app'
+    | '/inbox'
     | '/planner'
     | '/privacy'
     | '/tasks'
@@ -205,6 +216,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/index'
     | '/_authenticated/app'
+    | '/_authenticated/inbox'
     | '/_authenticated/planner'
     | '/_authenticated/privacy'
     | '/_authenticated/tasks'
@@ -297,6 +309,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPlannerRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/inbox': {
+      id: '/_authenticated/inbox'
+      path: '/inbox'
+      fullPath: '/inbox'
+      preLoaderRoute: typeof AuthenticatedInboxRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/app': {
       id: '/_authenticated/app'
       path: '/app'
@@ -355,6 +374,7 @@ const AuthenticatedPlannerRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAppRoute: typeof AuthenticatedAppRoute
+  AuthenticatedInboxRoute: typeof AuthenticatedInboxRoute
   AuthenticatedPlannerRoute: typeof AuthenticatedPlannerRouteWithChildren
   AuthenticatedPrivacyRoute: typeof AuthenticatedPrivacyRoute
   AuthenticatedTasksRoute: typeof AuthenticatedTasksRoute
@@ -369,6 +389,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAppRoute: AuthenticatedAppRoute,
+  AuthenticatedInboxRoute: AuthenticatedInboxRoute,
   AuthenticatedPlannerRoute: AuthenticatedPlannerRouteWithChildren,
   AuthenticatedPrivacyRoute: AuthenticatedPrivacyRoute,
   AuthenticatedTasksRoute: AuthenticatedTasksRoute,
