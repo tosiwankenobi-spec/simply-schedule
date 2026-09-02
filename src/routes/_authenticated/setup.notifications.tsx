@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import {
   getNotificationPrefs,
+  getAdaptiveReminderPreview,
   saveNotificationPrefs,
   sendTestNotification,
   type NotifPrefs,
@@ -12,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { ArrowLeft, BellRing, Mail, Send, X } from "lucide-react";
+import { ArrowLeft, BellRing, Brain, Mail, Send, ShieldCheck, X } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/setup/notifications")({
   component: NotificationSetup,
@@ -42,6 +43,11 @@ function leadLabel(min: number) {
 function NotificationSetup() {
   const qc = useQueryClient();
   const { data } = useQuery({ queryKey: ["notif-prefs"], queryFn: () => getNotificationPrefs() });
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  const adaptivePreview = useQuery({
+    queryKey: ["adaptive-reminder-preview", timeZone],
+    queryFn: () => getAdaptiveReminderPreview({ data: { timeZone } }),
+  });
   const [form, setForm] = useState<NotifPrefs | null>(null);
   const [saving, setSaving] = useState(false);
   const [customLead, setCustomLead] = useState("");
@@ -77,7 +83,7 @@ function NotificationSetup() {
   const save = async () => {
     setSaving(true);
     try {
-      await saveNotificationPrefs({ data: { ...form, email_to: form.email_to ?? "" } as any });
+      await saveNotificationPrefs({ data: { ...form, email_to: form.email_to ?? "" } });
       qc.invalidateQueries({ queryKey: ["notif-prefs"] });
       toast.success("Reminder settings saved.");
     } catch (e) {
@@ -183,6 +189,64 @@ function NotificationSetup() {
               />
             </div>
             <Button variant="outline" onClick={addCustom}>Add</Button>
+          </div>
+        </section>
+
+        <section className="mt-6 space-y-4 rounded-xl border border-border bg-card p-5">
+          <div className="flex items-start gap-3">
+            <div className="rounded-lg bg-muted p-2">
+              <Brain className="h-4 w-4" />
+            </div>
+            <div>
+              <h2 className="font-serif text-xl">Adaptive timing</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Chronos-V adds a close reminder for online meetings, an earlier travel check for physical
+                locations, and an evening-before prompt for fixed commitments that may need preparation.
+              </p>
+            </div>
+          </div>
+
+          {adaptivePreview.isLoading && (
+            <p className="text-sm text-muted-foreground">Checking your upcoming schedule…</p>
+          )}
+          {adaptivePreview.data && adaptivePreview.data.length > 0 ? (
+            <div className="space-y-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Upcoming adaptive reminders
+              </p>
+              {adaptivePreview.data.map((appointment) => (
+                <div key={appointment.id} className="rounded-lg border border-border bg-background p-3">
+                  <p className="text-sm font-medium">{appointment.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(appointment.starts_at).toLocaleString([], {
+                      weekday: "short",
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                  <ul className="mt-2 space-y-1.5">
+                    {appointment.signals.map((signal) => (
+                      <li key={signal.key} className="text-xs text-muted-foreground">
+                        <span className="font-medium text-foreground">{signal.label}:</span> {signal.reason}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          ) : adaptivePreview.isSuccess ? (
+            <p className="text-sm text-muted-foreground">
+              No upcoming appointments need adaptive timing in the next two weeks.
+            </p>
+          ) : null}
+
+          <div className="flex items-start gap-2 rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
+            <p>
+              This uses only the title, time, location, notes, source, and commitment type from your own
+              appointments. The rules run inside Chronos-V; no schedule details are sent to a mapping or AI
+              service.
+            </p>
           </div>
         </section>
 

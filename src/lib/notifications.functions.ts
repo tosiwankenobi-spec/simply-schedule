@@ -1,9 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
-import type { NotifPrefs, PendingNotification } from "./notifications.server";
+import type {
+  AdaptiveReminderPreview,
+  NotifPrefs,
+  PendingNotification,
+} from "./notifications.server";
 
-export type { NotifPrefs, PendingNotification };
+export type { AdaptiveReminderPreview, NotifPrefs, PendingNotification };
 
 export const getNotificationPrefs = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -41,6 +45,29 @@ export const saveNotificationPrefs = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+const adaptivePreviewSchema = z.object({
+  timeZone: z.string().max(64).default("UTC"),
+});
+
+export const getAdaptiveReminderPreview = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => adaptivePreviewSchema.parse(i))
+  .handler(async ({ data, context }): Promise<AdaptiveReminderPreview[]> => {
+    const { buildAdaptiveReminderPreview } = await import("./notifications.server");
+    const now = new Date();
+    const horizon = new Date(now.getTime() + 14 * 24 * 3600 * 1000);
+    const { data: appointments, error } = await context.supabase
+      .from("appointments")
+      .select("id,title,starts_at,location,notes,source,commitment_type,is_all_day")
+      .eq("user_id", context.userId)
+      .gte("starts_at", now.toISOString())
+      .lte("starts_at", horizon.toISOString())
+      .order("starts_at")
+      .limit(20);
+    if (error) throw error;
+    return buildAdaptiveReminderPreview(appointments ?? [], data.timeZone).slice(0, 6);
+  });
+
 export type SweepResult = {
   /** Reminders created on this pass — the client shows these as device notifications. */
   fresh: { id: string; kind: string; title: string; body: string }[];
@@ -71,12 +98,13 @@ export const sweepNotifications = createServerFn({ method: "POST" })
     const prefs = (prefRow as NotifPrefs | null) ?? DEFAULT_PREFS;
 
     const now = Date.now();
-    const horizon = new Date(now + 26 * 3600 * 1000).toISOString();
+    const longestLeadMinutes = Math.max(26 * 60, ...prefs.appointment_lead_min);
+    const horizon = new Date(now + (longestLeadMinutes + 15) * 60000).toISOString();
 
     const [{ data: appts }, { data: tasks }, { data: lastNudge }] = await Promise.all([
       context.supabase
         .from("appointments")
-        .select("id,title,starts_at,location")
+        .select("id,title,starts_at,location,notes,source,commitment_type,is_all_day")
         .eq("user_id", context.userId)
         .gte("starts_at", new Date(now - 60000).toISOString())
         .lte("starts_at", horizon)

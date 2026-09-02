@@ -1,5 +1,11 @@
 // Server-only helpers for reminder generation and email delivery.
 
+import {
+  getAdaptiveReminderSignals,
+  isEveningBefore,
+  type ReminderAppointment,
+} from "./adaptive-reminders";
+
 export type NotifPrefs = {
   push_enabled: boolean;
   email_enabled: boolean;
@@ -51,6 +57,13 @@ export type PendingNotification = {
   body: string;
 };
 
+export type AdaptiveReminderPreview = {
+  id: string;
+  title: string;
+  starts_at: string;
+  signals: ReturnType<typeof getAdaptiveReminderSignals>;
+};
+
 function fmtTime(iso: string, tz: string) {
   try {
     return new Date(iso).toLocaleTimeString("en-US", {
@@ -68,7 +81,7 @@ export function buildDue(input: {
   prefs: NotifPrefs;
   nowMs: number;
   timeZone: string;
-  appointments: { id: string; title: string; starts_at: string; location: string | null }[];
+  appointments: ReminderAppointment[];
   tasks: { id: string; title: string; deadline: string | null; priority: number; status: string }[];
   lastNudgeMs: number | null;
 }): PendingNotification[] {
@@ -79,7 +92,7 @@ export function buildDue(input: {
   const leads = [...new Set(prefs.appointment_lead_min)].filter((n) => n > 0).sort((a, b) => b - a);
   for (const appt of input.appointments) {
     const startMs = Date.parse(appt.starts_at);
-    if (!Number.isFinite(startMs)) continue;
+    if (!Number.isFinite(startMs) || appt.is_all_day) continue;
     for (const lead of leads) {
       const fireAt = startMs - lead * 60000;
       // Fire inside a 15-minute window so a missed poll still delivers.
@@ -89,6 +102,37 @@ export function buildDue(input: {
           dedupe_key: `appt:${appt.id}:${lead}`,
           title: `In ${lead < 60 ? `${lead} min` : `${Math.round(lead / 60)} hr`}: ${appt.title}`,
           body: `${fmtTime(appt.starts_at, timeZone)}${appt.location ? ` · ${appt.location}` : ""}`,
+        });
+      }
+    }
+
+    const adaptive = getAdaptiveReminderSignals(appt, timeZone);
+    for (const signal of adaptive) {
+      if (signal.leadMinutes !== null) {
+        if (leads.includes(signal.leadMinutes)) continue;
+        const fireAt = startMs - signal.leadMinutes * 60000;
+        if (nowMs >= fireAt && nowMs < fireAt + 15 * 60000 && nowMs < startMs) {
+          const online = signal.key === "online";
+          out.push({
+            kind: "appointment",
+            dedupe_key: `appt:${appt.id}:adaptive:${signal.key}`,
+            title: `${online ? "Join soon" : "Check travel time"}: ${appt.title}`,
+            body: online
+              ? `${fmtTime(appt.starts_at, timeZone)} · Open the meeting link and get ready to join.`
+              : `${fmtTime(appt.starts_at, timeZone)}${appt.location ? ` · ${appt.location}` : ""}`,
+          });
+        }
+      } else if (
+        signal.key === "prepare" &&
+        isEveningBefore({ nowMs, startsAt: appt.starts_at, timeZone })
+      ) {
+        out.push({
+          kind: "appointment",
+          dedupe_key: `appt:${appt.id}:adaptive:prepare`,
+          title: `Tomorrow: ${appt.title}`,
+          body: `Prepare tonight for ${fmtTime(appt.starts_at, timeZone)}${
+            appt.location ? ` · ${appt.location}` : ""
+          }`,
         });
       }
     }
@@ -139,6 +183,20 @@ export function buildDue(input: {
   }
 
   return out;
+}
+
+export function buildAdaptiveReminderPreview(
+  appointments: ReminderAppointment[],
+  timeZone: string,
+): AdaptiveReminderPreview[] {
+  return appointments
+    .map((appointment) => ({
+      id: appointment.id,
+      title: appointment.title,
+      starts_at: appointment.starts_at,
+      signals: getAdaptiveReminderSignals(appointment, timeZone),
+    }))
+    .filter((appointment) => appointment.signals.length > 0);
 }
 
 const GMAIL_SEND = "https://connector-gateway.lovable.dev/google_mail/gmail/v1/users/me/messages/send";
