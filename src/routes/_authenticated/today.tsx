@@ -19,6 +19,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { SyncAlert } from "@/components/SyncAlert";
 import { NotificationBell } from "@/components/NotificationBell";
 import { TaskNudge } from "@/components/TaskNudge";
+import { NowRecommendation } from "@/components/NowRecommendation";
 import { toast } from "sonner";
 import {
   CalendarDays,
@@ -39,10 +40,10 @@ export const Route = createFileRoute("/_authenticated/today")({
       { title: "Today · Chronos-V" },
       {
         name: "description",
-        content: "Your next appointment, overdue tasks and one-tap capture for anything new.",
+        content: "Your best next action, upcoming appointments and one-tap capture for anything new.",
       },
       { property: "og:title", content: "Today · Chronos-V" },
-      { property: "og:description", content: "Your next appointment, overdue tasks and quick capture." },
+      { property: "og:description", content: "Your best next action, appointments and quick capture." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -84,6 +85,8 @@ function TodayPage() {
         </div>
 
         <SyncAlert />
+
+        <NowRecommendation />
 
         <div className="mt-4"><TaskNudge /></div>
 
