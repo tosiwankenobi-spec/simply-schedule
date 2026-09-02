@@ -10,11 +10,36 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import logo from "@/assets/chronos-v-logo.png.asset.json";
-import { Sparkles, Plus, MapPin, Trash2, LogOut, Clock, Mail, Wand2, Settings, ListTodo, RefreshCw, Sun, Moon, Bell, CalendarCheck } from "lucide-react";
+import {
+  Sparkles,
+  Plus,
+  MapPin,
+  Trash2,
+  LogOut,
+  Clock,
+  Mail,
+  Wand2,
+  Settings,
+  ListTodo,
+  RefreshCw,
+  Sun,
+  Moon,
+  Bell,
+  CalendarCheck,
+  ShieldCheck,
+} from "lucide-react";
 import { DailyBriefing } from "@/components/DailyBriefing";
 import { WeekGrid } from "@/components/WeekGrid";
 import { useScheduleEvents } from "@/lib/schedule-hub";
@@ -23,9 +48,6 @@ import { SyncAlert } from "@/components/SyncAlert";
 import { NotificationBell } from "@/components/NotificationBell";
 import { TaskNudge } from "@/components/TaskNudge";
 import { ExportIcsButton } from "@/components/ExportIcsButton";
-
-
-
 
 type Appointment = {
   id: string;
@@ -63,7 +85,9 @@ function AppPage() {
   const pushToCalendar = useCallback(() => {
     syncGoogleCalendar()
       .then(() => qc.invalidateQueries({ queryKey: ["appointments"] }))
-      .catch(() => {/* surfaced by the manual sync button */});
+      .catch(() => {
+        /* surfaced by the manual sync button */
+      });
   }, [qc]);
 
   const del = useMutation({
@@ -94,8 +118,6 @@ function AppPage() {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Couldn't move that"),
   });
 
-
-
   const { upcoming, past } = useMemo(() => {
     const list = appts ?? [];
     const upcoming = list.filter((a) => !isPast(new Date(a.ends_at ?? a.starts_at)));
@@ -120,10 +142,10 @@ function AppPage() {
             <span className="font-serif text-xl">Chronos-V</span>
           </div>
           <div className="flex items-center gap-2">
-          <NotificationBell />
-          <Button variant="ghost" size="sm" onClick={signOut} className="text-muted-foreground">
-            <LogOut className="h-4 w-4 mr-1" /> Sign out
-          </Button>
+            <NotificationBell />
+            <Button variant="ghost" size="sm" onClick={signOut} className="text-muted-foreground">
+              <LogOut className="h-4 w-4 mr-1" /> Sign out
+            </Button>
           </div>
         </header>
 
@@ -131,54 +153,74 @@ function AppPage() {
           <h1 className="font-serif text-4xl md:text-5xl text-foreground leading-tight">
             Your schedule, <span className="text-accent italic">synthesized</span>.
           </h1>
-          <p className="mt-2 text-muted-foreground text-sm">
-            {format(new Date(), "EEEE, MMMM d")}
-          </p>
+          <p className="mt-2 text-muted-foreground text-sm">{format(new Date(), "EEEE, MMMM d")}</p>
         </div>
 
         <div className="mt-6 flex flex-wrap gap-2">
           <NewAppointmentDialog open={open} onOpenChange={setOpen} />
           <Button asChild variant="outline">
-            <Link to="/today"><Sun className="h-4 w-4 mr-1.5" /> Today</Link>
+            <Link to="/today">
+              <Sun className="h-4 w-4 mr-1.5" /> Today
+            </Link>
           </Button>
           <Button asChild variant="outline">
-            <Link to="/tomorrow"><Moon className="h-4 w-4 mr-1.5" /> Plan tomorrow</Link>
+            <Link to="/tomorrow">
+              <Moon className="h-4 w-4 mr-1.5" /> Plan tomorrow
+            </Link>
           </Button>
           <Button asChild variant="outline">
-            <Link to="/planner"><Wand2 className="h-4 w-4 mr-1.5" /> AI planner</Link>
+            <Link to="/planner">
+              <Wand2 className="h-4 w-4 mr-1.5" /> AI planner
+            </Link>
           </Button>
           <Button asChild variant="outline">
-            <Link to="/tasks"><ListTodo className="h-4 w-4 mr-1.5" /> Tasks</Link>
+            <Link to="/tasks">
+              <ListTodo className="h-4 w-4 mr-1.5" /> Tasks
+            </Link>
           </Button>
           <Button asChild variant="outline">
-            <Link to="/weekly-reset"><CalendarCheck className="h-4 w-4 mr-1.5" /> Weekly reset</Link>
+            <Link to="/weekly-reset">
+              <CalendarCheck className="h-4 w-4 mr-1.5" /> Weekly reset
+            </Link>
           </Button>
           <ExportIcsButton />
           <GmailImportButton />
           <SyncControl />
           <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
-            <Link to="/setup/gmail"><Settings className="h-3.5 w-3.5 mr-1" /> Gmail setup</Link>
+            <Link to="/setup/gmail">
+              <Settings className="h-3.5 w-3.5 mr-1" /> Gmail setup
+            </Link>
           </Button>
           <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
-            <Link to="/setup/android"><Settings className="h-3.5 w-3.5 mr-1" /> Android setup</Link>
+            <Link to="/setup/android">
+              <Settings className="h-3.5 w-3.5 mr-1" /> Android setup
+            </Link>
           </Button>
           <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
-            <Link to="/setup/notifications"><Bell className="h-3.5 w-3.5 mr-1" /> Reminders</Link>
+            <Link to="/setup/notifications">
+              <Bell className="h-3.5 w-3.5 mr-1" /> Reminders
+            </Link>
+          </Button>
+          <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
+            <Link to="/privacy">
+              <ShieldCheck className="h-3.5 w-3.5 mr-1" /> Privacy
+            </Link>
           </Button>
         </div>
 
         <SyncAlert />
 
-        <div className="mt-4"><TaskNudge /></div>
+        <div className="mt-4">
+          <TaskNudge />
+        </div>
 
         <DailyBriefing />
 
         <p className="mt-2 text-xs text-muted-foreground">
-          Two-way sync keeps Google Calendar and this schedule in step — changes you make here are pushed up,
-          and calendar edits flow back automatically. Gmail import only adds emails that clearly describe an appointment.
+          Two-way sync keeps Google Calendar and this schedule in step — changes you make here are
+          pushed up, and calendar edits flow back automatically. Gmail import only adds emails that
+          clearly describe an appointment.
         </p>
-
-
 
         <QuickCapture />
 
@@ -195,7 +237,6 @@ function AppPage() {
               onMove={(id, starts_at, ends_at) => move.mutate({ id, starts_at, ends_at })}
             />
           </TabsContent>
-
 
           <TabsContent value="upcoming" className="mt-6">
             {isLoading ? (
@@ -300,12 +341,19 @@ function SyncControl() {
         variant="outline"
         onClick={() => void run(true)}
         disabled={busy}
-        title={last ? `Last synced ${format(last, "MMM d, h:mm a")}` : "Two-way Google Calendar sync"}
+        title={
+          last ? `Last synced ${format(last, "MMM d, h:mm a")}` : "Two-way Google Calendar sync"
+        }
       >
         <RefreshCw className={`h-4 w-4 mr-1.5 ${busy ? "animate-spin" : ""}`} />
         {busy ? "Syncing…" : "Sync calendar"}
       </Button>
-      <Button asChild variant="ghost" size="sm" className={lastError ? "text-destructive" : "text-muted-foreground"}>
+      <Button
+        asChild
+        variant="ghost"
+        size="sm"
+        className={lastError ? "text-destructive" : "text-muted-foreground"}
+      >
         <Link to="/setup/sync">
           <Settings className="h-3.5 w-3.5 mr-1" /> {lastError ? "Sync issue" : "Sync settings"}
         </Link>
@@ -313,8 +361,6 @@ function SyncControl() {
     </>
   );
 }
-
-
 
 function GmailImportButton() {
   const qc = useQueryClient();
@@ -326,10 +372,14 @@ function GmailImportButton() {
       const res = await importFromGmail();
       toast.dismiss(t);
       if (res.imported > 0) {
-        toast.success(`Imported ${res.imported} appointment${res.imported === 1 ? "" : "s"} from Gmail`);
+        toast.success(
+          `Imported ${res.imported} appointment${res.imported === 1 ? "" : "s"} from Gmail`,
+        );
         qc.invalidateQueries({ queryKey: ["appointments"] });
       } else {
-        toast.message("No new appointments found", { description: `Scanned ${res.scanned} recent emails.` });
+        toast.message("No new appointments found", {
+          description: `Scanned ${res.scanned} recent emails.`,
+        });
       }
     } catch (err) {
       toast.dismiss(t);
@@ -355,7 +405,15 @@ function EmptyState({ label, hint }: { label: string; hint?: string }) {
   );
 }
 
-function GroupedList({ items, onDelete, muted }: { items: Appointment[]; onDelete: (id: string) => void; muted?: boolean }) {
+function GroupedList({
+  items,
+  onDelete,
+  muted,
+}: {
+  items: Appointment[];
+  onDelete: (id: string) => void;
+  muted?: boolean;
+}) {
   const groups = useMemo(() => {
     const map = new Map<string, Appointment[]>();
     for (const a of items) {
@@ -389,7 +447,13 @@ function GroupedList({ items, onDelete, muted }: { items: Appointment[]; onDelet
   );
 }
 
-function AppointmentCard({ appt, onDelete }: { appt: Appointment; onDelete: (id: string) => void }) {
+function AppointmentCard({
+  appt,
+  onDelete,
+}: {
+  appt: Appointment;
+  onDelete: (id: string) => void;
+}) {
   const start = new Date(appt.starts_at);
   const end = appt.ends_at ? new Date(appt.ends_at) : null;
   return (
@@ -407,7 +471,8 @@ function AppointmentCard({ appt, onDelete }: { appt: Appointment; onDelete: (id:
           <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">
               <Clock className="h-3.5 w-3.5" />
-              {format(start, "h:mm a")}{end ? ` – ${format(end, "h:mm a")}` : ""}
+              {format(start, "h:mm a")}
+              {end ? ` – ${format(end, "h:mm a")}` : ""}
             </span>
             {appt.location && (
               <span className="inline-flex items-center gap-1.5">
@@ -430,7 +495,13 @@ function AppointmentCard({ appt, onDelete }: { appt: Appointment; onDelete: (id:
   );
 }
 
-function NewAppointmentDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+function NewAppointmentDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
   const qc = useQueryClient();
   const [tab, setTab] = useState<"ai" | "manual">("ai");
 
@@ -447,16 +518,28 @@ function NewAppointmentDialog({ open, onOpenChange }: { open: boolean; onOpenCha
   const [notes, setNotes] = useState("");
 
   function reset() {
-    setAiText(""); setTitle(""); setDate(""); setTime(""); setEndTime(""); setLocation(""); setNotes("");
+    setAiText("");
+    setTitle("");
+    setDate("");
+    setTime("");
+    setEndTime("");
+    setLocation("");
+    setNotes("");
   }
 
   async function saveRaw(payload: {
-    title: string; starts_at: string; ends_at: string | null;
-    location: string | null; notes: string | null; source: "manual" | "ai";
+    title: string;
+    starts_at: string;
+    ends_at: string | null;
+    location: string | null;
+    notes: string | null;
+    source: "manual" | "ai";
   }) {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) throw new Error("Not signed in");
-    const { error } = await supabase.from("appointments").insert({ ...payload, user_id: userData.user.id });
+    const { error } = await supabase
+      .from("appointments")
+      .insert({ ...payload, user_id: userData.user.id });
     if (error) throw error;
     qc.invalidateQueries({ queryKey: ["appointments"] });
     onOpenChange(false);
@@ -468,7 +551,9 @@ function NewAppointmentDialog({ open, onOpenChange }: { open: boolean; onOpenCha
     if (!aiText.trim()) return;
     setAiBusy(true);
     try {
-      const parsed = await parseAppointmentWithAI({ data: { text: aiText, now: new Date().toISOString() } });
+      const parsed = await parseAppointmentWithAI({
+        data: { text: aiText, now: new Date().toISOString() },
+      });
       await saveRaw({
         title: parsed.title,
         starts_at: parsed.starts_at,
@@ -518,12 +603,16 @@ function NewAppointmentDialog({ open, onOpenChange }: { open: boolean; onOpenCha
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="font-serif text-2xl">Add to your schedule</DialogTitle>
-          <DialogDescription>Paste an email, describe it in words, or fill it in.</DialogDescription>
+          <DialogDescription>
+            Paste an email, describe it in words, or fill it in.
+          </DialogDescription>
         </DialogHeader>
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as "ai" | "manual")}>
           <TabsList className="bg-secondary">
-            <TabsTrigger value="ai"><Sparkles className="h-3.5 w-3.5 mr-1.5" /> With AI</TabsTrigger>
+            <TabsTrigger value="ai">
+              <Sparkles className="h-3.5 w-3.5 mr-1.5" /> With AI
+            </TabsTrigger>
             <TabsTrigger value="manual">Manual</TabsTrigger>
           </TabsList>
 
@@ -536,8 +625,18 @@ function NewAppointmentDialog({ open, onOpenChange }: { open: boolean; onOpenCha
               maxLength={8000}
               className="resize-none"
             />
-            <Button onClick={handleAi} disabled={aiBusy || !aiText.trim()} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
-              {aiBusy ? "Reading…" : (<><Sparkles className="h-4 w-4 mr-1.5" /> Extract & add</>)}
+            <Button
+              onClick={handleAi}
+              disabled={aiBusy || !aiText.trim()}
+              className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
+            >
+              {aiBusy ? (
+                "Reading…"
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4 mr-1.5" /> Extract & add
+                </>
+              )}
             </Button>
           </TabsContent>
 
@@ -545,32 +644,76 @@ function NewAppointmentDialog({ open, onOpenChange }: { open: boolean; onOpenCha
             <form onSubmit={handleManual} className="space-y-3">
               <div className="space-y-1.5">
                 <Label htmlFor="t">Title</Label>
-                <Input id="t" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Lunch with Maya" maxLength={200} required />
+                <Input
+                  id="t"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Lunch with Maya"
+                  maxLength={200}
+                  required
+                />
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <div className="col-span-1 space-y-1.5">
                   <Label htmlFor="d">Date</Label>
-                  <Input id="d" type="date" value={date} onChange={(e) => setDate(e.target.value)} placeholder={tomorrow} required />
+                  <Input
+                    id="d"
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    placeholder={tomorrow}
+                    required
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="s">Start</Label>
-                  <Input id="s" type="time" value={time} onChange={(e) => setTime(e.target.value)} required />
+                  <Input
+                    id="s"
+                    type="time"
+                    value={time}
+                    onChange={(e) => setTime(e.target.value)}
+                    required
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="e">End</Label>
-                  <Input id="e" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+                  <Input
+                    id="e"
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                  />
                 </div>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="loc">Location</Label>
-                <Input id="loc" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Optional" maxLength={200} />
+                <Input
+                  id="loc"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder="Optional"
+                  maxLength={200}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="n">Notes</Label>
-                <Textarea id="n" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" rows={3} maxLength={1000} className="resize-none" />
+                <Textarea
+                  id="n"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Optional"
+                  rows={3}
+                  maxLength={1000}
+                  className="resize-none"
+                />
               </div>
               <DialogFooter>
-                <Button type="submit" className="w-full bg-foreground text-background hover:bg-foreground/90">Add appointment</Button>
+                <Button
+                  type="submit"
+                  className="w-full bg-foreground text-background hover:bg-foreground/90"
+                >
+                  Add appointment
+                </Button>
               </DialogFooter>
             </form>
           </TabsContent>

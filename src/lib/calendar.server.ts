@@ -200,22 +200,17 @@ function describeStatus(status: number, msg: string) {
 /* Settings                                                            */
 /* ------------------------------------------------------------------ */
 
-export async function getSettings(
-  supabase: SupabaseClient,
-  userId: string,
-): Promise<SyncSettings> {
-  const { data } = await supabase
+export async function getSettings(supabase: SupabaseClient, userId: string): Promise<SyncSettings> {
+  const { data, error } = await supabase
     .from("sync_settings")
     .select("conflict_policy, selected_calendar_ids, auto_sync_enabled, gmail_sync_enabled")
     .eq("user_id", userId)
     .maybeSingle();
+  if (error) throw new Error(error.message);
   if (!data) return { ...DEFAULT_SETTINGS };
   return {
     conflict_policy: (data.conflict_policy as ConflictPolicy) ?? "newest",
-    selected_calendar_ids:
-      data.selected_calendar_ids && data.selected_calendar_ids.length > 0
-        ? data.selected_calendar_ids
-        : ["primary"],
+    selected_calendar_ids: data.selected_calendar_ids ?? ["primary"],
     auto_sync_enabled: data.auto_sync_enabled ?? true,
     gmail_sync_enabled: (data as { gmail_sync_enabled?: boolean }).gmail_sync_enabled ?? true,
   };
@@ -319,15 +314,13 @@ async function readState(supabase: SupabaseClient, userId: string, calendarId: s
     .eq("user_id", userId)
     .eq("provider", providerKey(calendarId))
     .maybeSingle();
-  return data as
-    | {
-        sync_token: string | null;
-        last_synced_at: string | null;
-        pages_synced: number | null;
-        events_seen: number | null;
-        last_error: string | null;
-      }
-    | null;
+  return data as {
+    sync_token: string | null;
+    last_synced_at: string | null;
+    pages_synced: number | null;
+    events_seen: number | null;
+    last_error: string | null;
+  } | null;
 }
 
 async function writeState(
@@ -403,15 +396,29 @@ async function pullCalendar(
       syncToken = null;
       pageToken = null;
       await writeState(supabase, userId, calendarId, { sync_token: null });
-      await logEvent(supabase, userId, "warn", "sync_token", "Sync token expired — doing a full refresh.", {
-        calendarId,
-      });
+      await logEvent(
+        supabase,
+        userId,
+        "warn",
+        "sync_token",
+        "Sync token expired — doing a full refresh.",
+        {
+          calendarId,
+        },
+      );
       continue;
     }
     if (status === 404) {
-      await logEvent(supabase, userId, "error", "calendar", "Calendar not found or no longer shared.", {
-        calendarId,
-      });
+      await logEvent(
+        supabase,
+        userId,
+        "error",
+        "calendar",
+        "Calendar not found or no longer shared.",
+        {
+          calendarId,
+        },
+      );
       result.errors.push(`Calendar ${calendarId} not found.`);
       return;
     }
@@ -463,7 +470,10 @@ async function applyRemoteEvent(
 
   if (ev.status === "cancelled") {
     if (!existing) return;
-    if (settings.conflict_policy === "local" && hasLocalEdits(existing.updated_at, existing.last_synced_at)) {
+    if (
+      settings.conflict_policy === "local" &&
+      hasLocalEdits(existing.updated_at, existing.last_synced_at)
+    ) {
       result.conflicts++;
       result.skipped++;
       await logEvent(
@@ -489,10 +499,17 @@ async function applyRemoteEvent(
   const row = eventToRow(ev);
   if (!row) {
     result.skipped++;
-    await logEvent(supabase, userId, "warn", "skipped", `Skipped "${ev.summary ?? ev.id}" — no usable start time.`, {
-      calendarId,
-      detail: { eventId: ev.id },
-    });
+    await logEvent(
+      supabase,
+      userId,
+      "warn",
+      "skipped",
+      `Skipped "${ev.summary ?? ev.id}" — no usable start time.`,
+      {
+        calendarId,
+        detail: { eventId: ev.id },
+      },
+    );
     return;
   }
 
@@ -539,7 +556,9 @@ async function applyRemoteEvent(
       calendar_etag: ev.etag ?? null,
       source: "google_calendar",
       last_synced_at: nowIso,
-      remote_updated_at: Number.isFinite(remoteUpdated) ? new Date(remoteUpdated).toISOString() : null,
+      remote_updated_at: Number.isFinite(remoteUpdated)
+        ? new Date(remoteUpdated).toISOString()
+        : null,
       ...row,
     },
     { onConflict: "user_id,calendar_event_id" },
@@ -631,7 +650,9 @@ async function push(
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       result.errors.push(msg);
-      await logEvent(supabase, userId, "error", "push_create", msg, { detail: { title: row.title } });
+      await logEvent(supabase, userId, "error", "push_create", msg, {
+        detail: { title: row.title },
+      });
     }
   }
 
@@ -674,7 +695,9 @@ async function push(
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       result.errors.push(msg);
-      await logEvent(supabase, userId, "error", "push_update", msg, { detail: { title: row.title } });
+      await logEvent(supabase, userId, "error", "push_update", msg, {
+        detail: { title: row.title },
+      });
     }
   }
 }
@@ -687,7 +710,6 @@ export async function runCalendarSync(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<SyncResult> {
-  const k = keys();
   const settings = await getSettings(supabase, userId);
   const calendars = settings.selected_calendar_ids;
 
@@ -709,6 +731,8 @@ export async function runCalendarSync(
     await logEvent(supabase, userId, "warn", "run", "No calendars selected — nothing to sync.");
     return result;
   }
+
+  const k = keys();
 
   for (const calendarId of calendars) {
     try {
@@ -782,7 +806,9 @@ export async function readSyncStatus(
 
   const { data: states } = await supabase
     .from("sync_state")
-    .select("provider, calendar_id, sync_token, last_synced_at, pages_synced, events_seen, last_error")
+    .select(
+      "provider, calendar_id, sync_token, last_synced_at, pages_synced, events_seen, last_error",
+    )
     .eq("user_id", userId)
     .like("provider", `${PROVIDER_PREFIX}%`);
 
@@ -794,7 +820,8 @@ export async function readSyncStatus(
     .limit(25);
 
   const calendars = (states ?? []).map((s: any) => ({
-    calendarId: s.calendar_id ?? (String(s.provider).replace(`${PROVIDER_PREFIX}:`, "") || "primary"),
+    calendarId:
+      s.calendar_id ?? (String(s.provider).replace(`${PROVIDER_PREFIX}:`, "") || "primary"),
     hasSyncToken: Boolean(s.sync_token),
     lastSyncedAt: s.last_synced_at ?? null,
     pagesSynced: s.pages_synced ?? 0,
@@ -810,8 +837,7 @@ export async function readSyncStatus(
       .pop() ?? null;
 
   const errorFromState = calendars.map((c) => c.lastError).find(Boolean) ?? null;
-  const errorFromLog =
-    (log ?? []).find((l: any) => l.level === "error")?.message ?? null;
+  const errorFromLog = (log ?? []).find((l: any) => l.level === "error")?.message ?? null;
   const lastError = errorFromState ?? errorFromLog ?? null;
 
   const AUTH_HINT = /\b(401|403)\b|denied|invalid_grant|unauthori[sz]ed|reconnect|permission/i;
@@ -833,7 +859,6 @@ export async function readSyncStatus(
     calendars,
     log: (log ?? []) as SyncStatus["log"],
   };
-
 }
 
 export async function clearSyncLog(supabase: SupabaseClient, userId: string) {
@@ -847,7 +872,13 @@ export async function resetSyncTokens(supabase: SupabaseClient, userId: string) 
     .update({ sync_token: null, last_error: null })
     .eq("user_id", userId)
     .like("provider", `${PROVIDER_PREFIX}%`);
-  await logEvent(supabase, userId, "info", "sync_token", "Sync tokens cleared — next sync does a full refresh.");
+  await logEvent(
+    supabase,
+    userId,
+    "info",
+    "sync_token",
+    "Sync tokens cleared — next sync does a full refresh.",
+  );
   return { ok: true };
 }
 

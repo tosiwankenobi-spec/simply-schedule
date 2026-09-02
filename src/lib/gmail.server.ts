@@ -168,7 +168,10 @@ function extractPlainText(part: GmailPart | undefined): string {
     }
   }
   if (part.mimeType === "text/html" && part.body?.data) {
-    return decodeBase64Url(part.body.data).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+    return decodeBase64Url(part.body.data)
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
   }
   return "";
 }
@@ -231,7 +234,10 @@ Return ONLY JSON, no markdown.`;
 
   const json = await res.json();
   let content: string = json?.choices?.[0]?.message?.content ?? "";
-  content = content.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
+  content = content
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/i, "");
   try {
     const parsed = JSON.parse(content);
     if (!parsed?.appointment || !parsed.title || !parsed.starts_at) return null;
@@ -344,7 +350,8 @@ async function candidatesFromHistory(
         const id = added?.message?.id;
         const labels: string[] = added?.message?.labelIds ?? [];
         if (!id) continue;
-        if (labels.includes("DRAFT") || labels.includes("SENT") || labels.includes("TRASH")) continue;
+        if (labels.includes("DRAFT") || labels.includes("SENT") || labels.includes("TRASH"))
+          continue;
         if (!ids.includes(id)) ids.push(id);
       }
     }
@@ -387,6 +394,11 @@ export async function runGmailSync(
     retries: 0,
     errors: [],
   };
+
+  const settings = await getSettings(supabase, userId);
+  if (!settings.gmail_sync_enabled) {
+    throw new Error("Gmail access is paused in Privacy controls.");
+  }
 
   const k = keys();
   const onRetry = (attempt: number, reason: string) => {
@@ -525,9 +537,16 @@ export async function runGmailSync(
       continue;
     }
     result.imported++;
-    await logEvent(supabase, userId, "info", "gmail_import", `Imported “${parsed.title}” from email.`, {
-      detail: { messageId: id, threadId: full.threadId ?? null },
-    });
+    await logEvent(
+      supabase,
+      userId,
+      "info",
+      "gmail_import",
+      `Imported “${parsed.title}” from email.`,
+      {
+        detail: { messageId: id, threadId: full.threadId ?? null },
+      },
+    );
   }
 
   result.historyId = newHistoryId;
@@ -625,7 +644,9 @@ export async function loadGmailAppointment(
   if (!data) throw new Error("Appointment not found.");
   const appt = data as GmailAppointment;
   if (appt.source !== "gmail" || !appt.gmail_thread_id) {
-    throw new Error("This appointment didn't come from an email, so there's no thread to reply to.");
+    throw new Error(
+      "This appointment didn't come from an email, so there's no thread to reply to.",
+    );
   }
   return appt;
 }
@@ -670,6 +691,10 @@ export async function sendGmailReply(
   userId: string,
   input: { appointmentId: string; kind: ReplyKind; body: string },
 ): Promise<{ ok: true; threadId: string }> {
+  const settings = await getSettings(supabase, userId);
+  if (!settings.gmail_sync_enabled) {
+    throw new Error("Gmail access is paused in Privacy controls.");
+  }
   const k = keys();
   const appt = await loadGmailAppointment(supabase, userId, input.appointmentId);
 
@@ -693,7 +718,12 @@ export async function sendGmailReply(
   const mime = [
     `To: ${to}`,
     `Subject: ${encodeHeader(subject)}`,
-    ...(messageId ? [`In-Reply-To: ${messageId}`, `References: ${references ? `${references} ${messageId}` : messageId}`] : []),
+    ...(messageId
+      ? [
+          `In-Reply-To: ${messageId}`,
+          `References: ${references ? `${references} ${messageId}` : messageId}`,
+        ]
+      : []),
     "MIME-Version: 1.0",
     'Content-Type: text/plain; charset="UTF-8"',
     "",

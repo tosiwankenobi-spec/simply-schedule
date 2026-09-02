@@ -25,8 +25,13 @@ function decodeBase64Url(data: string): string {
       for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
       return new TextDecoder("utf-8").decode(bytes);
     }
-    return (globalThis as { Buffer?: { from: (s: string, enc: string) => { toString: (e: string) => string } } })
-      .Buffer?.from(padded, "base64").toString("utf-8") ?? "";
+    return (
+      (
+        globalThis as {
+          Buffer?: { from: (s: string, enc: string) => { toString: (e: string) => string } };
+        }
+      ).Buffer?.from(padded, "base64").toString("utf-8") ?? ""
+    );
   } catch {
     return "";
   }
@@ -44,7 +49,10 @@ function extractPlainText(part: GmailMessagePart | undefined): string {
     }
   }
   if (part.mimeType === "text/html" && part.body?.data) {
-    return decodeBase64Url(part.body.data).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+    return decodeBase64Url(part.body.data)
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
   }
   return "";
 }
@@ -97,7 +105,10 @@ Return ONLY JSON, no markdown.`;
   if (!res.ok) throw new Error(`AI request failed (${res.status})`);
   const json = await res.json();
   let content: string = json?.choices?.[0]?.message?.content ?? "";
-  content = content.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
+  content = content
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/i, "");
   try {
     const parsed = JSON.parse(content);
     if (!parsed?.appointment || !parsed.title || !parsed.starts_at) return null;
@@ -118,13 +129,25 @@ Return ONLY JSON, no markdown.`;
 export const importFromGmail = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    const { data: settings, error: settingsError } = await context.supabase
+      .from("sync_settings")
+      .select("gmail_sync_enabled")
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (settingsError) throw new Error(settingsError.message);
+    if (settings?.gmail_sync_enabled === false) {
+      throw new Error("Gmail access is paused in Privacy controls.");
+    }
+
     const lovableKey = process.env.LOVABLE_API_KEY;
     const gmailKey = process.env.GOOGLE_MAIL_API_KEY;
     if (!lovableKey) throw new Error("Missing LOVABLE_API_KEY");
     if (!gmailKey) throw new Error("Gmail is not connected.");
 
     // Pull recent inbox messages, biased toward likely events
-    const query = encodeURIComponent("in:inbox newer_than:14d (meeting OR appointment OR reservation OR invite OR scheduled OR confirmed OR flight OR booking)");
+    const query = encodeURIComponent(
+      "in:inbox newer_than:14d (meeting OR appointment OR reservation OR invite OR scheduled OR confirmed OR flight OR booking)",
+    );
     const list = await gatewayFetch(
       `/users/me/messages?maxResults=15&q=${query}`,
       lovableKey,
@@ -150,12 +173,18 @@ export const importFromGmail = createServerFn({ method: "POST" })
         .eq("user_id", context.userId)
         .eq("external_id", externalId)
         .maybeSingle();
-      if (existing) { skipped++; continue; }
+      if (existing) {
+        skipped++;
+        continue;
+      }
 
       let full: GmailMessage;
       try {
         full = await gatewayFetch(`/users/me/messages/${m.id}?format=full`, lovableKey, gmailKey);
-      } catch { skipped++; continue; }
+      } catch {
+        skipped++;
+        continue;
+      }
 
       const headers = full.payload?.headers ?? [];
       const subject = headers.find((h) => h.name.toLowerCase() === "subject")?.value ?? "";
@@ -168,9 +197,15 @@ export const importFromGmail = createServerFn({ method: "POST" })
       let parsed;
       try {
         parsed = await aiExtract(text, lovableKey, nowIso, tzOffsetMin);
-      } catch { skipped++; continue; }
+      } catch {
+        skipped++;
+        continue;
+      }
 
-      if (!parsed) { skipped++; continue; }
+      if (!parsed) {
+        skipped++;
+        continue;
+      }
 
       const { error } = await context.supabase.from("appointments").insert({
         user_id: context.userId,
@@ -182,7 +217,10 @@ export const importFromGmail = createServerFn({ method: "POST" })
         source: "gmail",
         external_id: externalId,
       });
-      if (error) { skipped++; continue; }
+      if (error) {
+        skipped++;
+        continue;
+      }
       imported++;
     }
 
