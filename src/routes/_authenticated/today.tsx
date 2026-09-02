@@ -20,6 +20,7 @@ import { SyncAlert } from "@/components/SyncAlert";
 import { NotificationBell } from "@/components/NotificationBell";
 import { TaskNudge } from "@/components/TaskNudge";
 import { NowRecommendation } from "@/components/NowRecommendation";
+import { DayReplanner } from "@/components/DayReplanner";
 import { toast } from "sonner";
 import {
   CalendarDays,
@@ -87,6 +88,8 @@ function TodayPage() {
         <SyncAlert />
 
         <NowRecommendation />
+
+        <DayReplanner />
 
         <div className="mt-4"><TaskNudge /></div>
 
@@ -333,6 +336,7 @@ function QuickApptSheet() {
       setTitle("");
       setOpen(false);
       qc.invalidateQueries({ queryKey: ["appointments"] });
+      qc.invalidateQueries({ queryKey: ["day-replan-preview"] });
       toast.success("Appointment added");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't save appointment");

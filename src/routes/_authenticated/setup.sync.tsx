@@ -102,6 +102,7 @@ function SyncSetupPage() {
       toast.dismiss(t);
       qc.invalidateQueries({ queryKey: ["sync-status"] });
       qc.invalidateQueries({ queryKey: ["appointments"] });
+      qc.invalidateQueries({ queryKey: ["day-replan-preview"] });
       if (res.errors.length > 0) {
         toast.warning("Sync finished with issues", { description: res.errors[0] });
       } else {

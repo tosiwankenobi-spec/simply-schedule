@@ -41,6 +41,7 @@ export function SyncAlert() {
       const res = kind === "reconnect" ? await reconnectCalendarSync() : await syncGoogleCalendar();
       toast.dismiss(t);
       qc.invalidateQueries({ queryKey: ["appointments"] });
+      qc.invalidateQueries({ queryKey: ["day-replan-preview"] });
       qc.invalidateQueries({ queryKey: ["sync-status"] });
       if (res.errors[0]) {
         toast.warning("Still having trouble", { description: res.errors[0] });

@@ -120,7 +120,7 @@ export const autoScheduleTasks = createServerFn({ method: "POST" })
       .lt("starts_at", dayEnd.toISOString());
 
     const busy = (appts ?? [])
-      .map((a: any) => {
+      .map((a) => {
         const s = Date.parse(a.starts_at);
         return { start: s, end: a.ends_at ? Date.parse(a.ends_at) : s + 30 * 60000 };
       })
@@ -153,6 +153,7 @@ export const autoScheduleTasks = createServerFn({ method: "POST" })
             starts_at: p.starts_at,
             ends_at: p.ends_at,
             source: "task",
+            commitment_type: "flexible",
             notes: "Auto-scheduled from your task backlog",
           })
           .select("id")
