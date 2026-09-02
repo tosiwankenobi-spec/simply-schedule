@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { format, isSameDay, differenceInMinutes } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { listTasks, upsertTask, setTaskStatus } from "@/lib/tasks.functions";
@@ -56,17 +56,13 @@ function TodayPage() {
 
   const { data: tasks } = useQuery({ queryKey: ["tasks"], queryFn: () => listTasks() });
 
-  const { next, todayList, overdue } = useMemo(() => {
-    const list = events ?? [];
-    const upcoming = upcomingEvents(list, now).filter((e) => !e.is_all_day);
-    const todayList = eventsOnDay(list, now);
-    const today = format(now, "yyyy-MM-dd");
-    const overdue = (tasks ?? []).filter(
-      (t) => t.status !== "done" && t.deadline && t.deadline < today,
-    );
-    return { next: upcoming[0] ?? null, todayList, overdue };
-  }, [events, tasks, now]);
-
+  const list = events ?? [];
+  const next = upcomingEvents(list, now).find((event) => !event.is_all_day) ?? null;
+  const todayList = eventsOnDay(list, now);
+  const today = format(now, "yyyy-MM-dd");
+  const overdue = (tasks ?? []).filter(
+    (task) => task.status !== "done" && task.deadline && task.deadline < today,
+  );
 
   return (
     <div className="relative min-h-screen bg-background pb-28">
