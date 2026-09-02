@@ -72,12 +72,12 @@ export class GmailApiError extends Error {
   }
 }
 
-async function gmailFetch(
+async function gmailFetch<T = Json>(
   path: string,
   k: Keys,
   init?: { method?: string; body?: Json },
   onRetry?: (attempt: number, reason: string) => void,
-): Promise<{ status: number; json: any }> {
+): Promise<{ status: number; json: T }> {
   let lastReason = "unknown error";
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
@@ -94,7 +94,7 @@ async function gmailFetch(
 
       if (res.ok) {
         const text = await res.text();
-        return { status: res.status, json: text ? JSON.parse(text) : {} };
+        return { status: res.status, json: (text ? JSON.parse(text) : {}) as T };
       }
 
       const body = await res.text().catch(() => "");
@@ -128,6 +128,15 @@ type GmailMessage = {
   snippet?: string;
   payload?: { headers?: GmailHeader[] } & GmailPart;
 };
+type GmailHistoryResponse = {
+  historyId?: string;
+  history?: {
+    messagesAdded?: { message?: { id?: string; labelIds?: string[] } }[];
+  }[];
+  nextPageToken?: string;
+};
+type GmailMessageListResponse = { messages?: { id: string }[] };
+type GmailProfileResponse = { historyId?: string };
 
 function decodeBase64Url(data: string): string {
   try {
@@ -314,7 +323,7 @@ async function candidatesFromHistory(
   for (let i = 0; i < MAX_HISTORY_PAGES; i++) {
     let res;
     try {
-      res = await gmailFetch(
+      res = await gmailFetch<GmailHistoryResponse>(
         `/users/me/history?startHistoryId=${encodeURIComponent(startHistoryId)}` +
           `&historyTypes=messageAdded&maxResults=100` +
           (pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ""),
@@ -351,7 +360,7 @@ async function candidatesFromScan(
   k: Keys,
   onRetry: (a: number, r: string) => void,
 ): Promise<{ ids: string[]; pages: number }> {
-  const res = await gmailFetch(
+  const res = await gmailFetch<GmailMessageListResponse>(
     `/users/me/messages?maxResults=${MAX_CANDIDATES}&q=${encodeURIComponent(KEYWORD_QUERY)}`,
     k,
     undefined,
@@ -391,7 +400,12 @@ export async function runGmailSync(
   // only looks at what arrived in between.
   let newHistoryId: string | null = null;
   try {
-    const profile = await gmailFetch("/users/me/profile", k, undefined, onRetry);
+    const profile = await gmailFetch<GmailProfileResponse>(
+      "/users/me/profile",
+      k,
+      undefined,
+      onRetry,
+    );
     newHistoryId = profile.json?.historyId ? String(profile.json.historyId) : null;
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Couldn't read the Gmail profile";
@@ -460,8 +474,13 @@ export async function runGmailSync(
 
     let full: GmailMessage;
     try {
-      const res = await gmailFetch(`/users/me/messages/${id}?format=full`, k, undefined, onRetry);
-      full = res.json as GmailMessage;
+      const res = await gmailFetch<GmailMessage>(
+        `/users/me/messages/${id}?format=full`,
+        k,
+        undefined,
+        onRetry,
+      );
+      full = res.json;
     } catch {
       result.skipped++;
       continue;
@@ -654,11 +673,11 @@ export async function sendGmailReply(
   const k = keys();
   const appt = await loadGmailAppointment(supabase, userId, input.appointmentId);
 
-  const original = await gmailFetch(
+  const original = await gmailFetch<GmailMessage>(
     `/users/me/messages/${appt.gmail_message_id}?format=metadata&metadataHeaders=Message-ID&metadataHeaders=References&metadataHeaders=Subject&metadataHeaders=From`,
     k,
   );
-  const meta = original.json as GmailMessage;
+  const meta = original.json;
   const messageId = header(meta, "message-id");
   const references = header(meta, "references");
   const subjectRaw = appt.gmail_subject ?? header(meta, "subject") ?? appt.title;
@@ -667,7 +686,9 @@ export async function sendGmailReply(
   if (!to) throw new Error("Couldn't work out who to reply to.");
 
   const encodeHeader = (v: string) =>
-    /^[\x00-\x7F]*$/.test(v) ? v : `=?UTF-8?B?${encodeBase64Url(v).replace(/-/g, "+").replace(/_/g, "/")}?=`;
+    Array.from(v).every((character) => (character.codePointAt(0) ?? 0) <= 0x7f)
+      ? v
+      : `=?UTF-8?B?${encodeBase64Url(v).replace(/-/g, "+").replace(/_/g, "/")}?=`;
 
   const mime = [
     `To: ${to}`,
