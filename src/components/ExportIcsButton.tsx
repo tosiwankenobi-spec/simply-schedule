@@ -54,7 +54,7 @@ export function ExportIcsButton() {
         return;
       }
       downloadIcs(
-        data as any,
+        data,
         `chronos-v-${range}-${new Date().toISOString().slice(0, 10)}.ics`,
         `Chronos-V · ${RANGE_LABEL[range]}`,
       );

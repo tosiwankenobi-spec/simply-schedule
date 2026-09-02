@@ -98,7 +98,7 @@ export const sweepNotifications = createServerFn({ method: "POST" })
         .maybeSingle(),
     ]);
 
-    let fresh: SweepResult["fresh"] = [];
+    const fresh: SweepResult["fresh"] = [];
     let emailError: string | null = null;
 
     if (!inQuietHours(prefs, data.localMinutes)) {
@@ -106,12 +106,12 @@ export const sweepNotifications = createServerFn({ method: "POST" })
         prefs,
         nowMs: now,
         timeZone: data.timeZone,
-        appointments: (appts ?? []) as any[],
-        tasks: (tasks ?? []) as any[],
+        appointments: appts ?? [],
+        tasks: tasks ?? [],
         lastNudgeMs: lastNudge?.created_at ? Date.parse(lastNudge.created_at) : null,
       }).slice(0, 20); // bounded work per pass
 
-      for (const n of due as PendingNotification[]) {
+      for (const n of due) {
         const channels = [
           ...(prefs.push_enabled ? ["push"] : []),
           ...(prefs.email_enabled ? ["email"] : []),
@@ -131,11 +131,11 @@ export const sweepNotifications = createServerFn({ method: "POST" })
           .select("id,kind,title,body")
           .maybeSingle();
         if (error || !inserted) continue; // already delivered
-        fresh.push(inserted as any);
+        fresh.push(inserted);
       }
 
       if (prefs.email_enabled && fresh.length > 0) {
-        const to = prefs.email_to ?? (context.claims as any)?.email;
+        const to = prefs.email_to ?? context.claims.email;
         if (!to) {
           emailError = "No email address set for reminders.";
         } else {
@@ -161,7 +161,7 @@ export const sweepNotifications = createServerFn({ method: "POST" })
       .order("created_at", { ascending: false })
       .limit(30);
 
-    return { fresh, unseen: (unseen ?? []) as any[], emailError };
+    return { fresh, unseen: unseen ?? [], emailError };
   });
 
 export const markNotificationsSeen = createServerFn({ method: "POST" })
@@ -190,7 +190,7 @@ export const sendTestNotification = createServerFn({ method: "POST" })
       .maybeSingle();
     const prefs = (prefRow as NotifPrefs | null) ?? DEFAULT_PREFS;
     if (!prefs.email_enabled) return { emailError: null };
-    const to = prefs.email_to ?? (context.claims as any)?.email;
+    const to = prefs.email_to ?? context.claims.email;
     if (!to) return { emailError: "No email address set for reminders." };
     return {
       emailError: await sendEmail(
