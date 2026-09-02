@@ -18,7 +18,7 @@ import { Sparkles, Plus, MapPin, Trash2, LogOut, Clock, Mail, Wand2, Settings, L
 import { DailyBriefing } from "@/components/DailyBriefing";
 import { WeekGrid } from "@/components/WeekGrid";
 import { useScheduleEvents } from "@/lib/schedule-hub";
-import { QuickAddAppointment } from "@/components/QuickAddAppointment";
+import { QuickCapture } from "@/components/QuickCapture";
 import { SyncAlert } from "@/components/SyncAlert";
 import { NotificationBell } from "@/components/NotificationBell";
 import { TaskNudge } from "@/components/TaskNudge";
@@ -177,7 +177,7 @@ function AppPage() {
 
 
 
-        <QuickAddAppointment />
+        <QuickCapture />
 
         <Tabs defaultValue="upcoming" className="mt-10">
           <TabsList className="bg-secondary">
