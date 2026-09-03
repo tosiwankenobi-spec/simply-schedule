@@ -4,6 +4,11 @@ import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { format, isToday, isTomorrow, isPast, startOfDay, addDays } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { parseAppointmentWithAI } from "@/lib/appointments.functions";
+import {
+  createProtectedAppointment,
+  moveProtectedAppointment,
+  previewAppointmentPlacement,
+} from "@/lib/appointment-placement.functions";
 import { syncGoogleCalendar, getSyncStatus } from "@/lib/calendar.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,6 +55,10 @@ import { SyncAlert } from "@/components/SyncAlert";
 import { NotificationBell } from "@/components/NotificationBell";
 import { TaskNudge } from "@/components/TaskNudge";
 import { ExportIcsButton } from "@/components/ExportIcsButton";
+import {
+  ConflictResolutionDialog,
+  type ConflictProposal,
+} from "@/components/ConflictResolutionDialog";
 
 type Appointment = {
   id: string;
@@ -69,6 +78,7 @@ function AppPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [pendingMove, setPendingMove] = useState<(ConflictProposal & { id: string }) | null>(null);
 
   const { data: appts, isLoading } = useQuery({
     queryKey: ["appointments"],
@@ -105,20 +115,54 @@ function AppPage() {
   });
 
   const move = useMutation({
-    mutationFn: async (v: { id: string; starts_at: string; ends_at: string | null }) => {
-      const { error } = await supabase
-        .from("appointments")
-        .update({ starts_at: v.starts_at, ends_at: v.ends_at })
-        .eq("id", v.id);
-      if (error) throw error;
-    },
+    mutationFn: (value: {
+      id: string;
+      startsAt: string;
+      endsAt: string | null;
+      allowConflict: boolean;
+    }) =>
+      moveProtectedAppointment({
+        data: {
+          ...value,
+          excludeId: value.id,
+          tzOffsetMin: new Date().getTimezoneOffset(),
+        },
+      }),
     onSuccess: () => {
+      setPendingMove(null);
       qc.invalidateQueries({ queryKey: ["appointments"] });
       toast.success("Rescheduled");
       pushToCalendar();
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Couldn't move that"),
   });
+
+  async function requestMove(id: string, startsAt: string, endsAt: string | null) {
+    try {
+      const assessment = await previewAppointmentPlacement({
+        data: {
+          startsAt,
+          endsAt,
+          excludeId: id,
+          tzOffsetMin: new Date().getTimezoneOffset(),
+        },
+      });
+      if (assessment.conflicts.length > 0) {
+        const event = hubEvents?.find((item) => item.id === id);
+        setPendingMove({
+          id,
+          title: event?.title ?? "This appointment",
+          startsAt,
+          endsAt,
+          assessment,
+        });
+        return;
+      }
+      move.mutate({ id, startsAt, endsAt, allowConflict: false });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't check that time");
+    }
+  }
 
   const { upcoming, past } = useMemo(() => {
     const list = appts ?? [];
@@ -255,7 +299,7 @@ function AppPage() {
           <TabsContent value="week" className="mt-6">
             <WeekGrid
               items={hubEvents ?? []}
-              onMove={(id, starts_at, ends_at) => move.mutate({ id, starts_at, ends_at })}
+              onMove={(id, startsAt, endsAt) => void requestMove(id, startsAt, endsAt)}
             />
           </TabsContent>
 
@@ -277,6 +321,25 @@ function AppPage() {
             )}
           </TabsContent>
         </Tabs>
+
+        <ConflictResolutionDialog
+          proposal={pendingMove}
+          busy={move.isPending}
+          onCancel={() => setPendingMove(null)}
+          onChoose={(startsAt, endsAt) => {
+            if (!pendingMove) return;
+            move.mutate({ id: pendingMove.id, startsAt, endsAt, allowConflict: false });
+          }}
+          onKeepAnyway={() => {
+            if (!pendingMove) return;
+            move.mutate({
+              id: pendingMove.id,
+              startsAt: pendingMove.startsAt,
+              endsAt: pendingMove.endsAt,
+              allowConflict: true,
+            });
+          }}
+        />
       </div>
     </div>
   );
@@ -495,6 +558,11 @@ function NewAppointmentDialog({
   // AI form
   const [aiText, setAiText] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [pendingConflict, setPendingConflict] = useState<
+    (ConflictProposal & { payload: NewAppointmentPayload }) | null
+  >(null);
 
   // Manual form
   const [title, setTitle] = useState("");
@@ -514,24 +582,61 @@ function NewAppointmentDialog({
     setNotes("");
   }
 
-  async function saveRaw(payload: {
-    title: string;
-    starts_at: string;
-    ends_at: string | null;
-    location: string | null;
-    notes: string | null;
-    source: "manual" | "ai";
-  }) {
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) throw new Error("Not signed in");
-    const { error } = await supabase
-      .from("appointments")
-      .insert({ ...payload, user_id: userData.user.id });
-    if (error) throw error;
+  async function persist(
+    payload: NewAppointmentPayload,
+    startsAt: string,
+    endsAt: string | null,
+    allowConflict: boolean,
+  ) {
+    setSaving(true);
+    try {
+      await createProtectedAppointment({
+        data: {
+          title: payload.title,
+          startsAt,
+          endsAt,
+          location: payload.location,
+          notes: payload.notes,
+          source: payload.source,
+          allowConflict,
+          tzOffsetMin: new Date().getTimezoneOffset(),
+        },
+      });
+    } finally {
+      setSaving(false);
+    }
+    setPendingConflict(null);
     qc.invalidateQueries({ queryKey: ["appointments"] });
     onOpenChange(false);
     reset();
     toast.success("Added to your schedule");
+  }
+
+  async function saveRaw(payload: NewAppointmentPayload) {
+    setChecking(true);
+    try {
+      const assessment = await previewAppointmentPlacement({
+        data: {
+          startsAt: payload.starts_at,
+          endsAt: payload.ends_at,
+          excludeId: null,
+          tzOffsetMin: new Date().getTimezoneOffset(),
+        },
+      });
+      if (assessment.conflicts.length > 0) {
+        setPendingConflict({
+          payload,
+          title: payload.title,
+          startsAt: payload.starts_at,
+          endsAt: payload.ends_at,
+          assessment,
+        });
+        return;
+      }
+      await persist(payload, payload.starts_at, payload.ends_at, false);
+    } finally {
+      setChecking(false);
+    }
   }
 
   async function handleAi() {
@@ -581,131 +686,163 @@ function NewAppointmentDialog({
   const tomorrow = format(addDays(new Date(), 1), "yyyy-MM-dd");
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger asChild>
-        <Button className="bg-foreground text-background hover:bg-foreground/90">
-          <Plus className="h-4 w-4 mr-1.5" /> New appointment
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="font-serif text-2xl">Add to your schedule</DialogTitle>
-          <DialogDescription>
-            Paste an email, describe it in words, or fill it in.
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogTrigger asChild>
+          <Button className="bg-foreground text-background hover:bg-foreground/90">
+            <Plus className="h-4 w-4 mr-1.5" /> New appointment
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-serif text-2xl">Add to your schedule</DialogTitle>
+            <DialogDescription>
+              Paste an email, describe it in words, or fill it in.
+            </DialogDescription>
+          </DialogHeader>
 
-        <Tabs value={tab} onValueChange={(v) => setTab(v as "ai" | "manual")}>
-          <TabsList className="bg-secondary">
-            <TabsTrigger value="ai">
-              <Sparkles className="h-3.5 w-3.5 mr-1.5" /> With AI
-            </TabsTrigger>
-            <TabsTrigger value="manual">Manual</TabsTrigger>
-          </TabsList>
+          <Tabs value={tab} onValueChange={(v) => setTab(v as "ai" | "manual")}>
+            <TabsList className="bg-secondary">
+              <TabsTrigger value="ai">
+                <Sparkles className="h-3.5 w-3.5 mr-1.5" /> With AI
+              </TabsTrigger>
+              <TabsTrigger value="manual">Manual</TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="ai" className="mt-4 space-y-3">
-            <Textarea
-              placeholder={`e.g. "Dentist next Tuesday at 3pm, 220 Oak St"\nor paste a full email…`}
-              value={aiText}
-              onChange={(e) => setAiText(e.target.value)}
-              rows={7}
-              maxLength={8000}
-              className="resize-none"
-            />
-            <Button
-              onClick={handleAi}
-              disabled={aiBusy || !aiText.trim()}
-              className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
-            >
-              {aiBusy ? (
-                "Reading…"
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4 mr-1.5" /> Extract & add
-                </>
-              )}
-            </Button>
-          </TabsContent>
+            <TabsContent value="ai" className="mt-4 space-y-3">
+              <Textarea
+                placeholder={`e.g. "Dentist next Tuesday at 3pm, 220 Oak St"\nor paste a full email…`}
+                value={aiText}
+                onChange={(e) => setAiText(e.target.value)}
+                rows={7}
+                maxLength={8000}
+                className="resize-none"
+              />
+              <Button
+                onClick={handleAi}
+                disabled={aiBusy || !aiText.trim()}
+                className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
+              >
+                {aiBusy ? (
+                  "Reading…"
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-1.5" /> Extract & add
+                  </>
+                )}
+              </Button>
+            </TabsContent>
 
-          <TabsContent value="manual" className="mt-4">
-            <form onSubmit={handleManual} className="space-y-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="t">Title</Label>
-                <Input
-                  id="t"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Lunch with Maya"
-                  maxLength={200}
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="col-span-1 space-y-1.5">
-                  <Label htmlFor="d">Date</Label>
+            <TabsContent value="manual" className="mt-4">
+              <form onSubmit={handleManual} className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="t">Title</Label>
                   <Input
-                    id="d"
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    placeholder={tomorrow}
+                    id="t"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="Lunch with Maya"
+                    maxLength={200}
                     required
                   />
                 </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="col-span-1 space-y-1.5">
+                    <Label htmlFor="d">Date</Label>
+                    <Input
+                      id="d"
+                      type="date"
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
+                      placeholder={tomorrow}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="s">Start</Label>
+                    <Input
+                      id="s"
+                      type="time"
+                      value={time}
+                      onChange={(e) => setTime(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="e">End</Label>
+                    <Input
+                      id="e"
+                      type="time"
+                      value={endTime}
+                      onChange={(e) => setEndTime(e.target.value)}
+                    />
+                  </div>
+                </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="s">Start</Label>
+                  <Label htmlFor="loc">Location</Label>
                   <Input
-                    id="s"
-                    type="time"
-                    value={time}
-                    onChange={(e) => setTime(e.target.value)}
-                    required
+                    id="loc"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="Optional"
+                    maxLength={200}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="e">End</Label>
-                  <Input
-                    id="e"
-                    type="time"
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
+                  <Label htmlFor="n">Notes</Label>
+                  <Textarea
+                    id="n"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Optional"
+                    rows={3}
+                    maxLength={1000}
+                    className="resize-none"
                   />
                 </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="loc">Location</Label>
-                <Input
-                  id="loc"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  placeholder="Optional"
-                  maxLength={200}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="n">Notes</Label>
-                <Textarea
-                  id="n"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Optional"
-                  rows={3}
-                  maxLength={1000}
-                  className="resize-none"
-                />
-              </div>
-              <DialogFooter>
-                <Button
-                  type="submit"
-                  className="w-full bg-foreground text-background hover:bg-foreground/90"
-                >
-                  Add appointment
-                </Button>
-              </DialogFooter>
-            </form>
-          </TabsContent>
-        </Tabs>
-      </DialogContent>
-    </Dialog>
+                <DialogFooter>
+                  <Button
+                    type="submit"
+                    disabled={checking || saving}
+                    className="w-full bg-foreground text-background hover:bg-foreground/90"
+                  >
+                    {checking || saving ? "Checking…" : "Add appointment"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </TabsContent>
+          </Tabs>
+        </DialogContent>
+      </Dialog>
+      <ConflictResolutionDialog
+        proposal={pendingConflict}
+        busy={saving}
+        onCancel={() => setPendingConflict(null)}
+        onChoose={(startsAt, endsAt) => {
+          if (!pendingConflict) return;
+          void persist(pendingConflict.payload, startsAt, endsAt, false).catch((error) =>
+            toast.error(error instanceof Error ? error.message : "Couldn't save"),
+          );
+        }}
+        onKeepAnyway={() => {
+          if (!pendingConflict) return;
+          void persist(
+            pendingConflict.payload,
+            pendingConflict.startsAt,
+            pendingConflict.endsAt,
+            true,
+          ).catch((error) => toast.error(error instanceof Error ? error.message : "Couldn't save"));
+        }}
+      />
+    </>
   );
 }
+
+type NewAppointmentPayload = {
+  title: string;
+  starts_at: string;
+  ends_at: string | null;
+  location: string | null;
+  notes: string | null;
+  source: "manual" | "ai";
+};

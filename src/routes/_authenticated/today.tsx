@@ -2,8 +2,11 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { format, isSameDay, differenceInMinutes } from "date-fns";
-import { supabase } from "@/integrations/supabase/client";
 import { listTasks, upsertTask, setTaskStatus } from "@/lib/tasks.functions";
+import {
+  createProtectedAppointment,
+  previewAppointmentPlacement,
+} from "@/lib/appointment-placement.functions";
 import {
   eventEnd,
   eventStart,
@@ -22,6 +25,10 @@ import { TaskNudge } from "@/components/TaskNudge";
 import { NowRecommendation } from "@/components/NowRecommendation";
 import { DayReplanner } from "@/components/DayReplanner";
 import { TravelGuidanceCard } from "@/components/TravelGuidance";
+import {
+  ConflictResolutionDialog,
+  type ConflictProposal,
+} from "@/components/ConflictResolutionDialog";
 import { toast } from "sonner";
 import {
   CalendarDays,
@@ -42,10 +49,14 @@ export const Route = createFileRoute("/_authenticated/today")({
       { title: "Today · Chronos-V" },
       {
         name: "description",
-        content: "Your best next action, upcoming appointments and one-tap capture for anything new.",
+        content:
+          "Your best next action, upcoming appointments and one-tap capture for anything new.",
       },
       { property: "og:title", content: "Today · Chronos-V" },
-      { property: "og:description", content: "Your best next action, appointments and quick capture." },
+      {
+        property: "og:description",
+        content: "Your best next action, appointments and quick capture.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -94,10 +105,14 @@ function TodayPage() {
 
         <DayReplanner />
 
-        <div className="mt-4"><TaskNudge /></div>
+        <div className="mt-4">
+          <TaskNudge />
+        </div>
 
         <section className="mt-6">
-          <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Up next</h2>
+          <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Up next
+          </h2>
           {isLoading ? (
             <div className="h-28 animate-pulse rounded-2xl border border-border bg-card" />
           ) : isError ? (
@@ -173,7 +188,6 @@ function TodayPage() {
           )}
         </section>
 
-
         <OverdueSection items={overdue} />
 
         <div className="mt-8 grid grid-cols-2 gap-2">
@@ -231,7 +245,8 @@ function OverdueSection({ items }: { items: Awaited<ReturnType<typeof listTasks>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm text-foreground">{t.title}</p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Due {t.deadline ? format(new Date(`${t.deadline}T00:00:00`), "MMM d") : "—"} · {t.estimated_min}m
+                Due {t.deadline ? format(new Date(`${t.deadline}T00:00:00`), "MMM d") : "—"} ·{" "}
+                {t.estimated_min}m
               </p>
             </div>
             <CheckCircle2 className="mt-0.5 h-4 w-4 text-transparent" />
@@ -298,13 +313,31 @@ function QuickTaskSheet() {
         <form onSubmit={submit} className="mt-4 space-y-3">
           <div className="space-y-1.5">
             <Label htmlFor="qt">Task</Label>
-            <Input id="qt" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Call the supplier" autoFocus />
+            <Input
+              id="qt"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Call the supplier"
+              autoFocus
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="qtm">Minutes</Label>
-            <Input id="qtm" type="number" min={10} max={480} step={5} value={minutes} onChange={(e) => setMinutes(e.target.value)} />
+            <Input
+              id="qtm"
+              type="number"
+              min={10}
+              max={480}
+              step={5}
+              value={minutes}
+              onChange={(e) => setMinutes(e.target.value)}
+            />
           </div>
-          <Button type="submit" disabled={saving || !title.trim()} className="w-full bg-foreground text-background hover:bg-foreground/90">
+          <Button
+            type="submit"
+            disabled={saving || !title.trim()}
+            className="w-full bg-foreground text-background hover:bg-foreground/90"
+          >
             <Plus className="h-4 w-4 mr-1.5" /> {saving ? "Adding…" : "Add task"}
           </Button>
         </form>
@@ -321,6 +354,35 @@ function QuickApptSheet() {
   const [time, setTime] = useState("09:00");
   const [minutes, setMinutes] = useState("30");
   const [saving, setSaving] = useState(false);
+  const [pendingConflict, setPendingConflict] = useState<ConflictProposal | null>(null);
+
+  async function persist(startsAt: string, endsAt: string, allowConflict: boolean) {
+    setSaving(true);
+    try {
+      await createProtectedAppointment({
+        data: {
+          title: title.trim(),
+          startsAt,
+          endsAt,
+          location: null,
+          notes: null,
+          source: "quick_add",
+          allowConflict,
+          tzOffsetMin: new Date().getTimezoneOffset(),
+        },
+      });
+      setTitle("");
+      setOpen(false);
+      setPendingConflict(null);
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["appointments"] }),
+        qc.invalidateQueries({ queryKey: ["day-replan-preview"] }),
+      ]);
+      toast.success("Appointment added");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -329,18 +391,21 @@ function QuickApptSheet() {
     try {
       const starts = new Date(`${date}T${time}:00`);
       const ends = new Date(starts.getTime() + (Number(minutes) || 30) * 60000);
-      const { error } = await supabase.from("appointments").insert({
-        title: title.trim().slice(0, 200),
-        starts_at: starts.toISOString(),
-        ends_at: ends.toISOString(),
-        source: "manual",
-      } as never);
-      if (error) throw error;
-      setTitle("");
-      setOpen(false);
-      qc.invalidateQueries({ queryKey: ["appointments"] });
-      qc.invalidateQueries({ queryKey: ["day-replan-preview"] });
-      toast.success("Appointment added");
+      const startsAt = starts.toISOString();
+      const endsAt = ends.toISOString();
+      const assessment = await previewAppointmentPlacement({
+        data: {
+          startsAt,
+          endsAt,
+          excludeId: null,
+          tzOffsetMin: new Date().getTimezoneOffset(),
+        },
+      });
+      if (assessment.conflicts.length > 0) {
+        setPendingConflict({ title: title.trim(), startsAt, endsAt, assessment });
+      } else {
+        await persist(startsAt, endsAt, false);
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't save appointment");
     } finally {
@@ -349,40 +414,86 @@ function QuickApptSheet() {
   }
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <Button className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90">
-          <Plus className="h-4 w-4 mr-1.5" /> Quick add
-        </Button>
-      </SheetTrigger>
-      <SheetContent side="bottom" className="rounded-t-2xl">
-        <SheetHeader>
-          <SheetTitle className="font-serif">New appointment</SheetTitle>
-        </SheetHeader>
-        <form onSubmit={submit} className="mt-4 space-y-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="qa">Title</Label>
-            <Input id="qa" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Coffee with Sam" autoFocus />
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="qad">Date</Label>
-              <Input id="qad" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="qat">Time</Label>
-              <Input id="qat" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="qam">Mins</Label>
-              <Input id="qam" type="number" min={5} max={480} step={5} value={minutes} onChange={(e) => setMinutes(e.target.value)} />
-            </div>
-          </div>
-          <Button type="submit" disabled={saving || !title.trim()} className="w-full bg-foreground text-background hover:bg-foreground/90">
-            <Sparkles className="h-4 w-4 mr-1.5" /> {saving ? "Saving…" : "Add appointment"}
+    <>
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetTrigger asChild>
+          <Button className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90">
+            <Plus className="h-4 w-4 mr-1.5" /> Quick add
           </Button>
-        </form>
-      </SheetContent>
-    </Sheet>
+        </SheetTrigger>
+        <SheetContent side="bottom" className="rounded-t-2xl">
+          <SheetHeader>
+            <SheetTitle className="font-serif">New appointment</SheetTitle>
+          </SheetHeader>
+          <form onSubmit={submit} className="mt-4 space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="qa">Title</Label>
+              <Input
+                id="qa"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Coffee with Sam"
+                autoFocus
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="qad">Date</Label>
+                <Input
+                  id="qad"
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="qat">Time</Label>
+                <Input
+                  id="qat"
+                  type="time"
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="qam">Mins</Label>
+                <Input
+                  id="qam"
+                  type="number"
+                  min={5}
+                  max={480}
+                  step={5}
+                  value={minutes}
+                  onChange={(e) => setMinutes(e.target.value)}
+                />
+              </div>
+            </div>
+            <Button
+              type="submit"
+              disabled={saving || !title.trim()}
+              className="w-full bg-foreground text-background hover:bg-foreground/90"
+            >
+              <Sparkles className="h-4 w-4 mr-1.5" /> {saving ? "Saving…" : "Add appointment"}
+            </Button>
+          </form>
+        </SheetContent>
+      </Sheet>
+      <ConflictResolutionDialog
+        proposal={pendingConflict}
+        busy={saving}
+        onCancel={() => setPendingConflict(null)}
+        onChoose={(startsAt, endsAt) => {
+          void persist(startsAt, endsAt, false).catch((error) =>
+            toast.error(error instanceof Error ? error.message : "Couldn't save appointment"),
+          );
+        }}
+        onKeepAnyway={() => {
+          if (!pendingConflict?.endsAt) return;
+          void persist(pendingConflict.startsAt, pendingConflict.endsAt, true).catch((error) =>
+            toast.error(error instanceof Error ? error.message : "Couldn't save appointment"),
+          );
+        }}
+      />
+    </>
   );
 }

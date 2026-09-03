@@ -101,7 +101,8 @@ export function WeekGrid({
       </div>
 
       <p className="mb-2 text-xs text-muted-foreground">
-        Drag flexible blocks to a new day or time. Fixed events from an external calendar stay put.
+        Drag flexible blocks to a new day or time. Chronos-V checks the destination before moving;
+        fixed events from an external calendar stay put.
       </p>
 
       <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
