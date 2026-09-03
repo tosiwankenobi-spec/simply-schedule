@@ -22,28 +22,61 @@ const candidateSchema = z
     threadId: gmailIdSchema.nullable(),
     from: z.string().trim().max(320),
     subject: z.string().trim().max(300),
+    kind: z.enum(["appointment", "reservation", "school_event", "delivery", "renewal", "deadline"]),
+    destination: z.enum(["schedule", "tasks"]),
     title: z.string().trim().min(1).max(200),
-    starts_at: z.string().datetime({ offset: true }),
+    starts_at: z.string().datetime({ offset: true }).nullable(),
     ends_at: z.string().datetime({ offset: true }).nullable(),
+    deadline: z.string().date().nullable(),
+    estimated_min: z.number().int().min(5).max(480),
     location: nullableText(300),
     notes: nullableText(2000),
   })
   .superRefine((candidate, ctx) => {
-    if (!candidate.ends_at) return;
-    const start = Date.parse(candidate.starts_at);
-    const end = Date.parse(candidate.ends_at);
-    if (end <= start) {
+    if (candidate.destination === "schedule" && !candidate.starts_at) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["ends_at"],
-        message: "End time must be after the start time.",
+        path: ["starts_at"],
+        message: "Schedule suggestions need a start time.",
       });
-    } else if (end - start > 7 * 86400000) {
+    }
+    if (candidate.destination === "tasks" && !candidate.deadline) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["ends_at"],
-        message: "An inbox appointment cannot be longer than seven days.",
+        path: ["deadline"],
+        message: "Task suggestions need a deadline.",
       });
+    }
+    if (
+      ((candidate.kind === "renewal" || candidate.kind === "deadline") &&
+        candidate.destination !== "tasks") ||
+      ((candidate.kind === "appointment" ||
+        candidate.kind === "reservation" ||
+        candidate.kind === "school_event") &&
+        candidate.destination !== "schedule")
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["destination"],
+        message: "That suggestion type has an invalid destination.",
+      });
+    }
+    if (candidate.ends_at && candidate.starts_at) {
+      const start = Date.parse(candidate.starts_at);
+      const end = Date.parse(candidate.ends_at);
+      if (end <= start) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["ends_at"],
+          message: "End time must be after the start time.",
+        });
+      } else if (end - start > 7 * 86400000) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["ends_at"],
+          message: "An inbox appointment cannot be longer than seven days.",
+        });
+      }
     }
   });
 

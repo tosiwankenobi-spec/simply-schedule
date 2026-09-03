@@ -7,6 +7,7 @@ import {
   CircleAlert,
   Clock3,
   Inbox,
+  ListPlus,
   Mail,
   MapPin,
   RefreshCw,
@@ -33,13 +34,18 @@ export const Route = createFileRoute("/_authenticated/inbox")({
       { title: "Smart Inbox · Chronos-V" },
       {
         name: "description",
-        content: "Review appointment suggestions from Gmail before adding them to your schedule.",
+        content:
+          "Review appointment, delivery, school, renewal and deadline suggestions from Gmail.",
       },
     ],
   }),
 });
 
 function timeLabel(candidate: SmartInboxCandidate) {
+  if (candidate.destination === "tasks" && candidate.deadline) {
+    return `Due ${format(new Date(`${candidate.deadline}T00:00:00`), "EEE, MMM d")}`;
+  }
+  if (!candidate.starts_at) return "Date needs review";
   const start = new Date(candidate.starts_at);
   if (!candidate.ends_at) return format(start, "EEE, MMM d 'at' h:mm a");
   const end = new Date(candidate.ends_at);
@@ -47,6 +53,15 @@ function timeLabel(candidate: SmartInboxCandidate) {
     start.toDateString() === end.toDateString() ? "h:mm a" : "EEE, MMM d 'at' h:mm a";
   return `${format(start, "EEE, MMM d 'at' h:mm a")} – ${format(end, endPattern)}`;
 }
+
+const KIND_LABELS: Record<SmartInboxCandidate["kind"], string> = {
+  appointment: "Appointment",
+  reservation: "Reservation",
+  school_event: "School event",
+  delivery: "Delivery",
+  renewal: "Renewal",
+  deadline: "Deadline",
+};
 
 function CandidateCard({
   candidate,
@@ -70,11 +85,18 @@ function CandidateCard({
               {candidate.subject ? ` · ${candidate.subject}` : ""}
             </CardDescription>
           </div>
-          <Badge variant={candidate.conflicts > 0 ? "destructive" : "secondary"}>
-            {candidate.conflicts > 0
-              ? `${candidate.conflicts} conflict${candidate.conflicts === 1 ? "" : "s"}`
-              : "No conflict"}
-          </Badge>
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="outline">{KIND_LABELS[candidate.kind]}</Badge>
+            {candidate.destination === "schedule" ? (
+              <Badge variant={candidate.conflicts > 0 ? "destructive" : "secondary"}>
+                {candidate.conflicts > 0
+                  ? `${candidate.conflicts} conflict${candidate.conflicts === 1 ? "" : "s"}`
+                  : "No conflict"}
+              </Badge>
+            ) : (
+              <Badge variant="secondary">Task</Badge>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -92,7 +114,7 @@ function CandidateCard({
           {candidate.notes ? <p className="text-muted-foreground">{candidate.notes}</p> : null}
         </div>
 
-        {candidate.conflicts > 0 ? (
+        {candidate.destination === "schedule" && candidate.conflicts > 0 ? (
           <div className="flex gap-2 rounded-lg bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
             <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" />
             <span>This overlaps your schedule. Review the time before adding it anyway.</span>
@@ -101,8 +123,16 @@ function CandidateCard({
 
         <div className="flex flex-wrap gap-2">
           <Button disabled={busy} onClick={() => onAccept(candidate)}>
-            <CalendarPlus className="mr-1.5 h-4 w-4" />
-            {candidate.conflicts > 0 ? "Add anyway" : "Add to schedule"}
+            {candidate.destination === "schedule" ? (
+              <CalendarPlus className="mr-1.5 h-4 w-4" />
+            ) : (
+              <ListPlus className="mr-1.5 h-4 w-4" />
+            )}
+            {candidate.destination === "tasks"
+              ? "Add to tasks"
+              : candidate.conflicts > 0
+                ? "Add anyway"
+                : "Add to schedule"}
           </Button>
           <Button variant="outline" disabled={busy} onClick={() => onDismiss(candidate)}>
             <X className="mr-1.5 h-4 w-4" /> Dismiss
@@ -139,7 +169,7 @@ function SmartInboxPage() {
           `${data.candidates.length} suggestion${data.candidates.length === 1 ? "" : "s"} ready to review`,
         );
       } else {
-        toast.message("No new appointment suggestions found");
+        toast.message("No new schedule or task suggestions found");
       }
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : "Couldn't scan Gmail"),
@@ -153,9 +183,13 @@ function SmartInboxPage() {
           threadId: candidate.threadId,
           from: candidate.from,
           subject: candidate.subject,
+          kind: candidate.kind,
+          destination: candidate.destination,
           title: candidate.title,
           starts_at: candidate.starts_at,
           ends_at: candidate.ends_at,
+          deadline: candidate.deadline,
+          estimated_min: candidate.estimated_min,
           location: candidate.location,
           notes: candidate.notes,
         },
@@ -172,8 +206,12 @@ function SmartInboxPage() {
           : current,
       );
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["now-recommendation"] });
+      queryClient.invalidateQueries({ queryKey: ["day-replan-preview"] });
       queryClient.invalidateQueries({ queryKey: ["privacy-status"] });
-      toast.success(data.alreadyAdded ? "Already on your schedule" : "Added to your schedule", {
+      const destination = data.itemType === "task" ? "tasks" : "your schedule";
+      toast.success(data.alreadyAdded ? `Already in ${destination}` : `Added to ${destination}`, {
         description:
           data.conflicts > 0
             ? `Kept despite ${data.conflicts} overlapping appointment${data.conflicts === 1 ? "" : "s"}.`
@@ -222,8 +260,8 @@ function SmartInboxPage() {
         </div>
         <h1 className="mt-2 font-serif text-4xl text-foreground">Your inbox, with a checkpoint.</h1>
         <p className="mt-3 max-w-2xl text-muted-foreground">
-          Chronos-V looks for likely appointments in recent matching Gmail messages. Nothing is
-          added until you approve it here.
+          Chronos-V looks for appointments, reservations, school events, deliveries, renewals and
+          deadlines in recent matching Gmail messages. Nothing is added until you approve it here.
         </p>
 
         <Card className="mt-8">
@@ -232,8 +270,8 @@ function SmartInboxPage() {
               <Mail className="h-5 w-5" /> Scan recent Gmail
             </CardTitle>
             <CardDescription>
-              A scan reads up to 15 recent messages that match appointment terms. Raw message bodies
-              are not stored.
+              A scan reads up to 15 recent messages that match scheduling or deadline terms. Raw
+              message bodies are not stored.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -273,7 +311,7 @@ function SmartInboxPage() {
                   <Inbox className="mx-auto h-7 w-7 text-muted-foreground" />
                   <p className="mt-3 font-serif text-lg">You're all caught up.</p>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    No unreviewed appointment suggestions remain from this scan.
+                    No unreviewed schedule or task suggestions remain from this scan.
                   </p>
                 </CardContent>
               </Card>

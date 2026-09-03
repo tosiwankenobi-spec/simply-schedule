@@ -26,6 +26,48 @@ export type PrivacyStatus = {
 };
 
 type UserClient = SupabaseClient<Database>;
+type SyncDetail = Database["public"]["Tables"]["sync_log"]["Row"]["detail"];
+const READ_PAGE_SIZE = 1000;
+const MUTATION_BATCH_SIZE = 100;
+
+function collectGmailTaskIds(rows: Array<{ detail: SyncDetail }>, ids: Set<string>) {
+  for (const row of rows) {
+    if (!row.detail || typeof row.detail !== "object" || Array.isArray(row.detail)) continue;
+    const taskId = (row.detail as Record<string, unknown>).taskId;
+    if (
+      typeof taskId === "string" &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(taskId)
+    ) {
+      ids.add(taskId);
+    }
+  }
+}
+
+async function readGmailTaskIds(supabase: UserClient, userId: string) {
+  const ids = new Set<string>();
+  for (let from = 0; ; from += READ_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("sync_log")
+      .select("detail")
+      .eq("user_id", userId)
+      .eq("kind", "gmail_accepted_task")
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, from + READ_PAGE_SIZE - 1);
+    assertResult(error, "Couldn't read Gmail task history.");
+    collectGmailTaskIds(data ?? [], ids);
+    if ((data?.length ?? 0) < READ_PAGE_SIZE) break;
+  }
+  return [...ids];
+}
+
+function batches<T>(items: T[], size = MUTATION_BATCH_SIZE) {
+  const result: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    result.push(items.slice(index, index + size));
+  }
+  return result;
+}
 
 function assertResult(error: { message: string } | null, fallback: string) {
   if (error) throw new Error(error.message || fallback);
@@ -44,6 +86,7 @@ export async function readPrivacyStatus(
     tasks,
     calendarState,
     gmailState,
+    gmailTaskIds,
   ] = await Promise.all([
     getSettings(supabase, userId),
     supabase
@@ -80,6 +123,7 @@ export async function readPrivacyStatus(
       .eq("user_id", userId)
       .eq("provider", "google_mail")
       .maybeSingle(),
+    readGmailTaskIds(supabase, userId),
   ]);
 
   const results = [
@@ -92,6 +136,17 @@ export async function readPrivacyStatus(
     gmailState,
   ];
   for (const result of results) assertResult(result.error, "Couldn't read privacy status.");
+
+  let gmailTaskCount = 0;
+  for (const taskIdBatch of batches(gmailTaskIds)) {
+    const { count, error } = await supabase
+      .from("tasks")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .in("id", taskIdBatch);
+    assertResult(error, "Couldn't count Gmail task suggestions.");
+    gmailTaskCount += count ?? 0;
+  }
 
   return {
     calendar: {
@@ -107,7 +162,7 @@ export async function readPrivacyStatus(
     gmail: {
       configured: Boolean(process.env["GOOGLE_MAIL_API_KEY"]),
       enabled: Boolean(process.env["GOOGLE_MAIL_API_KEY"]) && settings.gmail_sync_enabled,
-      importedItems: gmailImported.count ?? 0,
+      importedItems: (gmailImported.count ?? 0) + gmailTaskCount,
       lastAccessedAt: gmailState.data?.last_synced_at ?? null,
     },
     chronos: {
@@ -179,6 +234,50 @@ export async function deletePrivacyProviderData(
     await saveSettings(supabase, userId, { gmail_sync_enabled: false });
   }
 
+  let removedGmailTasks = 0;
+  if (provider === "gmail") {
+    const taskIds = await readGmailTaskIds(supabase, userId);
+    for (const taskIdBatch of batches(taskIds)) {
+      const { data: taskRows, error: taskRowsError } = await supabase
+        .from("tasks")
+        .select("id,scheduled_appointment_id")
+        .eq("user_id", userId)
+        .in("id", taskIdBatch);
+      assertResult(taskRowsError, "Couldn't read Gmail tasks.");
+      const appointmentIds = (taskRows ?? [])
+        .map((task) => task.scheduled_appointment_id)
+        .filter((id): id is string => Boolean(id));
+      if (appointmentIds.length > 0) {
+        const { error: taskUnlinkError } = await supabase
+          .from("appointments")
+          .update({
+            calendar_event_id: null,
+            calendar_id: null,
+            calendar_etag: null,
+            last_synced_at: null,
+            remote_updated_at: null,
+          })
+          .eq("user_id", userId)
+          .in("id", appointmentIds);
+        assertResult(taskUnlinkError, "Couldn't unlink Gmail task blocks.");
+        const { error: blockError } = await supabase
+          .from("appointments")
+          .delete()
+          .eq("user_id", userId)
+          .in("id", appointmentIds);
+        assertResult(blockError, "Couldn't delete Gmail task blocks.");
+      }
+      const { data: deletedTasks, error: taskDeleteError } = await supabase
+        .from("tasks")
+        .delete()
+        .eq("user_id", userId)
+        .in("id", taskIdBatch)
+        .select("id");
+      assertResult(taskDeleteError, "Couldn't delete Gmail tasks.");
+      removedGmailTasks += deletedTasks?.length ?? 0;
+    }
+  }
+
   // Sever Google event links first. The appointments delete trigger only queues
   // a remote deletion when calendar_event_id is present, so this ordering keeps
   // the user's real Google Calendar untouched.
@@ -215,13 +314,13 @@ export async function deletePrivacyProviderData(
     assertResult(state.error, "Couldn't clear calendar sync state.");
     assertResult(pending.error, "Couldn't clear pending calendar changes.");
   } else {
-    const { error } = await supabase
-      .from("sync_state")
-      .delete()
-      .eq("user_id", userId)
-      .eq("provider", "google_mail");
-    assertResult(error, "Couldn't clear Gmail sync state.");
+    const [state, log] = await Promise.all([
+      supabase.from("sync_state").delete().eq("user_id", userId).eq("provider", "google_mail"),
+      supabase.from("sync_log").delete().eq("user_id", userId).like("kind", "gmail_%"),
+    ]);
+    assertResult(state.error, "Couldn't clear Gmail sync state.");
+    assertResult(log.error, "Couldn't clear Gmail activity history.");
   }
 
-  return { removed: removed?.length ?? 0 };
+  return { removed: (removed?.length ?? 0) + removedGmailTasks };
 }

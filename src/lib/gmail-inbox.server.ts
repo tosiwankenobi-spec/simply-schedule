@@ -4,7 +4,7 @@ import type { Database } from "@/integrations/supabase/types";
 const GMAIL_BASE = "https://connector-gateway.lovable.dev/google_mail/gmail/v1";
 const GMAIL_PROVIDER = "google_mail";
 const GMAIL_QUERY =
-  "in:inbox newer_than:14d (meeting OR appointment OR reservation OR invite OR scheduled OR confirmed OR flight OR booking)";
+  "in:inbox newer_than:30d (meeting OR appointment OR reservation OR invite OR scheduled OR confirmed OR flight OR booking OR delivery OR arriving OR school OR renewal OR renew OR deadline OR due)";
 const GMAIL_ID = /^[A-Za-z0-9_-]{1,200}$/;
 const MAX_MESSAGES = 15;
 const DISMISSAL_DAYS = 30;
@@ -24,7 +24,15 @@ type GmailMessage = {
 };
 type ParsedAppointment = Pick<
   SmartInboxCandidate,
-  "title" | "starts_at" | "ends_at" | "location" | "notes"
+  | "kind"
+  | "destination"
+  | "title"
+  | "starts_at"
+  | "ends_at"
+  | "deadline"
+  | "estimated_min"
+  | "location"
+  | "notes"
 >;
 type ExistingAppointment = {
   id: string;
@@ -32,15 +40,20 @@ type ExistingAppointment = {
   ends_at: string | null;
   is_all_day: boolean;
 };
+type ScheduledCandidate = SmartInboxCandidate & { starts_at: string };
 
 export type SmartInboxCandidate = {
   messageId: string;
   threadId: string | null;
   from: string;
   subject: string;
+  kind: "appointment" | "reservation" | "school_event" | "delivery" | "renewal" | "deadline";
+  destination: "schedule" | "tasks";
   title: string;
-  starts_at: string;
+  starts_at: string | null;
   ends_at: string | null;
+  deadline: string | null;
+  estimated_min: number;
   location: string | null;
   notes: string | null;
   conflicts: number;
@@ -55,10 +68,73 @@ export type SmartInboxScanResult = {
 };
 
 export type SmartInboxAcceptResult = {
-  appointmentId: string;
+  itemId: string;
+  itemType: "appointment" | "task";
   alreadyAdded: boolean;
   conflicts: number;
 };
+
+const SMART_INBOX_KINDS = new Set<SmartInboxCandidate["kind"]>([
+  "appointment",
+  "reservation",
+  "school_event",
+  "delivery",
+  "renewal",
+  "deadline",
+]);
+
+function validDateKey(value: unknown): value is string {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
+
+export function normalizeSmartInboxExtraction(raw: unknown): ParsedAppointment | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const parsed = raw as Record<string, unknown>;
+  if (parsed.suggestion !== true || typeof parsed.kind !== "string") return null;
+  const kind = parsed.kind as SmartInboxCandidate["kind"];
+  if (!SMART_INBOX_KINDS.has(kind) || typeof parsed.title !== "string") return null;
+  const destination = parsed.destination;
+  if (destination !== "schedule" && destination !== "tasks") return null;
+  if (
+    ((kind === "renewal" || kind === "deadline") && destination !== "tasks") ||
+    ((kind === "appointment" || kind === "reservation" || kind === "school_event") &&
+      destination !== "schedule")
+  ) {
+    return null;
+  }
+
+  const rawStart = typeof parsed.starts_at === "string" ? Date.parse(parsed.starts_at) : Number.NaN;
+  const startsAt = Number.isFinite(rawStart) ? new Date(rawStart).toISOString() : null;
+  const deadline = validDateKey(parsed.deadline) ? parsed.deadline : null;
+  if ((destination === "schedule" && !startsAt) || (destination === "tasks" && !deadline)) {
+    return null;
+  }
+
+  const rawEnd = typeof parsed.ends_at === "string" ? Date.parse(parsed.ends_at) : Number.NaN;
+  const end =
+    startsAt && Number.isFinite(rawEnd) && rawEnd > rawStart && rawEnd - rawStart <= 7 * 86400000
+      ? new Date(rawEnd).toISOString()
+      : null;
+  const requestedMinutes =
+    typeof parsed.estimated_min === "number" ? Math.round(parsed.estimated_min) : 15;
+  const title = cleanSummary(parsed.title, 200);
+  if (!title) return null;
+
+  return {
+    kind,
+    destination,
+    title,
+    starts_at: destination === "schedule" ? startsAt : null,
+    ends_at: destination === "schedule" ? end : null,
+    deadline: destination === "tasks" ? deadline : null,
+    estimated_min: Math.min(480, Math.max(5, requestedMinutes)),
+    location:
+      typeof parsed.location === "string" ? cleanSummary(parsed.location, 300) || null : null,
+    notes: typeof parsed.notes === "string" ? cleanSummary(parsed.notes, 2000) || null : null,
+  };
+}
 
 function keys() {
   const lovableKey = process.env["LOVABLE_API_KEY"];
@@ -161,16 +237,21 @@ async function aiExtract(
   tzOffsetMin: number,
 ): Promise<ParsedAppointment | null> {
   const localNow = new Date(Date.now() - tzOffsetMin * 60000).toISOString().replace("Z", "");
-  const system = `You extract a single appointment from an email if and only if one is clearly present.
+  const system = `You extract one useful schedule or task suggestion from an email only when the obligation is explicit.
 
 CURRENT CONTEXT
 - Now (UTC): ${nowIso}
 - Now (user local): ${localNow}
 - Resolve relative phrases against user-local time.
 
-DECIDE FIRST: Does this email describe a SPECIFIC scheduled appointment, meeting, reservation, flight, or event with a date AND time? Newsletters, marketing, receipts without an event, and generic announcements return {"appointment":false}.
+SUPPORTED KINDS
+- appointment, reservation, or school_event: use destination "schedule" and require a specific date AND time.
+- delivery: use "schedule" when a delivery window has times; otherwise use "tasks" with the promised date as its deadline.
+- renewal or deadline: use destination "tasks" and require a specific due date.
 
-If yes, return {"appointment":true,"title":string,"starts_at":ISO 8601 with timezone offset,"ends_at":ISO or null,"location":string or null,"notes":one short sentence or null}.
+Newsletters, marketing, receipts without a future obligation, vague announcements, and messages without the required date return {"suggestion":false}.
+
+If useful, return {"suggestion":true,"kind":"appointment|reservation|school_event|delivery|renewal|deadline","destination":"schedule|tasks","title":string,"starts_at":ISO 8601 with timezone offset or null,"ends_at":ISO or null,"deadline":"YYYY-MM-DD" or null,"estimated_min":5-480,"location":string or null,"notes":one short sentence or null}.
 Assume the user's offset is ${-tzOffsetMin} minutes when the email omits one. Keep the title under 60 characters and remove reply/forward prefixes. Return ONLY JSON.`;
 
   const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -198,29 +279,7 @@ Assume the user's offset is ${-tzOffsetMin} minutes when the email omits one. Ke
     .replace(/^```(?:json)?\s*/i, "")
     .replace(/\s*```$/i, "");
   try {
-    const parsed = JSON.parse(content) as Record<string, unknown>;
-    if (
-      !parsed.appointment ||
-      typeof parsed.title !== "string" ||
-      typeof parsed.starts_at !== "string"
-    ) {
-      return null;
-    }
-    const start = Date.parse(parsed.starts_at);
-    if (!Number.isFinite(start)) return null;
-    const rawEnd = typeof parsed.ends_at === "string" ? Date.parse(parsed.ends_at) : Number.NaN;
-    const end =
-      Number.isFinite(rawEnd) && rawEnd > start && rawEnd - start <= 7 * 86400000
-        ? new Date(rawEnd).toISOString()
-        : null;
-    return {
-      title: cleanSummary(parsed.title, 200),
-      starts_at: new Date(start).toISOString(),
-      ends_at: end,
-      location:
-        typeof parsed.location === "string" ? cleanSummary(parsed.location, 300) || null : null,
-      notes: typeof parsed.notes === "string" ? cleanSummary(parsed.notes, 2000) || null : null,
-    };
+    return normalizeSmartInboxExtraction(JSON.parse(content));
   } catch {
     return null;
   }
@@ -234,10 +293,7 @@ function interval(startsAt: string, endsAt: string | null, defaultMinutes: numbe
   return { start, end };
 }
 
-function countConflicts(
-  candidate: Pick<SmartInboxCandidate, "starts_at" | "ends_at">,
-  appointments: ExistingAppointment[],
-) {
+function countConflicts(candidate: ScheduledCandidate, appointments: ExistingAppointment[]) {
   const proposed = interval(candidate.starts_at, candidate.ends_at, 60);
   return appointments.filter((appointment) => {
     if (appointment.is_all_day) return false;
@@ -249,7 +305,7 @@ function countConflicts(
 async function findOverlappingAppointments(
   supabase: UserClient,
   userId: string,
-  candidates: Array<Pick<SmartInboxCandidate, "starts_at" | "ends_at">>,
+  candidates: ScheduledCandidate[],
 ) {
   if (candidates.length === 0) return [];
   const ranges = candidates.map((candidate) =>
@@ -286,7 +342,7 @@ async function logEvent(
   });
 }
 
-function dismissedMessageIds(
+function loggedMessageIds(
   rows: Array<{ detail: Database["public"]["Tables"]["sync_log"]["Row"]["detail"] }>,
 ) {
   const ids = new Set<string>();
@@ -357,7 +413,7 @@ export async function scanSmartInbox(
 
   const externalIds = ids.map((id) => `gmail:${id}`);
   const dismissalCutoff = new Date(Date.now() - DISMISSAL_DAYS * 86400000).toISOString();
-  const [existingResult, dismissalResult] = await Promise.all([
+  const [existingResult, dismissalResult, acceptedTaskResult] = await Promise.all([
     supabase
       .from("appointments")
       .select("external_id")
@@ -370,17 +426,28 @@ export async function scanSmartInbox(
       .eq("kind", "gmail_dismissed")
       .gte("created_at", dismissalCutoff)
       .limit(1000),
+    supabase
+      .from("sync_log")
+      .select("detail")
+      .eq("user_id", userId)
+      .eq("kind", "gmail_accepted_task")
+      .gte("created_at", dismissalCutoff)
+      .limit(1000),
   ]);
   if (existingResult.error) throw new Error(existingResult.error.message);
   if (dismissalResult.error) throw new Error(dismissalResult.error.message);
+  if (acceptedTaskResult.error) throw new Error(acceptedTaskResult.error.message);
 
   const existing = new Set(
     (existingResult.data ?? [])
       .map((row) => row.external_id?.replace(/^gmail:/, ""))
       .filter((id): id is string => Boolean(id)),
   );
-  const dismissed = dismissedMessageIds(dismissalResult.data ?? []);
-  const pendingIds = ids.filter((id) => !existing.has(id) && !dismissed.has(id));
+  const dismissed = loggedMessageIds(dismissalResult.data ?? []);
+  const acceptedTasks = loggedMessageIds(acceptedTaskResult.data ?? []);
+  const pendingIds = ids.filter(
+    (id) => !existing.has(id) && !acceptedTasks.has(id) && !dismissed.has(id),
+  );
   const candidates: SmartInboxCandidate[] = [];
   let skipped = 0;
   let completedExtractions = 0;
@@ -411,19 +478,28 @@ export async function scanSmartInbox(
     throw firstExtractionError;
   }
 
-  const appointments = await findOverlappingAppointments(supabase, userId, candidates);
+  const scheduled = candidates.filter((candidate): candidate is ScheduledCandidate =>
+    Boolean(candidate.starts_at),
+  );
+  const appointments = await findOverlappingAppointments(supabase, userId, scheduled);
   const withConflicts = candidates
     .map((candidate) => ({
       ...candidate,
-      conflicts: countConflicts(candidate, appointments),
+      conflicts: candidate.starts_at
+        ? countConflicts(candidate as ScheduledCandidate, appointments)
+        : 0,
     }))
-    .sort((left, right) => Date.parse(left.starts_at) - Date.parse(right.starts_at));
+    .sort((left, right) =>
+      (left.starts_at ?? left.deadline ?? "").localeCompare(
+        right.starts_at ?? right.deadline ?? "",
+      ),
+    );
   await recordScan(supabase, userId, ids.length, withConflicts.length, skipped);
 
   return {
     scanned: ids.length,
     candidates: withConflicts,
-    alreadyHandled: ids.filter((id) => existing.has(id)).length,
+    alreadyHandled: ids.filter((id) => existing.has(id) || acceptedTasks.has(id)).length,
     dismissed: ids.filter((id) => dismissed.has(id)).length,
     skipped,
   };
@@ -468,6 +544,61 @@ export async function acceptSmartInboxCandidate(
   candidate: SmartInboxCandidate,
 ): Promise<SmartInboxAcceptResult> {
   await assertGmailEnabled(supabase, userId);
+
+  if (candidate.destination === "tasks") {
+    if (!candidate.deadline) throw new Error("That suggestion no longer has a valid deadline.");
+    const { data: handled, error: handledError } = await supabase
+      .from("sync_log")
+      .select("detail")
+      .eq("user_id", userId)
+      .eq("kind", "gmail_accepted_task")
+      .contains("detail", { messageId: candidate.messageId })
+      .limit(1)
+      .maybeSingle();
+    if (handledError) throw new Error(handledError.message);
+    const handledDetail = handled?.detail;
+    const handledTaskId =
+      handledDetail && typeof handledDetail === "object" && !Array.isArray(handledDetail)
+        ? (handledDetail as Record<string, unknown>).taskId
+        : null;
+    if (typeof handledTaskId === "string") {
+      const { data: task, error: taskError } = await supabase
+        .from("tasks")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("id", handledTaskId)
+        .maybeSingle();
+      if (taskError) throw new Error(taskError.message);
+      if (task) {
+        return { itemId: task.id, itemType: "task", alreadyAdded: true, conflicts: 0 };
+      }
+    }
+
+    const { data: insertedTask, error: taskInsertError } = await supabase
+      .from("tasks")
+      .insert({
+        user_id: userId,
+        title: candidate.title,
+        notes: candidate.notes,
+        deadline: candidate.deadline,
+        estimated_min: candidate.estimated_min,
+        priority: candidate.kind === "deadline" ? 1 : 2,
+        energy: "light",
+        status: "todo",
+      })
+      .select("id")
+      .single();
+    if (taskInsertError) throw new Error(taskInsertError.message);
+    await logEvent(supabase, userId, "gmail_accepted_task", "Added a Smart Inbox task.", {
+      messageId: candidate.messageId,
+      taskId: insertedTask.id,
+      suggestionKind: candidate.kind,
+    });
+    return { itemId: insertedTask.id, itemType: "task", alreadyAdded: false, conflicts: 0 };
+  }
+
+  if (!candidate.starts_at) throw new Error("That suggestion no longer has a valid time.");
+  const scheduledCandidate = candidate as ScheduledCandidate;
   const externalId = `gmail:${candidate.messageId}`;
   const { data: existing, error: existingError } = await supabase
     .from("appointments")
@@ -476,10 +607,10 @@ export async function acceptSmartInboxCandidate(
     .eq("external_id", externalId)
     .maybeSingle();
   if (existingError) throw new Error(existingError.message);
-  const appointments = await findOverlappingAppointments(supabase, userId, [candidate]);
-  const conflicts = countConflicts(candidate, appointments);
+  const appointments = await findOverlappingAppointments(supabase, userId, [scheduledCandidate]);
+  const conflicts = countConflicts(scheduledCandidate, appointments);
   if (existing) {
-    return { appointmentId: existing.id, alreadyAdded: true, conflicts };
+    return { itemId: existing.id, itemType: "appointment", alreadyAdded: true, conflicts };
   }
 
   const { data: inserted, error } = await supabase
@@ -498,6 +629,7 @@ export async function acceptSmartInboxCandidate(
       gmail_from: candidate.from || null,
       gmail_subject: candidate.subject || null,
       commitment_type: "fixed",
+      source_metadata: { smart_inbox_kind: candidate.kind },
     })
     .select("id")
     .single();
@@ -509,7 +641,9 @@ export async function acceptSmartInboxCandidate(
         .eq("user_id", userId)
         .eq("external_id", externalId)
         .single();
-      if (raced) return { appointmentId: raced.id, alreadyAdded: true, conflicts };
+      if (raced) {
+        return { itemId: raced.id, itemType: "appointment", alreadyAdded: true, conflicts };
+      }
     }
     throw new Error(error.message);
   }
@@ -518,7 +652,7 @@ export async function acceptSmartInboxCandidate(
     appointmentId: inserted.id,
     conflicts,
   });
-  return { appointmentId: inserted.id, alreadyAdded: false, conflicts };
+  return { itemId: inserted.id, itemType: "appointment", alreadyAdded: false, conflicts };
 }
 
 export async function dismissSmartInboxCandidate(

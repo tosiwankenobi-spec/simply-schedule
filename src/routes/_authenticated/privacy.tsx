@@ -129,7 +129,7 @@ function ProviderCard({
 
         <div className="rounded-lg border bg-secondary/30 px-4 py-3 text-sm">
           <p className="font-medium">
-            {importedItems} imported schedule item{importedItems === 1 ? "" : "s"}
+            {importedItems} imported item{importedItems === 1 ? "" : "s"}
           </p>
           {extra ? <p className="mt-1 text-muted-foreground">{extra}</p> : null}
         </div>
@@ -316,9 +316,9 @@ function PrivacyPage() {
               enabled={data.gmail.enabled}
               importedItems={data.gmail.importedItems}
               lastAccessedAt={data.gmail.lastAccessedAt}
-              reads="Recent inbox messages that match appointment-related terms, including sender, subject, date, and message text."
-              reason="To suggest likely appointments for your review. Nothing is added until you approve it. Matching message text is sent through Lovable's configured AI gateway during a scan; ambiguous messages are skipped."
-              stores="Approved appointment details, message/thread identifiers needed for deduplication, dismissed message identifiers for 30 days, and a short sync activity log. Raw email bodies are not stored in Chronos-V."
+              reads="Recent inbox messages that match appointment, delivery, school, renewal, or deadline terms, including sender, subject, date, and message text."
+              reason="To suggest likely schedule items or tasks for your review. Nothing is added until you approve it. Matching message text is sent through Lovable's configured AI gateway during a scan; ambiguous messages are skipped."
+              stores="Approved appointment or task details, message/thread identifiers needed for deduplication, dismissed message identifiers for 30 days, and a short sync activity log. Raw email bodies are not stored in Chronos-V."
               busy={busy}
               onAccessChange={(provider, enabled) => access.mutate({ provider, enabled })}
               onDelete={(provider) => remove.mutate(provider)}
