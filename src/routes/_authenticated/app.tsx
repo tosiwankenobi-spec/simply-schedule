@@ -38,6 +38,7 @@ import {
   Bell,
   CalendarCheck,
   ShieldCheck,
+  Repeat2,
 } from "lucide-react";
 import { DailyBriefing } from "@/components/DailyBriefing";
 import { WeekGrid } from "@/components/WeekGrid";
@@ -175,6 +176,11 @@ function AppPage() {
           <Button asChild variant="outline">
             <Link to="/tasks">
               <ListTodo className="h-4 w-4 mr-1.5" /> Tasks
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link to="/routines">
+              <Repeat2 className="h-4 w-4 mr-1.5" /> Routines
             </Link>
           </Button>
           <Button asChild variant="outline">

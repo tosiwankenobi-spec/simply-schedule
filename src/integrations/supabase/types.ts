@@ -82,6 +82,8 @@ export type Database = {
           provider_account_id: string | null
           recurrence_rule: string | null
           remote_updated_at: string | null
+          routine_id: string | null
+          routine_occurrence_date: string | null
           source: string
           source_metadata: Json
           starts_at: string
@@ -117,6 +119,8 @@ export type Database = {
           provider_account_id?: string | null
           recurrence_rule?: string | null
           remote_updated_at?: string | null
+          routine_id?: string | null
+          routine_occurrence_date?: string | null
           source?: string
           source_metadata?: Json
           starts_at: string
@@ -152,6 +156,8 @@ export type Database = {
           provider_account_id?: string | null
           recurrence_rule?: string | null
           remote_updated_at?: string | null
+          routine_id?: string | null
+          routine_occurrence_date?: string | null
           source?: string
           source_metadata?: Json
           starts_at?: string
@@ -162,7 +168,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "appointments_routine_id_fkey"
+            columns: ["routine_id"]
+            isOneToOne: false
+            referencedRelation: "routines"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notification_log: {
         Row: {
@@ -379,6 +393,66 @@ export type Database = {
         }
         Relationships: []
       }
+      routines: {
+        Row: {
+          active: boolean
+          category: string
+          commitment_type: string
+          created_at: string
+          days_of_week: number[]
+          duration_min: number
+          end_date: string | null
+          frequency: string
+          id: string
+          local_time: string
+          location: string | null
+          notes: string | null
+          start_date: string
+          timezone: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          category?: string
+          commitment_type?: string
+          created_at?: string
+          days_of_week?: number[]
+          duration_min?: number
+          end_date?: string | null
+          frequency?: string
+          id?: string
+          local_time: string
+          location?: string | null
+          notes?: string | null
+          start_date?: string
+          timezone?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          category?: string
+          commitment_type?: string
+          created_at?: string
+          days_of_week?: number[]
+          duration_min?: number
+          end_date?: string | null
+          frequency?: string
+          id?: string
+          local_time?: string
+          location?: string | null
+          notes?: string | null
+          start_date?: string
+          timezone?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       sync_log: {
         Row: {
           calendar_id: string | null
@@ -580,22 +654,22 @@ export type Database = {
         Insert: {
           calendar_event_id?: string | null
           calendar_id?: string | null
-          commitment_type?: never
+          commitment_type?: string | null
           created_at?: string | null
           duration_min?: never
           ends_at?: string | null
           id?: string | null
-          is_all_day?: never
+          is_all_day?: boolean | null
           location?: string | null
           notes?: string | null
-          privacy_level?: never
+          privacy_level?: string | null
           provider?: never
-          provider_account_id?: never
-          recurrence_rule?: never
+          provider_account_id?: string | null
+          recurrence_rule?: string | null
           source?: string | null
           source_label?: never
           starts_at?: string | null
-          sync_status?: never
+          sync_status?: string | null
           timezone?: never
           title?: string | null
           updated_at?: string | null
@@ -604,22 +678,22 @@ export type Database = {
         Update: {
           calendar_event_id?: string | null
           calendar_id?: string | null
-          commitment_type?: never
+          commitment_type?: string | null
           created_at?: string | null
           duration_min?: never
           ends_at?: string | null
           id?: string | null
-          is_all_day?: never
+          is_all_day?: boolean | null
           location?: string | null
           notes?: string | null
-          privacy_level?: never
+          privacy_level?: string | null
           provider?: never
-          provider_account_id?: never
-          recurrence_rule?: never
+          provider_account_id?: string | null
+          recurrence_rule?: string | null
           source?: string | null
           source_label?: never
           starts_at?: string | null
-          sync_status?: never
+          sync_status?: string | null
           timezone?: never
           title?: string | null
           updated_at?: string | null

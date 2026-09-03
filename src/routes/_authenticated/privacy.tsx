@@ -345,6 +345,10 @@ function PrivacyPage() {
                   Travel guidance uses appointment locations and time estimates you control. It is
                   calculated inside Chronos-V and is not sent to a mapping provider.
                 </p>
+                <p>
+                  Personal routines are private templates. Chronos-V expands them into upcoming
+                  timeline entries inside your account so reminders and planning can use them.
+                </p>
               </CardContent>
             </Card>
 

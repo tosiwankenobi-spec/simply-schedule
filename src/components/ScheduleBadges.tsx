@@ -15,7 +15,7 @@ export function CommitmentBadge({ event, className = "" }: { event: ScheduleEven
   const fixed = event.commitment_type === "fixed";
   return (
     <span
-      title={fixed ? "Fixed — lives on an external calendar" : "Flexible — Chronos-V can move this"}
+      title={fixed ? "Fixed — Chronos-V will not move this" : "Flexible — Chronos-V can move this"}
       className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wide ${
         fixed ? "bg-secondary text-muted-foreground" : "bg-accent/15 text-accent"
       } ${className}`}
