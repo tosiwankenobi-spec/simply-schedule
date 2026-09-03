@@ -477,7 +477,7 @@ async function applyRemoteEvent(
 ) {
   const { data: existing } = await supabase
     .from("appointments")
-    .select("id, updated_at, last_synced_at, title")
+    .select("id, updated_at, last_synced_at, title, household_id, household_visibility")
     .eq("user_id", userId)
     .eq("calendar_event_id", ev.id)
     .maybeSingle();
@@ -573,6 +573,12 @@ async function applyRemoteEvent(
       remote_updated_at: Number.isFinite(remoteUpdated)
         ? new Date(remoteUpdated).toISOString()
         : null,
+      ...(existing
+        ? {
+            household_id: existing.household_id,
+            household_visibility: existing.household_visibility,
+          }
+        : {}),
       ...row,
     },
     { onConflict: "user_id,calendar_event_id" },

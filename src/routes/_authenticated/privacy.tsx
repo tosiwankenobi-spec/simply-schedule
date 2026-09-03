@@ -349,6 +349,11 @@ function PrivacyPage() {
                   Personal routines are private templates. Chronos-V expands them into upcoming
                   timeline entries inside your account so reminders and planning can use them.
                 </p>
+                <p>
+                  Household items stay private unless you share them individually. Busy-only sharing
+                  reveals the time but never the title, notes, or location; full details is a
+                  separate, reversible choice.
+                </p>
               </CardContent>
             </Card>
 

@@ -34,6 +34,10 @@ export type ScheduleEvent = {
   source: string;
   source_label: string;
   duration_min: number;
+  is_household_shared: boolean;
+  shared_by_name: string | null;
+  household_id: string | null;
+  household_visibility: "private" | "busy" | "details";
 };
 
 /** Only non-private columns are requested — user_id and audit fields stay server-side. */
@@ -57,6 +61,10 @@ const COLUMNS = [
   "source",
   "source_label",
   "duration_min",
+  "is_household_shared",
+  "shared_by_name",
+  "household_id",
+  "household_visibility",
 ].join(",");
 
 export const scheduleHubKey = ["appointments", "schedule-hub"] as const;
@@ -76,7 +84,7 @@ export function useScheduleEvents() {
 
 /** External calendar events are fixed: never move them silently from Chronos-V. */
 export function isMovable(e: ScheduleEvent) {
-  return e.commitment_type === "flexible" && !e.is_all_day;
+  return !e.is_household_shared && e.commitment_type === "flexible" && !e.is_all_day;
 }
 
 export function eventStart(e: ScheduleEvent) {

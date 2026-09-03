@@ -21,6 +21,7 @@ import { Route as AuthenticatedRoutinesRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedPrivacyRouteImport } from './routes/_authenticated/privacy'
 import { Route as AuthenticatedPlannerRouteImport } from './routes/_authenticated/planner'
 import { Route as AuthenticatedInboxRouteImport } from './routes/_authenticated/inbox'
+import { Route as AuthenticatedHouseholdRouteImport } from './routes/_authenticated/household'
 import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/app'
 import { Route as AuthenticatedSetupSyncRouteImport } from './routes/_authenticated/setup.sync'
 import { Route as AuthenticatedSetupNotificationsRouteImport } from './routes/_authenticated/setup.notifications'
@@ -88,6 +89,11 @@ const AuthenticatedInboxRoute = AuthenticatedInboxRouteImport.update({
   path: '/inbox',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedHouseholdRoute = AuthenticatedHouseholdRouteImport.update({
+  id: '/household',
+  path: '/household',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedAppRoute = AuthenticatedAppRouteImport.update({
   id: '/app',
   path: '/app',
@@ -127,6 +133,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/index': typeof Char91indexChar93Route
   '/app': typeof AuthenticatedAppRoute
+  '/household': typeof AuthenticatedHouseholdRoute
   '/inbox': typeof AuthenticatedInboxRoute
   '/planner': typeof AuthenticatedPlannerRouteWithChildren
   '/privacy': typeof AuthenticatedPrivacyRoute
@@ -146,6 +153,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/index': typeof Char91indexChar93Route
   '/app': typeof AuthenticatedAppRoute
+  '/household': typeof AuthenticatedHouseholdRoute
   '/inbox': typeof AuthenticatedInboxRoute
   '/planner': typeof AuthenticatedPlannerRouteWithChildren
   '/privacy': typeof AuthenticatedPrivacyRoute
@@ -167,6 +175,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/index': typeof Char91indexChar93Route
   '/_authenticated/app': typeof AuthenticatedAppRoute
+  '/_authenticated/household': typeof AuthenticatedHouseholdRoute
   '/_authenticated/inbox': typeof AuthenticatedInboxRoute
   '/_authenticated/planner': typeof AuthenticatedPlannerRouteWithChildren
   '/_authenticated/privacy': typeof AuthenticatedPrivacyRoute
@@ -188,6 +197,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/index'
     | '/app'
+    | '/household'
     | '/inbox'
     | '/planner'
     | '/privacy'
@@ -207,6 +217,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/index'
     | '/app'
+    | '/household'
     | '/inbox'
     | '/planner'
     | '/privacy'
@@ -227,6 +238,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/index'
     | '/_authenticated/app'
+    | '/_authenticated/household'
     | '/_authenticated/inbox'
     | '/_authenticated/planner'
     | '/_authenticated/privacy'
@@ -335,6 +347,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedInboxRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/household': {
+      id: '/_authenticated/household'
+      path: '/household'
+      fullPath: '/household'
+      preLoaderRoute: typeof AuthenticatedHouseholdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/app': {
       id: '/_authenticated/app'
       path: '/app'
@@ -393,6 +412,7 @@ const AuthenticatedPlannerRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAppRoute: typeof AuthenticatedAppRoute
+  AuthenticatedHouseholdRoute: typeof AuthenticatedHouseholdRoute
   AuthenticatedInboxRoute: typeof AuthenticatedInboxRoute
   AuthenticatedPlannerRoute: typeof AuthenticatedPlannerRouteWithChildren
   AuthenticatedPrivacyRoute: typeof AuthenticatedPrivacyRoute
@@ -409,6 +429,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAppRoute: AuthenticatedAppRoute,
+  AuthenticatedHouseholdRoute: AuthenticatedHouseholdRoute,
   AuthenticatedInboxRoute: AuthenticatedInboxRoute,
   AuthenticatedPlannerRoute: AuthenticatedPlannerRouteWithChildren,
   AuthenticatedPrivacyRoute: AuthenticatedPrivacyRoute,
