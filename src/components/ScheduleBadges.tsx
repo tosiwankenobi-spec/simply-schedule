@@ -1,18 +1,31 @@
-import { Lock, Move, Users } from "lucide-react";
+import { CalendarArrowUp, Lock, Move, Users } from "lucide-react";
 import type { ScheduleEvent } from "@/lib/schedule-hub";
 
-export function SourceBadge({ event, className = "" }: { event: ScheduleEvent; className?: string }) {
+export function SourceBadge({
+  event,
+  className = "",
+}: {
+  event: ScheduleEvent;
+  className?: string;
+}) {
   return (
     <span
       className={`inline-flex items-center rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground ${className}`}
     >
       {event.is_household_shared && <Users className="mr-1 h-2.5 w-2.5" />}
+      {event.source === "calendar_import" && <CalendarArrowUp className="mr-1 h-2.5 w-2.5" />}
       {event.source_label}
     </span>
   );
 }
 
-export function CommitmentBadge({ event, className = "" }: { event: ScheduleEvent; className?: string }) {
+export function CommitmentBadge({
+  event,
+  className = "",
+}: {
+  event: ScheduleEvent;
+  className?: string;
+}) {
   const fixed = event.commitment_type === "fixed";
   return (
     <span

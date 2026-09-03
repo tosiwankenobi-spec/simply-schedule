@@ -12,7 +12,12 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type CommitmentType = "fixed" | "flexible";
 export type SyncStatus = "synced" | "pending" | "local";
-export type ScheduleProvider = "google_calendar" | "google_mail" | "chronos";
+export type ScheduleProvider =
+  | "google_calendar"
+  | "google_mail"
+  | "outlook_calendar"
+  | "device_calendar"
+  | "chronos";
 
 export type ScheduleEvent = {
   id: string;
@@ -92,7 +97,9 @@ export function eventStart(e: ScheduleEvent) {
 }
 
 export function eventEnd(e: ScheduleEvent) {
-  return e.ends_at ? new Date(e.ends_at) : new Date(eventStart(e).getTime() + e.duration_min * 60000);
+  return e.ends_at
+    ? new Date(e.ends_at)
+    : new Date(eventStart(e).getTime() + e.duration_min * 60000);
 }
 
 export function eventsOnDay(events: ScheduleEvent[], day: Date) {

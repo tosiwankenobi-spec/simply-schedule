@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
   ArrowLeft,
+  CalendarArrowUp,
   CalendarDays,
   CheckCircle2,
   Database,
@@ -363,9 +364,15 @@ function PrivacyPage() {
                   <Smartphone className="h-5 w-5" /> Other sources
                 </CardTitle>
                 <CardDescription>
-                  Outlook and device calendars are not connected, so Chronos-V reads nothing from
-                  them.
+                  Outlook and device calendars are never read automatically. You can preview and
+                  import a local iCalendar snapshot; only normalized event details are stored, and
+                  each imported calendar can be deleted independently.
                 </CardDescription>
+                <Button asChild variant="outline" className="mt-3 w-fit">
+                  <Link to="/calendar-import">
+                    <CalendarArrowUp className="mr-1.5 h-4 w-4" /> Manage calendar imports
+                  </Link>
+                </Button>
               </CardHeader>
             </Card>
           </div>

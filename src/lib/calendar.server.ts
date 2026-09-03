@@ -644,6 +644,7 @@ async function push(
     .select("id, title, starts_at, ends_at, location, notes")
     .eq("user_id", userId)
     .is("calendar_event_id", null)
+    .neq("source", "calendar_import")
     .gte("starts_at", horizon)
     .limit(50);
 

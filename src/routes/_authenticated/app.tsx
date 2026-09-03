@@ -37,6 +37,7 @@ import {
   Moon,
   Bell,
   CalendarCheck,
+  CalendarArrowUp,
   ShieldCheck,
   Repeat2,
   Users,
@@ -196,6 +197,11 @@ function AppPage() {
           </Button>
           <ExportIcsButton />
           <Button asChild variant="outline">
+            <Link to="/calendar-import">
+              <CalendarArrowUp className="h-4 w-4 mr-1.5" /> Import calendars
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
             <Link to="/inbox">
               <Mail className="h-4 w-4 mr-1.5" /> Smart inbox
             </Link>
@@ -232,9 +238,9 @@ function AppPage() {
         <DailyBriefing />
 
         <p className="mt-2 text-xs text-muted-foreground">
-          Two-way sync keeps Google Calendar and this schedule in step — changes you make here are
-          pushed up, and calendar edits flow back automatically. Smart Inbox asks before adding any
-          appointment it detects in Gmail.
+          Two-way sync keeps Google Calendar and this schedule in step. Outlook and device calendar
+          files can join the same timeline as private, fixed snapshots. Smart Inbox asks before
+          adding any appointment it detects in Gmail.
         </p>
 
         <QuickCapture />

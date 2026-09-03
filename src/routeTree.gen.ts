@@ -22,6 +22,7 @@ import { Route as AuthenticatedPrivacyRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedPlannerRouteImport } from './routes/_authenticated/planner'
 import { Route as AuthenticatedInboxRouteImport } from './routes/_authenticated/inbox'
 import { Route as AuthenticatedHouseholdRouteImport } from './routes/_authenticated/household'
+import { Route as AuthenticatedCalendarImportRouteImport } from './routes/_authenticated/calendar-import'
 import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/app'
 import { Route as AuthenticatedSetupSyncRouteImport } from './routes/_authenticated/setup.sync'
 import { Route as AuthenticatedSetupNotificationsRouteImport } from './routes/_authenticated/setup.notifications'
@@ -94,6 +95,12 @@ const AuthenticatedHouseholdRoute = AuthenticatedHouseholdRouteImport.update({
   path: '/household',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedCalendarImportRoute =
+  AuthenticatedCalendarImportRouteImport.update({
+    id: '/calendar-import',
+    path: '/calendar-import',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAppRoute = AuthenticatedAppRouteImport.update({
   id: '/app',
   path: '/app',
@@ -133,6 +140,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/index': typeof Char91indexChar93Route
   '/app': typeof AuthenticatedAppRoute
+  '/calendar-import': typeof AuthenticatedCalendarImportRoute
   '/household': typeof AuthenticatedHouseholdRoute
   '/inbox': typeof AuthenticatedInboxRoute
   '/planner': typeof AuthenticatedPlannerRouteWithChildren
@@ -153,6 +161,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/index': typeof Char91indexChar93Route
   '/app': typeof AuthenticatedAppRoute
+  '/calendar-import': typeof AuthenticatedCalendarImportRoute
   '/household': typeof AuthenticatedHouseholdRoute
   '/inbox': typeof AuthenticatedInboxRoute
   '/planner': typeof AuthenticatedPlannerRouteWithChildren
@@ -175,6 +184,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/index': typeof Char91indexChar93Route
   '/_authenticated/app': typeof AuthenticatedAppRoute
+  '/_authenticated/calendar-import': typeof AuthenticatedCalendarImportRoute
   '/_authenticated/household': typeof AuthenticatedHouseholdRoute
   '/_authenticated/inbox': typeof AuthenticatedInboxRoute
   '/_authenticated/planner': typeof AuthenticatedPlannerRouteWithChildren
@@ -197,6 +207,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/index'
     | '/app'
+    | '/calendar-import'
     | '/household'
     | '/inbox'
     | '/planner'
@@ -217,6 +228,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/index'
     | '/app'
+    | '/calendar-import'
     | '/household'
     | '/inbox'
     | '/planner'
@@ -238,6 +250,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/index'
     | '/_authenticated/app'
+    | '/_authenticated/calendar-import'
     | '/_authenticated/household'
     | '/_authenticated/inbox'
     | '/_authenticated/planner'
@@ -354,6 +367,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedHouseholdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/calendar-import': {
+      id: '/_authenticated/calendar-import'
+      path: '/calendar-import'
+      fullPath: '/calendar-import'
+      preLoaderRoute: typeof AuthenticatedCalendarImportRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/app': {
       id: '/_authenticated/app'
       path: '/app'
@@ -412,6 +432,7 @@ const AuthenticatedPlannerRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAppRoute: typeof AuthenticatedAppRoute
+  AuthenticatedCalendarImportRoute: typeof AuthenticatedCalendarImportRoute
   AuthenticatedHouseholdRoute: typeof AuthenticatedHouseholdRoute
   AuthenticatedInboxRoute: typeof AuthenticatedInboxRoute
   AuthenticatedPlannerRoute: typeof AuthenticatedPlannerRouteWithChildren
@@ -429,6 +450,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAppRoute: AuthenticatedAppRoute,
+  AuthenticatedCalendarImportRoute: AuthenticatedCalendarImportRoute,
   AuthenticatedHouseholdRoute: AuthenticatedHouseholdRoute,
   AuthenticatedInboxRoute: AuthenticatedInboxRoute,
   AuthenticatedPlannerRoute: AuthenticatedPlannerRouteWithChildren,
