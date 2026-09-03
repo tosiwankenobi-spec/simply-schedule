@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { ArrowLeft, BellRing, Brain, Mail, Send, ShieldCheck, X } from "lucide-react";
+import { ArrowLeft, BellRing, Brain, CarFront, Mail, Send, ShieldCheck, X } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/setup/notifications")({
   component: NotificationSetup,
@@ -85,6 +85,8 @@ function NotificationSetup() {
     try {
       await saveNotificationPrefs({ data: { ...form, email_to: form.email_to ?? "" } });
       qc.invalidateQueries({ queryKey: ["notif-prefs"] });
+      qc.invalidateQueries({ queryKey: ["adaptive-reminder-preview"] });
+      qc.invalidateQueries({ queryKey: ["next-travel-guidance"] });
       toast.success("Reminder settings saved.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not save settings.");
@@ -200,8 +202,8 @@ function NotificationSetup() {
             <div>
               <h2 className="font-serif text-xl">Adaptive timing</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Chronos-V adds a close reminder for online meetings, an earlier travel check for physical
-                locations, and an evening-before prompt for fixed commitments that may need preparation.
+                Chronos-V adds a close reminder for online meetings, a leave-now reminder based on your
+                travel plan, and an evening-before prompt for fixed commitments that may need preparation.
               </p>
             </div>
           </div>
@@ -243,9 +245,96 @@ function NotificationSetup() {
           <div className="flex items-start gap-2 rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
             <p>
-              This uses only the title, time, location, notes, source, and commitment type from your own
-              appointments. The rules run inside Chronos-V; no schedule details are sent to a mapping or AI
-              service.
+              This uses only the title, time, location, notes, source, commitment type, and travel estimates
+              from your own appointments. The rules run inside Chronos-V; no schedule details are sent to a
+              mapping or AI service.
+            </p>
+          </div>
+        </section>
+
+        <section className="mt-6 space-y-4 rounded-xl border border-border bg-card p-5">
+          <div className="flex items-start gap-3">
+            <div className="rounded-lg bg-muted p-2">
+              <CarFront className="h-4 w-4" />
+            </div>
+            <div>
+              <h2 className="font-serif text-xl">Travel timing</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Chronos-V subtracts travel, a safety buffer, and preparation time from the appointment start
+                to calculate when you should get ready and leave.
+              </p>
+            </div>
+          </div>
+
+          <Row
+            label="Leave-now reminders"
+            hint="Alert at the calculated leave-by time for appointments with a physical location."
+            checked={form.travel_reminders_enabled}
+            onChange={(value) => set("travel_reminders_enabled", value)}
+          />
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="travel-mode">Usual travel mode</Label>
+              <select
+                id="travel-mode"
+                value={form.travel_mode}
+                onChange={(event) => set("travel_mode", event.target.value as NotifPrefs["travel_mode"])}
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              >
+                <option value="driving">Driving</option>
+                <option value="transit">Public transit</option>
+                <option value="walking">Walking</option>
+                <option value="cycling">Cycling</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="travel-minutes">Usual travel time (minutes)</Label>
+              <Input
+                id="travel-minutes"
+                type="number"
+                min={1}
+                max={240}
+                value={form.default_travel_min}
+                onChange={(event) =>
+                  set("default_travel_min", Math.min(240, Math.max(1, Number(event.target.value) || 1)))
+                }
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="travel-buffer">Safety buffer (minutes)</Label>
+              <Input
+                id="travel-buffer"
+                type="number"
+                min={0}
+                max={120}
+                value={form.travel_buffer_min}
+                onChange={(event) =>
+                  set("travel_buffer_min", Math.min(120, Math.max(0, Number(event.target.value) || 0)))
+                }
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="prep-minutes">Get-ready time (minutes)</Label>
+              <Input
+                id="prep-minutes"
+                type="number"
+                min={0}
+                max={240}
+                value={form.default_prep_min}
+                onChange={(event) =>
+                  set("default_prep_min", Math.min(240, Math.max(0, Number(event.target.value) || 0)))
+                }
+              />
+            </div>
+          </div>
+
+          <div className="flex items-start gap-2 rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
+            <p>
+              These are estimates you control. Chronos-V does not send an appointment location to a mapping
+              provider. You can override travel and preparation time for the next trip from Today.
             </p>
           </div>
         </section>

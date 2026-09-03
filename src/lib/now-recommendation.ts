@@ -1,3 +1,10 @@
+import {
+  calculateTravelGuidance,
+  DEFAULT_TRAVEL_PREFERENCES,
+  isOnlineLocation,
+  type TravelPreferences,
+} from "./travel-intelligence";
+
 export type NowTask = {
   id: string;
   title: string;
@@ -12,6 +19,8 @@ export type NowAppointment = {
   starts_at: string;
   ends_at: string | null;
   location: string | null;
+  travel_minutes?: number | null;
+  preparation_minutes?: number | null;
 };
 
 type RecommendationBase = {
@@ -34,6 +43,7 @@ export type NowRecommendation =
       title: string;
       startsAt: string;
       location: string | null;
+      leaveAt: string | null;
       reason: string;
     })
   | (RecommendationBase & {
@@ -49,11 +59,6 @@ function appointmentEnd(appointment: NowAppointment) {
   const start = Date.parse(appointment.starts_at);
   const explicitEnd = appointment.ends_at ? Date.parse(appointment.ends_at) : Number.NaN;
   return Number.isFinite(explicitEnd) ? explicitEnd : start + 30 * MINUTE;
-}
-
-function isOnlineLocation(location: string | null) {
-  if (!location) return false;
-  return /(?:https?:\/\/|zoom|meet\.google|teams\.microsoft|online|virtual)/i.test(location);
 }
 
 function preparationMinutes(location: string | null) {
@@ -108,11 +113,13 @@ export function buildNowRecommendation({
   timezoneOffsetMinutes,
   tasks,
   appointments,
+  travelPreferences = DEFAULT_TRAVEL_PREFERENCES,
 }: {
   now: Date;
   timezoneOffsetMinutes: number;
   tasks: NowTask[];
   appointments: NowAppointment[];
+  travelPreferences?: TravelPreferences;
 }): NowRecommendation {
   const nowMs = now.getTime();
   const generatedAt = now.toISOString();
@@ -131,6 +138,7 @@ export function buildNowRecommendation({
       title: active.title,
       startsAt: active.starts_at,
       location: active.location,
+      leaveAt: null,
       generatedAt,
       availableMinutes: 0,
       reason: "This commitment is happening now.",
@@ -139,25 +147,33 @@ export function buildNowRecommendation({
 
   const next =
     timedAppointments.find((appointment) => Date.parse(appointment.starts_at) > nowMs) ?? null;
+  const nextTravel = next ? calculateTravelGuidance(next, travelPreferences, nowMs) : null;
   if (next) {
     const minutesUntilStart = Math.max(
       0,
       Math.floor((Date.parse(next.starts_at) - nowMs) / MINUTE),
     );
-    const prepMinutes = preparationMinutes(next.location);
-    if (minutesUntilStart <= prepMinutes) {
+    const readyAt = nextTravel
+      ? Date.parse(nextTravel.prepareAt)
+      : Date.parse(next.starts_at) - preparationMinutes(next.location) * MINUTE;
+    if (nowMs >= readyAt) {
       return {
         kind: "appointment",
         appointmentId: next.id,
         title: next.title,
         startsAt: next.starts_at,
         location: next.location,
+        leaveAt: nextTravel?.leaveAt ?? null,
         generatedAt,
         availableMinutes: 0,
         reason:
-          next.location && !isOnlineLocation(next.location)
-            ? "Leave or get ready now so you arrive without rushing."
-            : "Get ready now; this starts soon.",
+          nextTravel?.status === "leave_now"
+            ? `Leave now so you arrive with your ${nextTravel.bufferMinutes}-minute safety buffer.`
+            : nextTravel
+              ? "Start getting ready now so you can leave on time."
+              : next.location && !isOnlineLocation(next.location)
+                ? "Leave or get ready now so you arrive without rushing."
+                : "Get ready now; this starts soon.",
       };
     }
   }
@@ -165,8 +181,13 @@ export function buildNowRecommendation({
   const availableMinutes = next
     ? Math.max(
         0,
-        Math.floor((Date.parse(next.starts_at) - nowMs) / MINUTE) -
-          preparationMinutes(next.location),
+        Math.floor(
+          ((nextTravel
+            ? Date.parse(nextTravel.prepareAt)
+            : Date.parse(next.starts_at) - preparationMinutes(next.location) * MINUTE) -
+            nowMs) /
+            MINUTE,
+        ),
       )
     : DEFAULT_OPEN_WINDOW_MIN;
   const today = localDateKey(now, timezoneOffsetMinutes);

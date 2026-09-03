@@ -76,6 +76,7 @@ export type Database = {
           last_synced_at: string | null
           location: string | null
           notes: string | null
+          preparation_minutes: number | null
           privacy_level: string
           provider: string | null
           provider_account_id: string | null
@@ -87,6 +88,7 @@ export type Database = {
           sync_status: string
           timezone: string | null
           title: string
+          travel_minutes: number | null
           updated_at: string
           user_id: string
         }
@@ -109,6 +111,7 @@ export type Database = {
           last_synced_at?: string | null
           location?: string | null
           notes?: string | null
+          preparation_minutes?: number | null
           privacy_level?: string
           provider?: string | null
           provider_account_id?: string | null
@@ -120,6 +123,7 @@ export type Database = {
           sync_status?: string
           timezone?: string | null
           title: string
+          travel_minutes?: number | null
           updated_at?: string
           user_id: string
         }
@@ -142,6 +146,7 @@ export type Database = {
           last_synced_at?: string | null
           location?: string | null
           notes?: string | null
+          preparation_minutes?: number | null
           privacy_level?: string
           provider?: string | null
           provider_account_id?: string | null
@@ -153,6 +158,7 @@ export type Database = {
           sync_status?: string
           timezone?: string | null
           title?: string
+          travel_minutes?: number | null
           updated_at?: string
           user_id?: string
         }
@@ -201,6 +207,8 @@ export type Database = {
         Row: {
           appointment_lead_min: number[]
           created_at: string
+          default_prep_min: number
+          default_travel_min: number
           email_enabled: boolean
           email_to: string | null
           id: string
@@ -211,12 +219,17 @@ export type Database = {
           push_enabled: boolean
           quiet_end: string
           quiet_start: string
+          travel_buffer_min: number
+          travel_mode: string
+          travel_reminders_enabled: boolean
           updated_at: string
           user_id: string
         }
         Insert: {
           appointment_lead_min?: number[]
           created_at?: string
+          default_prep_min?: number
+          default_travel_min?: number
           email_enabled?: boolean
           email_to?: string | null
           id?: string
@@ -227,12 +240,17 @@ export type Database = {
           push_enabled?: boolean
           quiet_end?: string
           quiet_start?: string
+          travel_buffer_min?: number
+          travel_mode?: string
+          travel_reminders_enabled?: boolean
           updated_at?: string
           user_id: string
         }
         Update: {
           appointment_lead_min?: number[]
           created_at?: string
+          default_prep_min?: number
+          default_travel_min?: number
           email_enabled?: boolean
           email_to?: string | null
           id?: string
@@ -243,6 +261,9 @@ export type Database = {
           push_enabled?: boolean
           quiet_end?: string
           quiet_start?: string
+          travel_buffer_min?: number
+          travel_mode?: string
+          travel_reminders_enabled?: boolean
           updated_at?: string
           user_id?: string
         }

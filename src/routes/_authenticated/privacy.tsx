@@ -341,6 +341,10 @@ function PrivacyPage() {
                   Google provider credentials are not written into Chronos-V tables. Server-side
                   connector keys are never sent to the browser.
                 </p>
+                <p>
+                  Travel guidance uses appointment locations and time estimates you control. It is
+                  calculated inside Chronos-V and is not sent to a mapping provider.
+                </p>
               </CardContent>
             </Card>
 

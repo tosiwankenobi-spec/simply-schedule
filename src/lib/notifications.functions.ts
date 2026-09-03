@@ -24,7 +24,12 @@ export const getNotificationPrefs = createServerFn({ method: "GET" })
 const prefsSchema = z.object({
   push_enabled: z.boolean(),
   email_enabled: z.boolean(),
-  email_to: z.string().email().nullable().or(z.literal("")).transform((v) => (v ? v : null)),
+  email_to: z
+    .string()
+    .email()
+    .nullable()
+    .or(z.literal(""))
+    .transform((v) => (v ? v : null)),
   appointment_lead_min: z.array(z.number().int().min(1).max(10080)).max(6),
   overdue_tasks_enabled: z.boolean(),
   overdue_grace_min: z.number().int().min(0).max(1440),
@@ -32,6 +37,11 @@ const prefsSchema = z.object({
   nudge_interval_min: z.number().int().min(15).max(1440),
   quiet_start: z.string().regex(/^\d{2}:\d{2}$/),
   quiet_end: z.string().regex(/^\d{2}:\d{2}$/),
+  travel_reminders_enabled: z.boolean(),
+  travel_mode: z.enum(["driving", "transit", "walking", "cycling", "other"]),
+  default_travel_min: z.number().int().min(1).max(240),
+  travel_buffer_min: z.number().int().min(0).max(120),
+  default_prep_min: z.number().int().min(0).max(240),
 });
 
 export const saveNotificationPrefs = createServerFn({ method: "POST" })
@@ -53,19 +63,35 @@ export const getAdaptiveReminderPreview = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => adaptivePreviewSchema.parse(i))
   .handler(async ({ data, context }): Promise<AdaptiveReminderPreview[]> => {
-    const { buildAdaptiveReminderPreview } = await import("./notifications.server");
+    const { buildAdaptiveReminderPreview, NOTIF_COLS, DEFAULT_PREFS } =
+      await import("./notifications.server");
     const now = new Date();
     const horizon = new Date(now.getTime() + 14 * 24 * 3600 * 1000);
-    const { data: appointments, error } = await context.supabase
-      .from("appointments")
-      .select("id,title,starts_at,location,notes,source,commitment_type,is_all_day")
-      .eq("user_id", context.userId)
-      .gte("starts_at", now.toISOString())
-      .lte("starts_at", horizon.toISOString())
-      .order("starts_at")
-      .limit(20);
-    if (error) throw error;
-    return buildAdaptiveReminderPreview(appointments ?? [], data.timeZone).slice(0, 6);
+    const [appointmentResult, preferenceResult] = await Promise.all([
+      context.supabase
+        .from("appointments")
+        .select(
+          "id,title,starts_at,location,notes,source,commitment_type,is_all_day,travel_minutes,preparation_minutes",
+        )
+        .eq("user_id", context.userId)
+        .gte("starts_at", now.toISOString())
+        .lte("starts_at", horizon.toISOString())
+        .order("starts_at")
+        .limit(20),
+      context.supabase
+        .from("notification_prefs")
+        .select(NOTIF_COLS)
+        .eq("user_id", context.userId)
+        .maybeSingle(),
+    ]);
+    if (appointmentResult.error) throw appointmentResult.error;
+    if (preferenceResult.error) throw preferenceResult.error;
+    const preferences = (preferenceResult.data as NotifPrefs | null) ?? DEFAULT_PREFS;
+    return buildAdaptiveReminderPreview(
+      appointmentResult.data ?? [],
+      data.timeZone,
+      preferences,
+    ).slice(0, 6);
   });
 
 export type SweepResult = {
@@ -86,9 +112,8 @@ export const sweepNotifications = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => sweepSchema.parse(i))
   .handler(async ({ data, context }): Promise<SweepResult> => {
-    const { NOTIF_COLS, DEFAULT_PREFS, buildDue, inQuietHours, sendEmail } = await import(
-      "./notifications.server"
-    );
+    const { NOTIF_COLS, DEFAULT_PREFS, buildDue, inQuietHours, sendEmail } =
+      await import("./notifications.server");
 
     const { data: prefRow } = await context.supabase
       .from("notification_prefs")
@@ -104,7 +129,9 @@ export const sweepNotifications = createServerFn({ method: "POST" })
     const [{ data: appts }, { data: tasks }, { data: lastNudge }] = await Promise.all([
       context.supabase
         .from("appointments")
-        .select("id,title,starts_at,location,notes,source,commitment_type,is_all_day")
+        .select(
+          "id,title,starts_at,location,notes,source,commitment_type,is_all_day,travel_minutes,preparation_minutes",
+        )
         .eq("user_id", context.userId)
         .gte("starts_at", new Date(now - 60000).toISOString())
         .lte("starts_at", horizon)
@@ -175,7 +202,10 @@ export const sweepNotifications = createServerFn({ method: "POST" })
             await context.supabase
               .from("notification_log")
               .update({ emailed_at: new Date().toISOString() })
-              .in("id", fresh.map((f) => f.id));
+              .in(
+                "id",
+                fresh.map((f) => f.id),
+              );
           }
         }
       }
@@ -194,7 +224,9 @@ export const sweepNotifications = createServerFn({ method: "POST" })
 
 export const markNotificationsSeen = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: unknown) => z.object({ ids: z.array(z.string().uuid()).max(50).optional() }).parse(i))
+  .inputValidator((i: unknown) =>
+    z.object({ ids: z.array(z.string().uuid()).max(50).optional() }).parse(i),
+  )
   .handler(async ({ data, context }) => {
     let q = context.supabase
       .from("notification_log")

@@ -21,6 +21,7 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { TaskNudge } from "@/components/TaskNudge";
 import { NowRecommendation } from "@/components/NowRecommendation";
 import { DayReplanner } from "@/components/DayReplanner";
+import { TravelGuidanceCard } from "@/components/TravelGuidance";
 import { toast } from "sonner";
 import {
   CalendarDays,
@@ -88,6 +89,8 @@ function TodayPage() {
         <SyncAlert />
 
         <NowRecommendation />
+
+        <TravelGuidanceCard />
 
         <DayReplanner />
 

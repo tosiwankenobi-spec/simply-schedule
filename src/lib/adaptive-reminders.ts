@@ -1,3 +1,9 @@
+import {
+  calculateTravelGuidance,
+  DEFAULT_TRAVEL_PREFERENCES,
+  type TravelPreferences,
+} from "./travel-intelligence";
+
 export type ReminderAppointment = {
   id: string;
   title: string;
@@ -7,6 +13,8 @@ export type ReminderAppointment = {
   source: string;
   commitment_type: string;
   is_all_day: boolean;
+  travel_minutes?: number | null;
+  preparation_minutes?: number | null;
 };
 
 export type AdaptiveReminderSignal = {
@@ -68,7 +76,11 @@ export function hasPhysicalLocation(appointment: ReminderAppointment) {
 }
 
 export function isPreparationWorthy(appointment: ReminderAppointment, timeZone: string) {
-  if (appointment.is_all_day || appointment.commitment_type !== "fixed" || appointment.source === "task") {
+  if (
+    appointment.is_all_day ||
+    appointment.commitment_type !== "fixed" ||
+    appointment.source === "task"
+  ) {
     return false;
   }
   const localStart = zonedParts(appointment.starts_at, timeZone);
@@ -83,6 +95,7 @@ export function isPreparationWorthy(appointment: ReminderAppointment, timeZone: 
 export function getAdaptiveReminderSignals(
   appointment: ReminderAppointment,
   timeZone: string,
+  travelPreferences: TravelPreferences = DEFAULT_TRAVEL_PREFERENCES,
 ): AdaptiveReminderSignal[] {
   if (appointment.is_all_day) return [];
 
@@ -95,12 +108,16 @@ export function getAdaptiveReminderSignals(
       reason: "Online meeting — enough time to open the link and join.",
     });
   } else if (hasPhysicalLocation(appointment)) {
-    signals.push({
-      key: "travel",
-      leadMinutes: 30,
-      label: "30 minutes before",
-      reason: "Physical location — a conservative prompt to check travel time and leave.",
-    });
+    const travel = calculateTravelGuidance(appointment, travelPreferences);
+    if (travel && travelPreferences.travel_reminders_enabled) {
+      const leadMinutes = travel.travelMinutes + travel.bufferMinutes;
+      signals.push({
+        key: "travel",
+        leadMinutes,
+        label: `${leadMinutes} minutes before`,
+        reason: `${travel.travelMinutes} minutes of travel plus a ${travel.bufferMinutes}-minute safety buffer.`,
+      });
+    }
   }
 
   if (isPreparationWorthy(appointment, timeZone)) {
@@ -114,11 +131,7 @@ export function getAdaptiveReminderSignals(
   return signals;
 }
 
-export function isEveningBefore(input: {
-  nowMs: number;
-  startsAt: string;
-  timeZone: string;
-}) {
+export function isEveningBefore(input: { nowMs: number; startsAt: string; timeZone: string }) {
   const now = zonedParts(input.nowMs, input.timeZone);
   const appointment = zonedParts(input.startsAt, input.timeZone);
   return (

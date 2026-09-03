@@ -5,8 +5,9 @@ import {
   isEveningBefore,
   type ReminderAppointment,
 } from "./adaptive-reminders";
+import { DEFAULT_TRAVEL_PREFERENCES, type TravelPreferences } from "./travel-intelligence";
 
-export type NotifPrefs = {
+export type NotifPrefs = TravelPreferences & {
   push_enabled: boolean;
   email_enabled: boolean;
   email_to: string | null;
@@ -20,7 +21,7 @@ export type NotifPrefs = {
 };
 
 export const NOTIF_COLS =
-  "push_enabled,email_enabled,email_to,appointment_lead_min,overdue_tasks_enabled,overdue_grace_min,nudge_enabled,nudge_interval_min,quiet_start,quiet_end";
+  "push_enabled,email_enabled,email_to,appointment_lead_min,overdue_tasks_enabled,overdue_grace_min,nudge_enabled,nudge_interval_min,quiet_start,quiet_end,travel_reminders_enabled,travel_mode,default_travel_min,travel_buffer_min,default_prep_min";
 
 export const DEFAULT_PREFS: NotifPrefs = {
   push_enabled: true,
@@ -33,6 +34,7 @@ export const DEFAULT_PREFS: NotifPrefs = {
   nudge_interval_min: 120,
   quiet_start: "21:00",
   quiet_end: "07:00",
+  ...DEFAULT_TRAVEL_PREFERENCES,
 };
 
 function minutesOfDay(hhmm: string) {
@@ -93,7 +95,12 @@ export function buildDue(input: {
   for (const appt of input.appointments) {
     const startMs = Date.parse(appt.starts_at);
     if (!Number.isFinite(startMs) || appt.is_all_day) continue;
+    const adaptive = getAdaptiveReminderSignals(appt, timeZone, prefs);
+    const adaptiveLeads = new Set(
+      adaptive.map((signal) => signal.leadMinutes).filter((lead): lead is number => lead !== null),
+    );
     for (const lead of leads) {
+      if (adaptiveLeads.has(lead)) continue;
       const fireAt = startMs - lead * 60000;
       // Fire inside a 15-minute window so a missed poll still delivers.
       if (nowMs >= fireAt && nowMs < fireAt + 15 * 60000 && nowMs < startMs) {
@@ -106,17 +113,16 @@ export function buildDue(input: {
       }
     }
 
-    const adaptive = getAdaptiveReminderSignals(appt, timeZone);
     for (const signal of adaptive) {
       if (signal.leadMinutes !== null) {
-        if (leads.includes(signal.leadMinutes)) continue;
         const fireAt = startMs - signal.leadMinutes * 60000;
         if (nowMs >= fireAt && nowMs < fireAt + 15 * 60000 && nowMs < startMs) {
           const online = signal.key === "online";
+          const travel = signal.key === "travel";
           out.push({
             kind: "appointment",
             dedupe_key: `appt:${appt.id}:adaptive:${signal.key}`,
-            title: `${online ? "Join soon" : "Check travel time"}: ${appt.title}`,
+            title: `${online ? "Join soon" : travel ? "Leave now" : "Get ready"}: ${appt.title}`,
             body: online
               ? `${fmtTime(appt.starts_at, timeZone)} · Open the meeting link and get ready to join.`
               : `${fmtTime(appt.starts_at, timeZone)}${appt.location ? ` · ${appt.location}` : ""}`,
@@ -188,18 +194,20 @@ export function buildDue(input: {
 export function buildAdaptiveReminderPreview(
   appointments: ReminderAppointment[],
   timeZone: string,
+  travelPreferences: TravelPreferences = DEFAULT_TRAVEL_PREFERENCES,
 ): AdaptiveReminderPreview[] {
   return appointments
     .map((appointment) => ({
       id: appointment.id,
       title: appointment.title,
       starts_at: appointment.starts_at,
-      signals: getAdaptiveReminderSignals(appointment, timeZone),
+      signals: getAdaptiveReminderSignals(appointment, timeZone, travelPreferences),
     }))
     .filter((appointment) => appointment.signals.length > 0);
 }
 
-const GMAIL_SEND = "https://connector-gateway.lovable.dev/google_mail/gmail/v1/users/me/messages/send";
+const GMAIL_SEND =
+  "https://connector-gateway.lovable.dev/google_mail/gmail/v1/users/me/messages/send";
 
 function base64Url(input: string) {
   const bytes = new TextEncoder().encode(input);
@@ -211,8 +219,8 @@ function base64Url(input: string) {
 
 /** Sends one digest email through the linked Gmail connector. Returns null on success. */
 export async function sendEmail(to: string, subject: string, text: string): Promise<string | null> {
-  const lovableKey = process.env['LOVABLE_API_KEY'];
-  const gmailKey = process.env['GOOGLE_MAIL_API_KEY'];
+  const lovableKey = process.env["LOVABLE_API_KEY"];
+  const gmailKey = process.env["GOOGLE_MAIL_API_KEY"];
   if (!lovableKey || !gmailKey) return "Email is not connected yet.";
 
   const mime = [

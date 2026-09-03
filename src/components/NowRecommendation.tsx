@@ -72,6 +72,9 @@ export function NowRecommendation() {
                   {format(new Date(result.startsAt), "h:mm a")}
                 </span>
                 {result.location && <span>{result.location}</span>}
+                {result.leaveAt && (
+                  <span>Leave by {format(new Date(result.leaveAt), "h:mm a")}</span>
+                )}
               </>
             )}
             {result.kind === "clear" && result.availableMinutes > 0 && (
