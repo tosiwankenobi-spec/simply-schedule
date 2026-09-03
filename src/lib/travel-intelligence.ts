@@ -41,6 +41,48 @@ export const DEFAULT_TRAVEL_PREFERENCES: TravelPreferences = {
   default_prep_min: 10,
 };
 
+type TravelPreferenceInput = Partial<
+  Omit<TravelPreferences, "travel_mode"> & { travel_mode: string | null }
+>;
+
+export function normalizeTravelPreferences(
+  input: TravelPreferenceInput | null | undefined,
+): TravelPreferences {
+  const mode = input?.travel_mode;
+  return {
+    travel_reminders_enabled:
+      typeof input?.travel_reminders_enabled === "boolean"
+        ? input.travel_reminders_enabled
+        : DEFAULT_TRAVEL_PREFERENCES.travel_reminders_enabled,
+    travel_mode:
+      mode === "driving" ||
+      mode === "transit" ||
+      mode === "walking" ||
+      mode === "cycling" ||
+      mode === "other"
+        ? mode
+        : DEFAULT_TRAVEL_PREFERENCES.travel_mode,
+    default_travel_min: boundedMinutes(
+      input?.default_travel_min,
+      DEFAULT_TRAVEL_PREFERENCES.default_travel_min,
+      1,
+      720,
+    ),
+    travel_buffer_min: boundedMinutes(
+      input?.travel_buffer_min,
+      DEFAULT_TRAVEL_PREFERENCES.travel_buffer_min,
+      0,
+      120,
+    ),
+    default_prep_min: boundedMinutes(
+      input?.default_prep_min,
+      DEFAULT_TRAVEL_PREFERENCES.default_prep_min,
+      0,
+      240,
+    ),
+  };
+}
+
 const ONLINE_LOCATION_PATTERN =
   /(?:https?:\/\/|zoom|meet\.google|teams\.microsoft|webex|online|virtual|video call)/i;
 

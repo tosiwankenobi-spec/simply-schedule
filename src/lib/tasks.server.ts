@@ -1,5 +1,11 @@
 // Server-only helpers for the task backlog + auto-scheduling engine.
 
+import { calculateTravelGuidance, type TravelPreferences } from "./travel-intelligence";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
+
+type UserClient = SupabaseClient<Database>;
+
 export type TaskRow = {
   id: string;
   title: string;
@@ -63,7 +69,11 @@ const FALLBACK: Prefs = {
   notes: null,
 };
 
-export async function prefsForDate(supabase: any, userId: string, date: string): Promise<Prefs> {
+export async function prefsForDate(
+  supabase: UserClient,
+  userId: string,
+  date: string,
+): Promise<Prefs> {
   const { data: assigns } = await supabase
     .from("planner_profile_assignments")
     .select("profile_id")
@@ -106,6 +116,59 @@ function atTime(date: string, hhmm: string, tzOffsetMin: number) {
 
 type Busy = { start: number; end: number };
 
+export type PlannerScheduleEvent = {
+  id: string;
+  title: string;
+  starts_at: string;
+  ends_at: string | null;
+  location: string | null;
+  travel_minutes?: number | null;
+  preparation_minutes?: number | null;
+  is_all_day?: boolean;
+};
+
+export type PlannerBusyInterval = Busy & {
+  travelProtected: boolean;
+};
+
+export function localDayBounds(date: string, tzOffsetMin: number) {
+  const start = atTime(date, "00:00", tzOffsetMin);
+  return {
+    start: new Date(start).toISOString(),
+    end: new Date(start + 24 * 60 * 60 * 1000).toISOString(),
+  };
+}
+
+/** Reserve appointments plus any physical travel/preparation time before them. */
+export function buildPlannerBusyIntervals(
+  appointments: PlannerScheduleEvent[],
+  travelPreferences: TravelPreferences,
+  defaultDurationMin = 30,
+): PlannerBusyInterval[] {
+  const intervals: PlannerBusyInterval[] = [];
+  for (const appointment of appointments) {
+    if (appointment.is_all_day) continue;
+    const start = Date.parse(appointment.starts_at);
+    if (!Number.isFinite(start)) continue;
+    const parsedEnd = appointment.ends_at ? Date.parse(appointment.ends_at) : Number.NaN;
+    const end =
+      Number.isFinite(parsedEnd) && parsedEnd > start
+        ? parsedEnd
+        : start + Math.max(5, defaultDurationMin) * 60 * 1000;
+    // Birthdays, holidays and multi-day markers do not consume the working day.
+    if (end - start >= 20 * 60 * 60 * 1000) continue;
+
+    const guidance = calculateTravelGuidance(appointment, travelPreferences, start - 1);
+    const protectedStart = guidance ? Date.parse(guidance.prepareAt) : start;
+    intervals.push({
+      start: Number.isFinite(protectedStart) ? Math.min(start, protectedStart) : start,
+      end,
+      travelProtected: Boolean(guidance && protectedStart < start),
+    });
+  }
+  return intervals;
+}
+
 export function computeGaps(
   date: string,
   prefs: Prefs,
@@ -122,7 +185,6 @@ export function computeGaps(
     const ls = atTime(date, prefs.lunch_at, tzOffsetMin);
     blocks.push({ start: ls, end: ls + prefs.lunch_length_min * 60000 });
   }
-
 
   const merged: Busy[] = [];
   for (const b of blocks.sort((a, b) => a.start - b.start)) {
@@ -178,9 +240,13 @@ export function fitTasks(
       if (room >= need) {
         const isFirstInGap = consumed[i] === 0;
         const bits = [
-          `gap ${i + 1} of ${gaps.length} (${fmtRange(gap.start, gap.end)})`,
-          isFirstInGap ? "first free slot of that window" : `queued after the previous block + ${prefs.break_length_min}m break`,
-          task.deadline ? `deadline ${task.deadline}` : `priority ${PRIORITY_WORD[task.priority] ?? task.priority}`,
+          `free window ${i + 1} of ${gaps.length}`,
+          isFirstInGap
+            ? "first free slot of that window"
+            : `queued after the previous block + ${prefs.break_length_min}m break`,
+          task.deadline
+            ? `deadline ${task.deadline}`
+            : `priority ${PRIORITY_WORD[task.priority] ?? task.priority}`,
         ];
         placements.push({
           task_id: task.id,
@@ -206,7 +272,8 @@ export function fitTasks(
           gaps.length === 0
             ? "no free time left inside your working hours on this day"
             : `needs ${Math.round(need / 60000)}m — the largest remaining window is ${Math.round(
-                (need - (bestShortfall === Number.POSITIVE_INFINITY ? need : bestShortfall)) / 60000,
+                (need - (bestShortfall === Number.POSITIVE_INFINITY ? need : bestShortfall)) /
+                  60000,
               )}m short`,
       });
     }
@@ -241,12 +308,6 @@ export function fitTasks(
 
 const PRIORITY_WORD: Record<number, string> = { 1: "high", 2: "normal", 3: "low" };
 
-function fmtRange(start: number, end: number) {
-  const f = (ms: number) =>
-    new Date(ms).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-  return `${f(start)}–${f(end)}`;
-}
-
 const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
 export async function callAIJson(system: string, user: string, key: string) {
@@ -271,7 +332,10 @@ export async function callAIJson(system: string, user: string, key: string) {
   }
   const json = await res.json();
   let content: string = json?.choices?.[0]?.message?.content ?? "";
-  content = content.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
+  content = content
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/i, "");
   try {
     return JSON.parse(content);
   } catch {

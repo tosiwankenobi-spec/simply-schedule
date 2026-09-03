@@ -25,6 +25,7 @@ import { TaskNudge } from "@/components/TaskNudge";
 import { NowRecommendation } from "@/components/NowRecommendation";
 import { DayReplanner } from "@/components/DayReplanner";
 import { TravelGuidanceCard } from "@/components/TravelGuidance";
+import { MorningPlanner } from "@/components/MorningPlanner";
 import {
   ConflictResolutionDialog,
   type ConflictProposal,
@@ -100,6 +101,8 @@ function TodayPage() {
         <SyncAlert />
 
         <NowRecommendation />
+
+        <MorningPlanner />
 
         <TravelGuidanceCard />
 

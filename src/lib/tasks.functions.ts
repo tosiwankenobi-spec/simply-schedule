@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
-import type { TaskRow, Placement, PlanExplanation } from "./tasks.server";
+import type { TaskRow, Placement, PlanExplanation, PlannerScheduleEvent } from "./tasks.server";
 
 const TASK_COLS =
   "id,title,notes,estimated_min,priority,energy,deadline,status,scheduled_appointment_id,created_at";
@@ -102,32 +102,20 @@ const autoSchema = z.object({
   tzOffsetMin: z.number().int().min(-900).max(900).default(0),
 });
 
-
 export const autoScheduleTasks = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => autoSchema.parse(i))
   .handler(async ({ data, context }): Promise<AutoScheduleResult> => {
-    const { prefsForDate, computeGaps, fitTasks } = await import("./tasks.server");
-    const prefs = await prefsForDate(context.supabase, context.userId, data.date);
-
-    const dayStart = new Date(`${data.date}T00:00:00`);
-    const dayEnd = new Date(dayStart.getTime() + 24 * 3600 * 1000);
-    const { data: appts } = await context.supabase
-      .from("appointments")
-      .select("starts_at,ends_at")
-      .eq("user_id", context.userId)
-      .gte("starts_at", dayStart.toISOString())
-      .lt("starts_at", dayEnd.toISOString());
-
-    const busy = (appts ?? [])
-      .map((a) => {
-        const s = Date.parse(a.starts_at);
-        return { start: s, end: a.ends_at ? Date.parse(a.ends_at) : s + 30 * 60000 };
-      })
-      // All-day/multi-day entries (birthdays, holidays) are markers, not busy time.
-      .filter((b: { start: number; end: number }) => b.end - b.start < 20 * 3600 * 1000);
-
-
+    const [
+      { prefsForDate, computeGaps, fitTasks, localDayBounds, buildPlannerBusyIntervals },
+      { DEFAULT_PREFS, NOTIF_COLS },
+      { normalizeTravelPreferences },
+    ] = await Promise.all([
+      import("./tasks.server"),
+      import("./notifications.server"),
+      import("./travel-intelligence"),
+    ]);
+    const bounds = localDayBounds(data.date, data.tzOffsetMin);
     let taskQuery = context.supabase
       .from("tasks")
       .select(TASK_COLS)
@@ -136,12 +124,71 @@ export const autoScheduleTasks = createServerFn({ method: "POST" })
     if (data.taskIds && data.taskIds.length > 0) {
       taskQuery = taskQuery.in("id", data.taskIds);
     }
-    const { data: openTasks } = await taskQuery;
+
+    const [prefs, scheduleResult, ownMetadataResult, tasksResult, notificationResult] =
+      await Promise.all([
+        prefsForDate(context.supabase, context.userId, data.date),
+        context.supabase
+          .from("schedule_hub_events")
+          .select("id,title,starts_at,ends_at,location,is_all_day")
+          .gte("starts_at", bounds.start)
+          .lt("starts_at", bounds.end)
+          .order("starts_at"),
+        context.supabase
+          .from("appointments")
+          .select("id,travel_minutes,preparation_minutes")
+          .eq("user_id", context.userId)
+          .gte("starts_at", bounds.start)
+          .lt("starts_at", bounds.end),
+        taskQuery,
+        context.supabase
+          .from("notification_prefs")
+          .select(NOTIF_COLS)
+          .eq("user_id", context.userId)
+          .maybeSingle(),
+      ]);
+
+    if (scheduleResult.error) throw scheduleResult.error;
+    if (ownMetadataResult.error) throw ownMetadataResult.error;
+    if (tasksResult.error) throw tasksResult.error;
+    if (notificationResult.error) throw notificationResult.error;
+
+    const ownMetadata = new Map(
+      (ownMetadataResult.data ?? []).map((appointment) => [appointment.id, appointment]),
+    );
+    const schedule = (scheduleResult.data ?? []).flatMap((appointment) => {
+      if (!appointment.id || !appointment.starts_at) return [];
+      const metadata = ownMetadata.get(appointment.id);
+      return [
+        {
+          id: appointment.id,
+          title: appointment.title || "Busy",
+          starts_at: appointment.starts_at,
+          ends_at: appointment.ends_at,
+          location: appointment.location,
+          is_all_day: appointment.is_all_day ?? false,
+          travel_minutes: metadata?.travel_minutes ?? null,
+          preparation_minutes: metadata?.preparation_minutes ?? null,
+        } satisfies PlannerScheduleEvent,
+      ];
+    });
+    const travelPreferences = normalizeTravelPreferences(notificationResult.data ?? DEFAULT_PREFS);
+    const busy = buildPlannerBusyIntervals(schedule, travelPreferences, prefs.default_meeting_min);
 
     const gaps = computeGaps(data.date, prefs, busy, Date.now(), data.tzOffsetMin);
-    const { placements, unplaced, explain } = fitTasks((openTasks ?? []) as TaskRow[], gaps, prefs);
-    explain.rules.push(`DBG busy=${JSON.stringify(busy)} gaps=${JSON.stringify(gaps)} now=${new Date().toISOString()} tz=${data.tzOffsetMin} appts=${(appts??[]).length}`);
-
+    const { placements, unplaced, explain } = fitTasks(
+      (tasksResult.data ?? []) as TaskRow[],
+      gaps,
+      prefs,
+    );
+    const protectedTrips = busy.filter((interval) => interval.travelProtected).length;
+    explain.rules.splice(
+      2,
+      0,
+      protectedTrips > 0
+        ? `${protectedTrips} physical appointment${protectedTrips === 1 ? "" : "s"} reserved travel, safety buffer and preparation time.`
+        : "No physical appointment needed an additional travel window.",
+    );
 
     if (!data.dryRun && placements.length > 0) {
       for (const p of placements) {
@@ -155,15 +202,28 @@ export const autoScheduleTasks = createServerFn({ method: "POST" })
             source: "task",
             commitment_type: "flexible",
             notes: "Auto-scheduled from your task backlog",
+            source_metadata: { planner_task_id: p.task_id, planner: "daily" },
           })
           .select("id")
           .single();
         if (error) throw error;
-        await context.supabase
+        const { data: updatedTask, error: taskError } = await context.supabase
           .from("tasks")
           .update({ status: "scheduled", scheduled_appointment_id: inserted.id })
           .eq("id", p.task_id)
-          .eq("user_id", context.userId);
+          .eq("user_id", context.userId)
+          .eq("status", "open")
+          .select("id")
+          .maybeSingle();
+        if (taskError || !updatedTask) {
+          const { error: rollbackError } = await context.supabase
+            .from("appointments")
+            .delete()
+            .eq("id", inserted.id)
+            .eq("user_id", context.userId);
+          if (rollbackError) throw rollbackError;
+          throw taskError ?? new Error("That task was scheduled somewhere else. Refresh the plan.");
+        }
       }
     }
 
@@ -183,7 +243,7 @@ export const dailyBriefing = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => z.object({ date: z.string() }).parse(i))
   .handler(async ({ data, context }): Promise<Briefing> => {
-    const key = process.env['LOVABLE_API_KEY'];
+    const key = process.env["LOVABLE_API_KEY"];
     if (!key) throw new Error("Missing LOVABLE_API_KEY");
     const { prefsForDate, callAIJson, rankTasks } = await import("./tasks.server");
     const prefs = await prefsForDate(context.supabase, context.userId, data.date);
@@ -225,7 +285,9 @@ Return JSON: {"headline": string, "bullets": string[], "focus": string|null}`;
     const out = await callAIJson(system, user, key);
     return {
       headline: String(out.headline ?? "Today at a glance").slice(0, 160),
-      bullets: (Array.isArray(out.bullets) ? out.bullets : []).slice(0, 5).map((b: unknown) => String(b).slice(0, 200)),
+      bullets: (Array.isArray(out.bullets) ? out.bullets : [])
+        .slice(0, 5)
+        .map((b: unknown) => String(b).slice(0, 200)),
       focus: out.focus ? String(out.focus).slice(0, 200) : null,
     };
   });
