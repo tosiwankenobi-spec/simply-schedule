@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { format, isToday, isTomorrow, isPast, startOfDay, addDays } from "date-fns";
@@ -25,13 +25,11 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import logo from "@/assets/chronos-v-logo.png.asset.json";
 import {
   Sparkles,
   Plus,
   MapPin,
   Trash2,
-  LogOut,
   Clock,
   Mail,
   Wand2,
@@ -75,7 +73,6 @@ export const Route = createFileRoute("/_authenticated/app")({
 });
 
 function AppPage() {
-  const navigate = useNavigate();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [pendingMove, setPendingMove] = useState<(ConflictProposal & { id: string }) | null>(null);
@@ -171,28 +168,18 @@ function AppPage() {
     return { upcoming, past };
   }, [appts]);
 
-  async function signOut() {
-    await qc.cancelQueries();
-    qc.clear();
-    await supabase.auth.signOut();
-    navigate({ to: "/auth", replace: true });
-  }
-
   return (
     <div className="relative min-h-screen bg-background">
       <div className="absolute inset-0 paper-grain opacity-30 pointer-events-none" />
-      <div className="relative mx-auto max-w-2xl px-5 py-8 md:py-12">
+      <div className="relative mx-auto max-w-5xl px-5 py-8 md:py-12">
         <header className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <img src={logo.url} alt="Chronos-V logo" className="h-7 w-7" />
-            <span className="font-serif text-xl">Chronos-V</span>
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-accent">
+              Universal schedule
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">Every commitment, one timeline</p>
           </div>
-          <div className="flex items-center gap-2">
-            <NotificationBell />
-            <Button variant="ghost" size="sm" onClick={signOut} className="text-muted-foreground">
-              <LogOut className="h-4 w-4 mr-1" /> Sign out
-            </Button>
-          </div>
+          <NotificationBell />
         </header>
 
         <div className="mt-10">

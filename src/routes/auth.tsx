@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import logo from "@/assets/chronos-v-logo.png.asset.json";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -52,7 +51,9 @@ function AuthPage() {
 
   async function handleGoogle() {
     setLoading(true);
-    const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin,
+    });
     if (result.error) {
       toast.error("Google sign-in failed");
       setLoading(false);
@@ -67,7 +68,7 @@ function AuthPage() {
       <div className="absolute inset-0 paper-grain opacity-40 pointer-events-none" />
       <div className="relative mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
         <div className="mb-10 flex items-center gap-2 text-foreground">
-          <img src={logo.url} alt="Chronos-V logo" className="h-7 w-7" />
+          <img src="/favicon.png" alt="Chronos-V logo" className="h-7 w-7" />
           <span className="font-serif text-xl">Chronos-V</span>
         </div>
         <h1 className="font-serif text-4xl leading-tight text-foreground">
@@ -80,13 +81,32 @@ function AuthPage() {
         <form onSubmit={handleSubmit} className="mt-8 space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Input
+              id="email"
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" autoComplete={mode === "signin" ? "current-password" : "new-password"} required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
+            <Input
+              id="password"
+              type="password"
+              autoComplete={mode === "signin" ? "current-password" : "new-password"}
+              required
+              minLength={6}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
           </div>
-          <Button type="submit" disabled={loading} className="w-full bg-foreground text-background hover:bg-foreground/90">
+          <Button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-foreground text-background hover:bg-foreground/90"
+          >
             {loading ? "…" : mode === "signin" ? "Sign in" : "Create account"}
           </Button>
         </form>

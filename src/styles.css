@@ -2,7 +2,6 @@
 @source "../src";
 @import "tw-animate-css";
 
-
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -38,16 +37,18 @@
   --color-leaf: var(--leaf);
   --color-ember: var(--ember);
   --color-paper: var(--paper);
+  --color-gold: var(--gold);
 }
 
 :root {
   --radius: 0.5rem;
 
   /* Verolane brand palette: deep forest green, circuit teal, mint, warm off-white */
-  --paper: oklch(0.972 0.005 95);            /* #F8F7F4 */
-  --ink: oklch(0.26 0.045 175);              /* #002E28 deep forest */
-  --ember: oklch(0.62 0.11 178);             /* circuit teal */
-  --leaf: oklch(0.70 0.13 152);              /* logo green */
+  --paper: oklch(0.972 0.005 95); /* #F8F7F4 */
+  --ink: oklch(0.26 0.045 175); /* #002E28 deep forest */
+  --ember: oklch(0.62 0.11 178); /* circuit teal */
+  --leaf: oklch(0.7 0.13 152); /* logo green */
+  --gold: oklch(0.73 0.13 85); /* restrained Verolane highlight */
 
   --background: var(--paper);
   --foreground: var(--ink);
@@ -64,8 +65,8 @@
   --secondary: oklch(0.93 0.015 165);
   --secondary-foreground: var(--ink);
 
-  --muted: oklch(0.94 0.010 160);
-  --muted-foreground: oklch(0.47 0.030 175);
+  --muted: oklch(0.94 0.01 160);
+  --muted-foreground: oklch(0.47 0.03 175);
 
   --accent: var(--ember);
   --accent-foreground: oklch(0.99 0.003 95);
@@ -74,42 +75,46 @@
   --destructive-foreground: var(--paper);
 
   --border: oklch(0.88 0.016 165);
-  --input: oklch(0.90 0.014 165);
+  --input: oklch(0.9 0.014 165);
   --ring: var(--ember);
 }
 
 .dark {
-  --background: oklch(0.20 0.035 175);
+  --background: oklch(0.2 0.035 175);
   --foreground: oklch(0.96 0.008 150);
   --card: oklch(0.24 0.038 175);
   --card-foreground: oklch(0.96 0.008 150);
   --popover: oklch(0.24 0.038 175);
   --popover-foreground: oklch(0.96 0.008 150);
   --primary: oklch(0.96 0.008 150);
-  --primary-foreground: oklch(0.20 0.035 175);
+  --primary-foreground: oklch(0.2 0.035 175);
   --secondary: oklch(0.29 0.04 172);
   --secondary-foreground: oklch(0.96 0.008 150);
   --muted: oklch(0.29 0.04 172);
   --muted-foreground: oklch(0.74 0.03 160);
-  --accent: oklch(0.70 0.13 160);
+  --accent: oklch(0.7 0.13 160);
   --accent-foreground: oklch(0.18 0.035 175);
   --border: oklch(0.33 0.04 172);
   --input: oklch(0.33 0.04 172);
   --ring: var(--accent);
 }
 
-
 @layer base {
   * {
     border-color: var(--color-border);
   }
-  html, body {
+  html,
+  body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
     font-feature-settings: "ss01", "cv11";
   }
-  h1, h2, h3, h4, .font-serif {
+  h1,
+  h2,
+  h3,
+  h4,
+  .font-serif {
     font-family: var(--font-serif);
     letter-spacing: -0.01em;
   }
@@ -120,6 +125,17 @@
   background-image:
     radial-gradient(oklch(0.72 0.05 170 / 0.22) 1px, transparent 1px),
     radial-gradient(oklch(0.72 0.05 170 / 0.16) 1px, transparent 1px);
-  background-size: 24px 24px, 17px 17px;
-  background-position: 0 0, 8px 11px;
+  background-size:
+    24px 24px,
+    17px 17px;
+  background-position:
+    0 0,
+    8px 11px;
+}
+
+/* Warm ambient wash used behind the Verolane command centre. */
+.verolane-wash {
+  background-image:
+    radial-gradient(circle at 82% 4%, oklch(0.88 0.07 155 / 0.32), transparent 28rem),
+    radial-gradient(circle at 12% 80%, oklch(0.94 0.035 90 / 0.42), transparent 24rem);
 }
