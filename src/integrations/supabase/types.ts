@@ -582,6 +582,8 @@ export type Database = {
       routines: {
         Row: {
           active: boolean
+          annual_day: number | null
+          annual_month: number | null
           category: string
           commitment_type: string
           created_at: string
@@ -590,6 +592,7 @@ export type Database = {
           end_date: string | null
           frequency: string
           id: string
+          is_all_day: boolean
           local_time: string
           location: string | null
           notes: string | null
@@ -601,6 +604,8 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          annual_day?: number | null
+          annual_month?: number | null
           category?: string
           commitment_type?: string
           created_at?: string
@@ -609,6 +614,7 @@ export type Database = {
           end_date?: string | null
           frequency?: string
           id?: string
+          is_all_day?: boolean
           local_time: string
           location?: string | null
           notes?: string | null
@@ -620,6 +626,8 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          annual_day?: number | null
+          annual_month?: number | null
           category?: string
           commitment_type?: string
           created_at?: string
@@ -628,6 +636,7 @@ export type Database = {
           end_date?: string | null
           frequency?: string
           id?: string
+          is_all_day?: boolean
           local_time?: string
           location?: string | null
           notes?: string | null

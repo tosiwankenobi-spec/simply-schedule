@@ -6,9 +6,10 @@ export type RoutineCategory =
   | "household"
   | "bill"
   | "pet"
+  | "birthday"
   | "other";
 
-export type RoutineFrequency = "daily" | "weekly";
+export type RoutineFrequency = "daily" | "weekly" | "yearly";
 export type RoutineCommitment = "fixed" | "flexible";
 
 export type RoutineDefinition = {
@@ -17,6 +18,8 @@ export type RoutineDefinition = {
   category: RoutineCategory;
   frequency: RoutineFrequency;
   days_of_week: number[];
+  annual_month: number | null;
+  annual_day: number | null;
   local_time: string;
   duration_min: number;
   start_date: string;
@@ -25,6 +28,7 @@ export type RoutineDefinition = {
   location: string | null;
   notes: string | null;
   commitment_type: RoutineCommitment;
+  is_all_day: boolean;
   active: boolean;
 };
 
@@ -36,6 +40,7 @@ export type RoutineOccurrence = {
 };
 
 export const ROUTINE_WINDOW_DAYS = 42;
+export const ANNUAL_ROUTINE_WINDOW_DAYS = 400;
 
 export const WEEKDAYS = [
   { value: 0, short: "Sun", rule: "SU" },
@@ -77,6 +82,23 @@ function dateKey(value: Date) {
 
 function addUtcDays(value: Date, amount: number) {
   return new Date(value.getTime() + amount * 86400000);
+}
+
+function isLeapYear(year: number) {
+  return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+}
+
+/** Feb. 29 commitments are observed on Feb. 28 when a year is not a leap year. */
+export function annualOccurrenceDate(year: number, month: number, day: number) {
+  if (month < 1 || month > 12 || day < 1 || day > 31) {
+    throw new Error("Invalid annual routine date.");
+  }
+  if (month === 2 && day === 29 && !isLeapYear(year)) return `${year}-02-28`;
+  const candidate = new Date(Date.UTC(year, month - 1, day));
+  if (candidate.getUTCMonth() !== month - 1 || candidate.getUTCDate() !== day) {
+    throw new Error("Invalid annual routine date.");
+  }
+  return dateKey(candidate);
 }
 
 function zonedParts(value: Date, timeZone: string) {
@@ -133,6 +155,12 @@ export function zonedDateTimeToUtc(date: string, time: string, timeZone: string)
 
 export function routineRecurrenceRule(routine: RoutineDefinition) {
   if (routine.frequency === "daily") return "FREQ=DAILY";
+  if (routine.frequency === "yearly") {
+    if (!routine.annual_month || !routine.annual_day) {
+      throw new Error("Annual routines need a month and day.");
+    }
+    return `FREQ=YEARLY;BYMONTH=${routine.annual_month};BYMONTHDAY=${routine.annual_day}`;
+  }
   const selected = new Set(routine.days_of_week);
   const days = WEEKDAYS.filter((day) => selected.has(day.value)).map((day) => day.rule);
   return `FREQ=WEEKLY;BYDAY=${days.join(",")}`;
@@ -141,7 +169,7 @@ export function routineRecurrenceRule(routine: RoutineDefinition) {
 export function generateRoutineOccurrences(
   routine: RoutineDefinition,
   fromDate: string,
-  windowDays = ROUTINE_WINDOW_DAYS,
+  windowDays = routine.frequency === "yearly" ? ANNUAL_ROUTINE_WINDOW_DAYS : ROUTINE_WINDOW_DAYS,
 ) {
   if (!routine.active || windowDays < 1) return [];
   const requestedStart = dateFromKey(fromDate);
@@ -158,9 +186,24 @@ export function generateRoutineOccurrences(
 
   for (let current = start; current <= end; current = addUtcDays(current, 1)) {
     if (routine.frequency === "weekly" && !selectedDays.has(current.getUTCDay())) continue;
+    if (routine.frequency === "yearly") {
+      if (!routine.annual_month || !routine.annual_day) continue;
+      const annualDate = annualOccurrenceDate(
+        current.getUTCFullYear(),
+        routine.annual_month,
+        routine.annual_day,
+      );
+      if (dateKey(current) !== annualDate) continue;
+    }
     const occurrenceDate = dateKey(current);
-    const starts = zonedDateTimeToUtc(occurrenceDate, routine.local_time, routine.timezone);
-    const ends = new Date(starts.getTime() + routine.duration_min * 60000);
+    const starts = zonedDateTimeToUtc(
+      occurrenceDate,
+      routine.is_all_day ? "00:00" : routine.local_time,
+      routine.timezone,
+    );
+    const ends = routine.is_all_day
+      ? zonedDateTimeToUtc(dateKey(addUtcDays(current, 1)), "00:00", routine.timezone)
+      : new Date(starts.getTime() + routine.duration_min * 60000);
     occurrences.push({
       occurrenceDate,
       startsAt: starts.toISOString(),
@@ -174,6 +217,20 @@ export function generateRoutineOccurrences(
 
 export function routineCadenceLabel(routine: RoutineDefinition) {
   if (routine.frequency === "daily") return "Every day";
+  if (routine.frequency === "yearly") {
+    if (!routine.annual_month || !routine.annual_day) return "Every year";
+    const date = new Date(Date.UTC(2024, routine.annual_month - 1, routine.annual_day));
+    const label = new Intl.DateTimeFormat("en-US", {
+      month: "long",
+      day: "numeric",
+      timeZone: "UTC",
+    }).format(date);
+    return `Every year on ${label}${
+      routine.annual_month === 2 && routine.annual_day === 29
+        ? " (February 28 in non-leap years)"
+        : ""
+    }`;
+  }
   const selected = new Set(routine.days_of_week);
   return WEEKDAYS.filter((day) => selected.has(day.value))
     .map((day) => day.short)

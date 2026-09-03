@@ -60,7 +60,7 @@ export const Route = createFileRoute("/_authenticated/routines")({
       {
         name: "description",
         content:
-          "Keep medication, exercise, pickups, chores, bills and other routines in your timeline.",
+          "Keep birthdays, annual commitments, medication, exercise, pickups, chores and bills in your timeline.",
       },
     ],
   }),
@@ -74,14 +74,28 @@ const CATEGORY_LABELS: Record<RoutineCategory, string> = {
   household: "Household",
   bill: "Bills",
   pet: "Pet care",
+  birthday: "Birthday",
   other: "Other",
 };
+
+const MONTHS = Array.from({ length: 12 }, (_, index) => ({
+  value: index + 1,
+  label: new Intl.DateTimeFormat("en-US", { month: "long", timeZone: "UTC" }).format(
+    new Date(Date.UTC(2024, index, 1)),
+  ),
+}));
+
+function daysInAnnualMonth(month: number) {
+  return new Date(Date.UTC(2024, month, 0)).getUTCDate();
+}
 
 type RoutineDraft = {
   title: string;
   category: RoutineCategory;
   frequency: RoutineFrequency;
   days_of_week: number[];
+  annual_month: string;
+  annual_day: string;
   local_time: string;
   duration_min: string;
   start_date: string;
@@ -90,6 +104,7 @@ type RoutineDraft = {
   location: string;
   notes: string;
   commitment_type: RoutineCommitment;
+  is_all_day: boolean;
   active: boolean;
 };
 
@@ -99,6 +114,8 @@ function emptyDraft(): RoutineDraft {
     category: "other",
     frequency: "weekly",
     days_of_week: [1],
+    annual_month: String(new Date().getMonth() + 1),
+    annual_day: String(new Date().getDate()),
     local_time: "09:00",
     duration_min: "30",
     start_date: format(new Date(), "yyyy-MM-dd"),
@@ -107,6 +124,7 @@ function emptyDraft(): RoutineDraft {
     location: "",
     notes: "",
     commitment_type: "fixed",
+    is_all_day: false,
     active: true,
   };
 }
@@ -117,6 +135,8 @@ function draftFromRoutine(routine: RoutineRow): RoutineDraft {
     category: routine.category,
     frequency: routine.frequency,
     days_of_week: routine.days_of_week,
+    annual_month: String(routine.annual_month ?? new Date().getMonth() + 1),
+    annual_day: String(routine.annual_day ?? new Date().getDate()),
     local_time: routine.local_time.slice(0, 5),
     duration_min: String(routine.duration_min),
     start_date: routine.start_date,
@@ -125,6 +145,7 @@ function draftFromRoutine(routine: RoutineRow): RoutineDraft {
     location: routine.location ?? "",
     notes: routine.notes ?? "",
     commitment_type: routine.commitment_type,
+    is_all_day: routine.is_all_day,
     active: routine.active,
   };
 }
@@ -152,7 +173,14 @@ function RoutinesPage() {
           title: draft.title,
           category: draft.category,
           frequency: draft.frequency,
-          days_of_week: draft.frequency === "daily" ? [0, 1, 2, 3, 4, 5, 6] : draft.days_of_week,
+          days_of_week:
+            draft.frequency === "daily"
+              ? [0, 1, 2, 3, 4, 5, 6]
+              : draft.frequency === "weekly"
+                ? draft.days_of_week
+                : [],
+          annual_month: draft.frequency === "yearly" ? Number(draft.annual_month) : null,
+          annual_day: draft.frequency === "yearly" ? Number(draft.annual_day) : null,
           local_time: draft.local_time,
           duration_min: Number(draft.duration_min),
           start_date: draft.start_date,
@@ -161,6 +189,7 @@ function RoutinesPage() {
           location: draft.location || null,
           notes: draft.notes || null,
           commitment_type: draft.commitment_type,
+          is_all_day: draft.is_all_day,
           active: draft.active,
           fromDate: today,
         },
@@ -214,7 +243,16 @@ function RoutinesPage() {
     if (draft.frequency === "weekly" && draft.days_of_week.length === 0) {
       return toast.error("Choose at least one day.");
     }
-    if (!draft.local_time || !draft.start_date) return toast.error("Choose a start date and time.");
+    if (draft.frequency === "yearly") {
+      const month = Number(draft.annual_month);
+      const day = Number(draft.annual_day);
+      if (!month || !day || day > daysInAnnualMonth(month)) {
+        return toast.error("Choose a valid month and day.");
+      }
+    }
+    if (!draft.start_date || (!draft.is_all_day && !draft.local_time)) {
+      return toast.error("Choose a start date and time.");
+    }
     const duration = Number(draft.duration_min);
     if (!Number.isInteger(duration) || duration < 5 || duration > 480) {
       return toast.error("Duration must be between 5 and 480 minutes.");
@@ -244,7 +282,7 @@ function RoutinesPage() {
           <h1 className="mt-2 font-serif text-4xl text-foreground">Personal routines</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             Put the repeating parts of life on the same timeline as meetings and tasks. Chronos-V
-            keeps the next six weeks ready automatically.
+            keeps recurring time ready automatically—including birthdays and annual commitments.
           </p>
         </div>
 
@@ -286,9 +324,10 @@ function RoutinesPage() {
                         {!routine.active && <Badge variant="outline">Paused</Badge>}
                       </div>
                       <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-                        <CalendarClock className="h-3.5 w-3.5" /> {routineCadenceLabel(routine)} at{" "}
-                        {format(new Date(`2000-01-01T${routine.local_time}`), "h:mm a")} ·{" "}
-                        {routine.duration_min} min
+                        <CalendarClock className="h-3.5 w-3.5" /> {routineCadenceLabel(routine)}
+                        {routine.is_all_day
+                          ? " · All day"
+                          : ` at ${format(new Date(`2000-01-01T${routine.local_time}`), "h:mm a")} · ${routine.duration_min} min`}
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
                         {routine.commitment_type === "fixed"
@@ -338,7 +377,7 @@ function RoutinesPage() {
               <Repeat2 className="mx-auto h-7 w-7 text-muted-foreground" />
               <p className="mt-3 font-medium">No routines yet</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Add medication, exercise, school pickup, meal prep, chores, bills, or pet care.
+                Add medication, exercise, school pickup, chores, birthdays, bills, or pet care.
               </p>
               <Button className="mt-4" onClick={openNew}>
                 Create your first routine
@@ -408,6 +447,32 @@ function RoutineDialog({
         ? draft.days_of_week.filter((value) => value !== day)
         : [...draft.days_of_week, day].sort(),
     );
+  const setCategory = (category: RoutineCategory) =>
+    setDraft((current) =>
+      category === "birthday"
+        ? {
+            ...current,
+            category,
+            frequency: "yearly",
+            is_all_day: true,
+            commitment_type: "fixed",
+            local_time: "00:00",
+          }
+        : { ...current, category },
+    );
+  const setFrequency = (frequency: RoutineFrequency) =>
+    setDraft((current) => ({
+      ...current,
+      frequency,
+      is_all_day:
+        current.category === "birthday" ? true : frequency === "yearly" && current.is_all_day,
+    }));
+  const setAnnualMonth = (month: string) =>
+    setDraft((current) => ({
+      ...current,
+      annual_month: month,
+      annual_day: String(Math.min(Number(current.annual_day), daysInAnnualMonth(Number(month)))),
+    }));
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
@@ -438,7 +503,7 @@ function RoutineDialog({
             <select
               id="routine-category"
               value={draft.category}
-              onChange={(event) => set("category", event.target.value as RoutineCategory)}
+              onChange={(event) => setCategory(event.target.value as RoutineCategory)}
               className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
             >
               {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
@@ -454,11 +519,13 @@ function RoutineDialog({
             <select
               id="routine-frequency"
               value={draft.frequency}
-              onChange={(event) => set("frequency", event.target.value as RoutineFrequency)}
+              onChange={(event) => setFrequency(event.target.value as RoutineFrequency)}
+              disabled={draft.category === "birthday"}
               className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
             >
               <option value="daily">Every day</option>
               <option value="weekly">Selected weekdays</option>
+              <option value="yearly">Once a year</option>
             </select>
           </div>
 
@@ -488,29 +555,92 @@ function RoutineDialog({
             </fieldset>
           )}
 
+          {draft.frequency === "yearly" && (
+            <fieldset className="grid gap-3 sm:col-span-2 sm:grid-cols-2">
+              <legend className="mb-2 text-sm font-medium">Annual date</legend>
+              <div className="space-y-1.5">
+                <Label htmlFor="routine-month">Month</Label>
+                <select
+                  id="routine-month"
+                  value={draft.annual_month}
+                  onChange={(event) => setAnnualMonth(event.target.value)}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                >
+                  {MONTHS.map((month) => (
+                    <option key={month.value} value={month.value}>
+                      {month.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="routine-day">Day</Label>
+                <select
+                  id="routine-day"
+                  value={draft.annual_day}
+                  onChange={(event) => set("annual_day", event.target.value)}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                >
+                  {Array.from(
+                    { length: daysInAnnualMonth(Number(draft.annual_month)) },
+                    (_, index) => index + 1,
+                  ).map((day) => (
+                    <option key={day} value={day}>
+                      {day}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {draft.annual_month === "2" && draft.annual_day === "29" && (
+                <p className="text-xs text-muted-foreground sm:col-span-2">
+                  In non-leap years, Chronos-V places this on February 28.
+                </p>
+              )}
+            </fieldset>
+          )}
+
+          {draft.frequency === "yearly" && (
+            <label className="flex items-center gap-2 text-sm sm:col-span-2">
+              <input
+                type="checkbox"
+                checked={draft.is_all_day}
+                onChange={(event) => set("is_all_day", event.target.checked)}
+                disabled={draft.category === "birthday"}
+                className="h-4 w-4 rounded border-input accent-accent"
+              />
+              All-day commitment
+            </label>
+          )}
+
+          {!draft.is_all_day && (
+            <>
+              <div className="space-y-1.5">
+                <Label htmlFor="routine-time">Time</Label>
+                <Input
+                  id="routine-time"
+                  type="time"
+                  value={draft.local_time}
+                  onChange={(event) => set("local_time", event.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="routine-duration">Duration (minutes)</Label>
+                <Input
+                  id="routine-duration"
+                  type="number"
+                  min={5}
+                  max={480}
+                  step={5}
+                  value={draft.duration_min}
+                  onChange={(event) => set("duration_min", event.target.value)}
+                />
+              </div>
+            </>
+          )}
           <div className="space-y-1.5">
-            <Label htmlFor="routine-time">Time</Label>
-            <Input
-              id="routine-time"
-              type="time"
-              value={draft.local_time}
-              onChange={(event) => set("local_time", event.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="routine-duration">Duration (minutes)</Label>
-            <Input
-              id="routine-duration"
-              type="number"
-              min={5}
-              max={480}
-              step={5}
-              value={draft.duration_min}
-              onChange={(event) => set("duration_min", event.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="routine-start">Starts</Label>
+            <Label htmlFor="routine-start">
+              {draft.frequency === "yearly" ? "Track from" : "Starts"}
+            </Label>
             <Input
               id="routine-start"
               type="date"

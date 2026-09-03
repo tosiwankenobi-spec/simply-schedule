@@ -19,7 +19,7 @@ export type RoutineRow = RoutineDefinition & {
 };
 
 const ROUTINE_COLUMNS =
-  "id,user_id,title,category,frequency,days_of_week,local_time,duration_min,start_date,end_date,timezone,location,notes,commitment_type,active,created_at,updated_at";
+  "id,user_id,title,category,frequency,days_of_week,annual_month,annual_day,local_time,duration_min,start_date,end_date,timezone,location,notes,commitment_type,is_all_day,active,created_at,updated_at";
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const timeSchema = z
@@ -39,10 +39,13 @@ const routineSchema = z
       "household",
       "bill",
       "pet",
+      "birthday",
       "other",
     ]),
-    frequency: z.enum(["daily", "weekly"]),
-    days_of_week: z.array(z.number().int().min(0).max(6)).min(1).max(7),
+    frequency: z.enum(["daily", "weekly", "yearly"]),
+    days_of_week: z.array(z.number().int().min(0).max(6)).max(7),
+    annual_month: z.number().int().min(1).max(12).nullable(),
+    annual_day: z.number().int().min(1).max(31).nullable(),
     local_time: timeSchema,
     duration_min: z.number().int().min(5).max(480),
     start_date: dateSchema,
@@ -51,6 +54,7 @@ const routineSchema = z
     location: z.string().trim().max(200).nullable(),
     notes: z.string().trim().max(1000).nullable(),
     commitment_type: z.enum(["fixed", "flexible"]),
+    is_all_day: z.boolean(),
     active: z.boolean(),
     fromDate: dateSchema,
   })
@@ -69,6 +73,44 @@ const routineSchema = z
         message: "Routine days must be unique.",
       });
     }
+    if (value.frequency === "weekly" && value.days_of_week.length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["days_of_week"],
+        message: "Choose at least one weekday.",
+      });
+    }
+    if (value.frequency === "yearly") {
+      if (!value.annual_month || !value.annual_day) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["annual_month"],
+          message: "Annual routines need a month and day.",
+        });
+      } else {
+        const maximumDay = new Date(Date.UTC(2024, value.annual_month, 0)).getUTCDate();
+        if (value.annual_day > maximumDay) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["annual_day"],
+            message: "That month and day combination is invalid.",
+          });
+        }
+      }
+    } else if (value.annual_month !== null || value.annual_day !== null) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["annual_month"],
+        message: "Only yearly routines can have an annual date.",
+      });
+    }
+    if (value.category === "birthday" && (value.frequency !== "yearly" || !value.is_all_day)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["category"],
+        message: "Birthdays must be yearly, all-day commitments.",
+      });
+    }
   });
 
 const maintenanceSchema = z.object({ fromDate: dateSchema });
@@ -84,7 +126,7 @@ function appointmentRows(routine: RoutineRow, userId: string, fromDate: string) 
     ends_at: occurrence.endsAt,
     source: "routine",
     timezone: routine.timezone,
-    is_all_day: false,
+    is_all_day: routine.is_all_day,
     commitment_type: routine.commitment_type,
     recurrence_rule: occurrence.recurrenceRule,
     privacy_level: "private",
@@ -148,6 +190,8 @@ export const saveRoutine = createServerFn({ method: "POST" })
       category: data.category,
       frequency: data.frequency,
       days_of_week: [...new Set(data.days_of_week)].sort(),
+      annual_month: data.frequency === "yearly" ? data.annual_month : null,
+      annual_day: data.frequency === "yearly" ? data.annual_day : null,
       local_time: data.local_time,
       duration_min: data.duration_min,
       start_date: data.start_date,
@@ -156,6 +200,7 @@ export const saveRoutine = createServerFn({ method: "POST" })
       location: data.location || null,
       notes: data.notes || null,
       commitment_type: data.commitment_type,
+      is_all_day: data.is_all_day,
       active: data.active,
     };
 
