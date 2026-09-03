@@ -30,7 +30,14 @@ export function DayReplanner() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["appointments"] }),
         queryClient.invalidateQueries({ queryKey: ["day-replan-preview"] }),
+        queryClient.invalidateQueries({ queryKey: ["morning-plan"] }),
+        queryClient.invalidateQueries({ queryKey: ["tasks"] }),
+        queryClient.invalidateQueries({ queryKey: ["now-recommendation"] }),
+        queryClient.invalidateQueries({ queryKey: ["next-travel-guidance"] }),
       ]);
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "The proposal could not be applied.");
     },
   });
   const result = preview.data;
@@ -43,7 +50,8 @@ export function DayReplanner() {
             <RefreshCw className="h-4 w-4 text-accent" /> Automatic replanning
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Flexible task blocks can move; appointments and other commitments stay fixed.
+            Flexible task blocks can move. Appointments, shared commitments, travel and preparation
+            time stay protected.
           </p>
         </div>
         <Button
@@ -137,7 +145,7 @@ export function DayReplanner() {
           )}
           {apply.isError && (
             <p className="mt-3 text-xs text-destructive">
-              The proposal couldn't be applied safely. Check your day again.
+              Nothing else will move until you check your day again.
             </p>
           )}
         </div>

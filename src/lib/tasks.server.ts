@@ -128,6 +128,8 @@ export type PlannerScheduleEvent = {
 };
 
 export type PlannerBusyInterval = Busy & {
+  id: string;
+  title: string;
   travelProtected: boolean;
 };
 
@@ -161,6 +163,8 @@ export function buildPlannerBusyIntervals(
     const guidance = calculateTravelGuidance(appointment, travelPreferences, start - 1);
     const protectedStart = guidance ? Date.parse(guidance.prepareAt) : start;
     intervals.push({
+      id: appointment.id,
+      title: appointment.title,
       start: Number.isFinite(protectedStart) ? Math.min(start, protectedStart) : start,
       end,
       travelProtected: Boolean(guidance && protectedStart < start),

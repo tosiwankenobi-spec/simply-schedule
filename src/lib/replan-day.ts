@@ -10,6 +10,13 @@ export type ReplanAppointment = {
   source: string;
 };
 
+export type ReplanBusyInterval = {
+  id: string;
+  title: string;
+  start: number;
+  end: number;
+};
+
 export type ReplanMove = {
   appointmentId: string;
   taskId: string;
@@ -62,6 +69,7 @@ export function buildDayReplan({
   prefs,
   tasks,
   appointments,
+  protectedBusy,
 }: {
   date: string;
   nowMs: number;
@@ -69,6 +77,8 @@ export function buildDayReplan({
   prefs: Prefs;
   tasks: TaskRow[];
   appointments: ReplanAppointment[];
+  /** The RLS-filtered unified schedule, expanded to include travel/preparation time. */
+  protectedBusy?: ReplanBusyInterval[];
 }): ReplanPreview {
   const tasksByAppointment = new Map(
     tasks
@@ -81,26 +91,32 @@ export function buildDayReplan({
   });
   const flexibleIds = new Set(flexible.map(({ appointment }) => appointment.id));
   const fixed = appointments.filter((appointment) => !flexibleIds.has(appointment.id));
+  const protectedIntervals = protectedBusy
+    ? protectedBusy.filter((interval) => !flexibleIds.has(interval.id))
+    : fixed.map((appointment) => ({
+        id: appointment.id,
+        title: appointment.title,
+        start: Date.parse(appointment.starts_at),
+        end: endMs(appointment),
+      }));
 
   const affected = flexible.flatMap(({ appointment, task }) => {
     const start = Date.parse(appointment.starts_at);
     const end = endMs(appointment, task.estimated_min);
-    const conflict = fixed.find((item) => {
-      const fixedStart = Date.parse(item.starts_at);
-      return overlaps(start, end, fixedStart, endMs(item));
-    });
+    const conflict = protectedIntervals.find((item) => overlaps(start, end, item.start, item.end));
     const reason: "missed" | "conflict" | null =
       end <= nowMs ? "missed" : conflict ? "conflict" : null;
     return reason ? [{ appointment, task, reason, conflict: conflict ?? null }] : [];
   });
   const affectedIds = new Set(affected.map(({ appointment }) => appointment.id));
   const unchanged = flexible.filter(({ appointment }) => !affectedIds.has(appointment.id));
-  const busy = [...fixed, ...unchanged.map(({ appointment }) => appointment)].map(
-    (appointment) => ({
+  const busy = [
+    ...protectedIntervals.map(({ start, end }) => ({ start, end })),
+    ...unchanged.map(({ appointment }) => ({
       start: Date.parse(appointment.starts_at),
       end: endMs(appointment),
-    }),
-  );
+    })),
+  ];
   const planningNow = Math.ceil((nowMs + MINUTE) / (5 * MINUTE)) * 5 * MINUTE;
 
   const affectedTasks: TaskRow[] = affected.map(({ appointment, task }) => ({
@@ -167,7 +183,7 @@ export function buildDayReplan({
     profile: prefs.name,
     affectedCount: affected.length,
     unchangedCount: unchanged.length,
-    fixedCount: fixed.length,
+    fixedCount: protectedIntervals.length,
     moves,
     unresolved,
   };

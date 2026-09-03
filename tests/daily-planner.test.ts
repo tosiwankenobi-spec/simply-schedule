@@ -54,6 +54,8 @@ describe("daily planner", () => {
       ),
     ).toEqual([
       {
+        id: "appointment",
+        title: "Dentist",
         start: Date.parse("2026-09-04T15:05:00.000Z"),
         end: Date.parse("2026-09-04T17:00:00.000Z"),
         travelProtected: true,
