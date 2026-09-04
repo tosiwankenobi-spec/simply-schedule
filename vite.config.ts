@@ -14,6 +14,9 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
-    plugins: [mcpPlugin()],
+    // mcp-js 1.x compares normalized Vite roots with native Windows paths.
+    // The generated routes are committed, so Windows can safely use them as-is;
+    // Lovable's Linux build still regenerates and validates them through the plugin.
+    plugins: process.platform === "win32" ? [] : [mcpPlugin()],
   },
 });
