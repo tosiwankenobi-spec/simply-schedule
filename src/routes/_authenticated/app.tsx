@@ -31,24 +31,14 @@ import {
   MapPin,
   Trash2,
   Clock,
-  Mail,
-  Wand2,
   Settings,
-  ListTodo,
   RefreshCw,
-  Sun,
   Moon,
-  Bell,
-  CalendarCheck,
   CalendarArrowUp,
-  ShieldCheck,
-  Repeat2,
-  Users,
 } from "lucide-react";
 import { DailyBriefing } from "@/components/DailyBriefing";
 import { WeekGrid } from "@/components/WeekGrid";
 import { useScheduleEvents } from "@/lib/schedule-hub";
-import { QuickCapture } from "@/components/QuickCapture";
 import { SyncAlert } from "@/components/SyncAlert";
 import { NotificationBell } from "@/components/NotificationBell";
 import { TaskNudge } from "@/components/TaskNudge";
@@ -57,6 +47,7 @@ import {
   ConflictResolutionDialog,
   type ConflictProposal,
 } from "@/components/ConflictResolutionDialog";
+import { WorkspaceHeader } from "@/components/WorkspaceHeader";
 
 type Appointment = {
   id: string;
@@ -169,95 +160,36 @@ function AppPage() {
   }, [appts]);
 
   return (
-    <div className="relative min-h-screen bg-background">
+    <div className="verolane-wash relative min-h-screen bg-background">
       <div className="absolute inset-0 paper-grain opacity-30 pointer-events-none" />
-      <div className="relative mx-auto max-w-5xl px-5 py-8 md:py-12">
-        <header className="flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-accent">
-              Universal schedule
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">Every commitment, one timeline</p>
-          </div>
-          <NotificationBell />
-        </header>
+      <div className="relative mx-auto max-w-[1180px] px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
+        <WorkspaceHeader
+          eyebrow="Universal schedule"
+          title={
+            <>
+              Your schedule, <span className="text-accent italic">synthesized.</span>
+            </>
+          }
+          description={<>{format(new Date(), "EEEE, MMMM d")} · Every commitment, one timeline.</>}
+          action={<NotificationBell />}
+        />
 
-        <div className="mt-10">
-          <h1 className="font-serif text-4xl md:text-5xl text-foreground leading-tight">
-            Your schedule, <span className="text-accent italic">synthesized</span>.
-          </h1>
-          <p className="mt-2 text-muted-foreground text-sm">{format(new Date(), "EEEE, MMMM d")}</p>
-        </div>
-
-        <div className="mt-6 flex flex-wrap gap-2">
+        <div className="mt-6 flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-card/75 p-3 shadow-[0_12px_35px_rgba(0,46,40,0.04)]">
           <NewAppointmentDialog open={open} onOpenChange={setOpen} />
-          <Button asChild variant="outline">
-            <Link to="/today">
-              <Sun className="h-4 w-4 mr-1.5" /> Today
-            </Link>
-          </Button>
           <Button asChild variant="outline">
             <Link to="/tomorrow">
               <Moon className="h-4 w-4 mr-1.5" /> Plan tomorrow
             </Link>
           </Button>
-          <Button asChild variant="outline">
-            <Link to="/planner">
-              <Wand2 className="h-4 w-4 mr-1.5" /> AI planner
-            </Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link to="/tasks">
-              <ListTodo className="h-4 w-4 mr-1.5" /> Tasks
-            </Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link to="/routines">
-              <Repeat2 className="h-4 w-4 mr-1.5" /> Routines
-            </Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link to="/household">
-              <Users className="h-4 w-4 mr-1.5" /> Household
-            </Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link to="/weekly-reset">
-              <CalendarCheck className="h-4 w-4 mr-1.5" /> Weekly reset
-            </Link>
-          </Button>
-          <ExportIcsButton />
-          <Button asChild variant="outline">
-            <Link to="/calendar-import">
-              <CalendarArrowUp className="h-4 w-4 mr-1.5" /> Import calendars
-            </Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link to="/inbox">
-              <Mail className="h-4 w-4 mr-1.5" /> Smart inbox
-            </Link>
-          </Button>
           <SyncControl />
-          <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
-            <Link to="/setup/gmail">
-              <Settings className="h-3.5 w-3.5 mr-1" /> Gmail setup
-            </Link>
-          </Button>
-          <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
-            <Link to="/setup/android">
-              <Settings className="h-3.5 w-3.5 mr-1" /> Android setup
-            </Link>
-          </Button>
-          <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
-            <Link to="/setup/notifications">
-              <Bell className="h-3.5 w-3.5 mr-1" /> Reminders
-            </Link>
-          </Button>
-          <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
-            <Link to="/privacy">
-              <ShieldCheck className="h-3.5 w-3.5 mr-1" /> Privacy
-            </Link>
-          </Button>
+          <div className="ml-auto flex flex-wrap gap-2">
+            <ExportIcsButton />
+            <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
+              <Link to="/calendar-import">
+                <CalendarArrowUp className="h-3.5 w-3.5 mr-1" /> Import
+              </Link>
+            </Button>
+          </div>
         </div>
 
         <SyncAlert />
@@ -273,8 +205,6 @@ function AppPage() {
           files can join the same timeline as private, fixed snapshots. Smart Inbox asks before
           adding any appointment it detects in Gmail.
         </p>
-
-        <QuickCapture />
 
         <Tabs defaultValue="upcoming" className="mt-10">
           <TabsList className="bg-secondary">

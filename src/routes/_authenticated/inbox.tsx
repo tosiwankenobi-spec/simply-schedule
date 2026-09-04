@@ -2,7 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
-  ArrowLeft,
   CalendarPlus,
   CircleAlert,
   Clock3,
@@ -19,6 +18,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { WorkspaceHeader } from "@/components/WorkspaceHeader";
 import {
   acceptGmailCandidate,
   dismissGmailCandidate,
@@ -75,7 +75,9 @@ function CandidateCard({
   onDismiss: (candidate: SmartInboxCandidate) => void;
 }) {
   return (
-    <Card className={candidate.conflicts > 0 ? "border-amber-500/50" : undefined}>
+    <Card
+      className={`rounded-2xl bg-card/90 shadow-[0_18px_45px_rgba(0,46,40,0.04)] ${candidate.conflicts > 0 ? "border-amber-500/50" : ""}`}
+    >
       <CardHeader>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
@@ -246,78 +248,101 @@ function SmartInboxPage() {
   const busy = scan.isPending || accept.isPending || dismiss.isPending;
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-3xl px-6 py-10">
-        <Button asChild variant="ghost" size="sm" className="mb-6 -ml-2 text-muted-foreground">
-          <Link to="/app">
-            <ArrowLeft className="mr-1.5 h-4 w-4" /> Back to schedule
-          </Link>
-        </Button>
-
-        <div className="flex items-center gap-2 text-accent">
-          <Inbox className="h-5 w-5" />
-          <span className="text-sm font-medium">Smart Inbox</span>
-        </div>
-        <h1 className="mt-2 font-serif text-4xl text-foreground">Your inbox, with a checkpoint.</h1>
-        <p className="mt-3 max-w-2xl text-muted-foreground">
-          Chronos-V looks for appointments, reservations, school events, deliveries, renewals and
-          deadlines in recent matching Gmail messages. Nothing is added until you approve it here.
-        </p>
-
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Mail className="h-5 w-5" /> Scan recent Gmail
-            </CardTitle>
-            <CardDescription>
-              A scan reads up to 15 recent messages that match scheduling or deadline terms. Raw
-              message bodies are not stored.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Button onClick={() => scan.mutate()} disabled={busy}>
-              <RefreshCw className={`mr-1.5 h-4 w-4 ${scan.isPending ? "animate-spin" : ""}`} />
-              {scan.isPending ? "Scanning…" : result ? "Scan again" : "Scan Gmail"}
+    <div className="verolane-wash relative min-h-screen bg-background">
+      <div className="pointer-events-none absolute inset-0 paper-grain opacity-20" />
+      <div className="relative mx-auto max-w-[1180px] px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
+        <WorkspaceHeader
+          eyebrow="Smart inbox"
+          title={
+            <>
+              Your inbox, with a <span className="text-accent italic">checkpoint.</span>
+            </>
+          }
+          description="Chronos-V looks for appointments, reservations, school events, deliveries, renewals and deadlines. Nothing is added until you approve it here."
+          action={
+            <Button asChild variant="outline" className="bg-card/80">
+              <Link to="/privacy">
+                <ShieldCheck className="mr-1.5 h-4 w-4" /> Privacy controls
+              </Link>
             </Button>
-            <p className="flex items-start gap-2 text-xs text-muted-foreground">
-              <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              <span>
-                Gmail access follows your{" "}
-                <Link to="/privacy" className="underline">
-                  Privacy controls
-                </Link>{" "}
-                and uses your signed-in account's RLS-protected data path.
-              </span>
-            </p>
-            {result ? <ScanSummary result={result} /> : null}
-          </CardContent>
-        </Card>
+          }
+        />
 
-        {result ? (
-          <div className="mt-6 space-y-4">
-            {result.candidates.length > 0 ? (
-              result.candidates.map((candidate) => (
-                <CandidateCard
-                  key={candidate.messageId}
-                  candidate={candidate}
-                  busy={busy}
-                  onAccept={(item) => accept.mutate(item)}
-                  onDismiss={(item) => dismiss.mutate(item)}
-                />
-              ))
+        <div className="mt-8 grid items-start gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
+          <Card className="rounded-2xl bg-ink text-paper shadow-[0_24px_55px_rgba(0,46,40,0.14)] lg:sticky lg:top-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-paper">
+                <Mail className="h-5 w-5" /> Scan recent Gmail
+              </CardTitle>
+              <CardDescription className="text-paper/65">
+                A scan reads up to 15 recent messages that match scheduling or deadline terms. Raw
+                message bodies are not stored.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Button
+                onClick={() => scan.mutate()}
+                disabled={busy}
+                className="bg-paper text-ink hover:bg-paper/90"
+              >
+                <RefreshCw className={`mr-1.5 h-4 w-4 ${scan.isPending ? "animate-spin" : ""}`} />
+                {scan.isPending ? "Scanning…" : result ? "Scan again" : "Scan Gmail"}
+              </Button>
+              <p className="flex items-start gap-2 text-xs text-paper/60">
+                <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span>
+                  Gmail access follows your{" "}
+                  <Link to="/privacy" className="text-paper underline">
+                    Privacy controls
+                  </Link>{" "}
+                  and uses your signed-in account's RLS-protected data path.
+                </span>
+              </p>
+              {result ? (
+                <div className="[&>p]:text-paper/65">
+                  <ScanSummary result={result} />
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
+
+          <div className="min-w-0 space-y-4">
+            {result ? (
+              result.candidates.length > 0 ? (
+                result.candidates.map((candidate) => (
+                  <CandidateCard
+                    key={candidate.messageId}
+                    candidate={candidate}
+                    busy={busy}
+                    onAccept={(item) => accept.mutate(item)}
+                    onDismiss={(item) => dismiss.mutate(item)}
+                  />
+                ))
+              ) : (
+                <Card className="border-dashed">
+                  <CardContent className="py-12 text-center">
+                    <Inbox className="mx-auto h-7 w-7 text-muted-foreground" />
+                    <p className="mt-3 font-serif text-lg">You're all caught up.</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      No unreviewed schedule or task suggestions remain from this scan.
+                    </p>
+                  </CardContent>
+                </Card>
+              )
             ) : (
-              <Card className="border-dashed">
-                <CardContent className="py-12 text-center">
-                  <Inbox className="mx-auto h-7 w-7 text-muted-foreground" />
-                  <p className="mt-3 font-serif text-lg">You're all caught up.</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    No unreviewed schedule or task suggestions remain from this scan.
+              <Card className="rounded-2xl border-dashed bg-card/60">
+                <CardContent className="py-16 text-center">
+                  <Inbox className="mx-auto h-8 w-8 text-accent" />
+                  <p className="mt-4 font-serif text-xl">Nothing enters your schedule silently.</p>
+                  <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+                    Start a scan when you are ready. Every suggestion stays here until you add or
+                    dismiss it.
                   </p>
                 </CardContent>
               </Card>
             )}
           </div>
-        ) : null}
+        </div>
       </div>
     </div>
   );

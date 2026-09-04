@@ -8,13 +8,38 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Sparkles, ArrowLeft, Wand2, CalendarRange, ListChecks, SlidersHorizontal, AlertTriangle, Check, MoveRight, X } from "lucide-react";
 import {
-  optimizeDay, planTask, planWeek, applyDayPlan, previewDayPlan, applyWeekPlan,
-  listPlannerProfiles, getPrefsForDate,
-  type DailyPlanItem, type PlannerProfile, type WeekProposalItem,
+  Sparkles,
+  Wand2,
+  CalendarRange,
+  ListChecks,
+  SlidersHorizontal,
+  AlertTriangle,
+  Check,
+  MoveRight,
+  X,
+} from "lucide-react";
+import {
+  optimizeDay,
+  planTask,
+  planWeek,
+  applyDayPlan,
+  previewDayPlan,
+  applyWeekPlan,
+  listPlannerProfiles,
+  getPrefsForDate,
+  type DailyPlanItem,
+  type PlannerProfile,
+  type WeekProposalItem,
 } from "@/lib/planner.functions";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { WorkspaceHeader } from "@/components/WorkspaceHeader";
 
 export const Route = createFileRoute("/_authenticated/planner")({
   component: PlannerPage,
@@ -31,40 +56,57 @@ function fmtDateTime(iso: string) {
 
 function PlannerPage() {
   return (
-    <div className="relative min-h-screen bg-background">
+    <div className="verolane-wash relative min-h-screen bg-background">
       <div className="absolute inset-0 paper-grain opacity-30 pointer-events-none" />
-      <div className="relative mx-auto max-w-2xl px-5 py-8 md:py-12">
-        <div className="flex items-center justify-between">
-          <Link to="/app" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-4 w-4 mr-1" /> Back to schedule
-          </Link>
-          <Link to="/planner/preferences" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
-            <SlidersHorizontal className="h-3.5 w-3.5 mr-1" /> Preferences
-          </Link>
-        </div>
+      <div className="relative mx-auto max-w-[1180px] px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
+        <WorkspaceHeader
+          eyebrow="AI daily planner"
+          title={
+            <>
+              Let AI <span className="text-accent italic">shape</span> your time.
+            </>
+          }
+          description="Optimize a day, capture a quick task, or break goals into a week of focused blocks. You review every proposal before it changes your schedule."
+          action={
+            <Button asChild variant="outline" className="bg-card/80">
+              <Link to="/planner/preferences">
+                <SlidersHorizontal className="mr-1.5 h-4 w-4" /> Preferences
+              </Link>
+            </Button>
+          }
+        />
 
-        <div className="mt-6">
-          <div className="inline-flex items-center gap-2 rounded-full bg-accent/10 px-3 py-1 text-xs text-accent">
-            <Sparkles className="h-3 w-3" /> AI planner
-          </div>
-          <h1 className="mt-3 font-serif text-4xl md:text-5xl text-foreground leading-tight">
-            Let AI <span className="text-accent italic">shape</span> your time.
-          </h1>
-          <p className="mt-2 text-muted-foreground text-sm">
-            Optimize a day, capture a quick task, or break goals into a week of focused blocks. Tune defaults in <Link to="/planner/preferences" className="underline">preferences</Link>.
-          </p>
-        </div>
-
-        <Tabs defaultValue="day" className="mt-10">
-          <TabsList className="bg-secondary">
-            <TabsTrigger value="day"><Wand2 className="h-3.5 w-3.5 mr-1.5" /> Day</TabsTrigger>
-            <TabsTrigger value="task"><ListChecks className="h-3.5 w-3.5 mr-1.5" /> Quick task</TabsTrigger>
-            <TabsTrigger value="week"><CalendarRange className="h-3.5 w-3.5 mr-1.5" /> Week</TabsTrigger>
+        <Tabs defaultValue="day" className="mt-8">
+          <TabsList className="grid h-auto w-full max-w-lg grid-cols-3 rounded-xl bg-secondary/80 p-1">
+            <TabsTrigger value="day">
+              <Wand2 className="h-3.5 w-3.5 mr-1.5" /> Day
+            </TabsTrigger>
+            <TabsTrigger value="task">
+              <ListChecks className="h-3.5 w-3.5 mr-1.5" /> Quick task
+            </TabsTrigger>
+            <TabsTrigger value="week">
+              <CalendarRange className="h-3.5 w-3.5 mr-1.5" /> Week
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="day" className="mt-6"><DayOptimizer /></TabsContent>
-          <TabsContent value="task" className="mt-6"><QuickTask /></TabsContent>
-          <TabsContent value="week" className="mt-6"><WeekPlanner /></TabsContent>
+          <TabsContent
+            value="day"
+            className="mt-5 rounded-2xl border border-border bg-card/90 p-5 shadow-[0_18px_45px_rgba(0,46,40,0.04)] sm:p-6"
+          >
+            <DayOptimizer />
+          </TabsContent>
+          <TabsContent
+            value="task"
+            className="mt-5 rounded-2xl border border-border bg-card/90 p-5 shadow-[0_18px_45px_rgba(0,46,40,0.04)] sm:p-6"
+          >
+            <QuickTask />
+          </TabsContent>
+          <TabsContent
+            value="week"
+            className="mt-5 rounded-2xl border border-border bg-card/90 p-5 shadow-[0_18px_45px_rgba(0,46,40,0.04)] sm:p-6"
+          >
+            <WeekPlanner />
+          </TabsContent>
         </Tabs>
       </div>
     </div>
@@ -75,7 +117,10 @@ type DayPreview = Awaited<ReturnType<typeof previewDayPlan>>;
 
 function DayOptimizer() {
   const qc = useQueryClient();
-  const { data: profiles } = useQuery({ queryKey: ["planner-profiles"], queryFn: () => listPlannerProfiles() });
+  const { data: profiles } = useQuery({
+    queryKey: ["planner-profiles"],
+    queryFn: () => listPlannerProfiles(),
+  });
   const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [profileId, setProfileId] = useState<string>("");
   const [workStart, setWorkStart] = useState("09:00");
@@ -102,29 +147,50 @@ function DayOptimizer() {
       setWorkStart(activeProfile.work_start);
       setWorkEnd(activeProfile.work_end);
     }
-  }, [activeProfile?.id]);
+  }, [activeProfile]);
 
   // Re-run preview whenever the plan or resolution changes
   useEffect(() => {
-    if (!plan) { setPreview(null); return; }
+    if (!plan) {
+      setPreview(null);
+      return;
+    }
     let cancelled = false;
     setPreviewing(true);
     previewDayPlan({ data: { date, items: plan.items, resolution } })
-      .then((res) => { if (!cancelled) setPreview(res); })
-      .catch(() => { if (!cancelled) setPreview(null); })
-      .finally(() => { if (!cancelled) setPreviewing(false); });
-    return () => { cancelled = true; };
+      .then((res) => {
+        if (!cancelled) setPreview(res);
+      })
+      .catch(() => {
+        if (!cancelled) setPreview(null);
+      })
+      .finally(() => {
+        if (!cancelled) setPreviewing(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [plan, resolution, date]);
 
   async function run() {
     setBusy(true);
     setPreview(null);
     try {
-      const res = await optimizeDay({ data: { date, workStart, workEnd, goals: goals || undefined, profileId: profileId || undefined } });
+      const res = await optimizeDay({
+        data: {
+          date,
+          workStart,
+          workEnd,
+          goals: goals || undefined,
+          profileId: profileId || undefined,
+        },
+      });
       setPlan(res);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't build plan");
-    } finally { setBusy(false); }
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function apply() {
@@ -148,7 +214,9 @@ function DayOptimizer() {
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't apply plan");
-    } finally { setApplying(false); }
+    } finally {
+      setApplying(false);
+    }
   }
 
   return (
@@ -160,7 +228,12 @@ function DayOptimizer() {
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="ws">Work start</Label>
-          <Input id="ws" type="time" value={workStart} onChange={(e) => setWorkStart(e.target.value)} />
+          <Input
+            id="ws"
+            type="time"
+            value={workStart}
+            onChange={(e) => setWorkStart(e.target.value)}
+          />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="we">Work end</Label>
@@ -169,23 +242,50 @@ function DayOptimizer() {
       </div>
       <div className="space-y-1.5">
         <Label>Profile</Label>
-        <Select value={profileId || "__auto"} onValueChange={(v) => setProfileId(v === "__auto" ? "" : v)}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
+        <Select
+          value={profileId || "__auto"}
+          onValueChange={(v) => setProfileId(v === "__auto" ? "" : v)}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
           <SelectContent>
-            <SelectItem value="__auto">Auto for date{dayPrefs ? ` · ${dayPrefs.name}` : ""}</SelectItem>
+            <SelectItem value="__auto">
+              Auto for date{dayPrefs ? ` · ${dayPrefs.name}` : ""}
+            </SelectItem>
             {(profiles ?? []).map((p) => (
-              <SelectItem key={p.id} value={p.id}>{p.name}{p.is_default ? " (default)" : ""}</SelectItem>
+              <SelectItem key={p.id} value={p.id}>
+                {p.name}
+                {p.is_default ? " (default)" : ""}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="g">Priorities (optional)</Label>
-        <Textarea id="g" value={goals} onChange={(e) => setGoals(e.target.value)} rows={3} maxLength={500}
-          placeholder="e.g. Ship the planner feature, prep Friday demo, gym at 6pm" className="resize-none" />
+        <Textarea
+          id="g"
+          value={goals}
+          onChange={(e) => setGoals(e.target.value)}
+          rows={3}
+          maxLength={500}
+          placeholder="e.g. Ship the planner feature, prep Friday demo, gym at 6pm"
+          className="resize-none"
+        />
       </div>
-      <Button onClick={run} disabled={busy} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
-        {busy ? "Planning…" : (<><Sparkles className="h-4 w-4 mr-1.5" /> Build my day</>)}
+      <Button
+        onClick={run}
+        disabled={busy}
+        className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
+      >
+        {busy ? (
+          "Planning…"
+        ) : (
+          <>
+            <Sparkles className="h-4 w-4 mr-1.5" /> Build my day
+          </>
+        )}
       </Button>
 
       {plan && (
@@ -195,7 +295,9 @@ function DayOptimizer() {
           <div className="mt-4 space-y-1.5">
             <Label className="text-xs">When a block conflicts with an existing appointment</Label>
             <Select value={resolution} onValueChange={(v) => setResolution(v as Resolution)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="shift">Shift after the conflict</SelectItem>
                 <SelectItem value="skip">Skip conflicting blocks</SelectItem>
@@ -204,11 +306,7 @@ function DayOptimizer() {
             </Select>
           </div>
 
-          <ConfirmSummary
-            loading={previewing}
-            preview={preview}
-            resolution={resolution}
-          />
+          <ConfirmSummary loading={previewing} preview={preview} resolution={resolution} />
 
           <div className="mt-5 flex gap-2">
             <Button
@@ -222,7 +320,16 @@ function DayOptimizer() {
                   ? `Confirm & add ${preview.accepted.length} block${preview.accepted.length === 1 ? "" : "s"}`
                   : "Preparing preview…"}
             </Button>
-            <Button variant="ghost" onClick={() => { setPlan(null); setPreview(null); }} disabled={applying}>Discard</Button>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setPlan(null);
+                setPreview(null);
+              }}
+              disabled={applying}
+            >
+              Discard
+            </Button>
           </div>
         </div>
       )}
@@ -236,7 +343,13 @@ function ConfirmSummary({
   resolution,
 }: {
   loading: boolean;
-  preview: { accepted: { title: string; starts_at: string; ends_at: string }[]; shifted: { title: string; from: string; to: string; conflictsWith: string }[]; skipped: { title: string; starts_at: string; conflictsWith: string }[]; conflicts: { title: string; starts_at: string; conflictsWith: string }[]; existingCount?: number } | null;
+  preview: {
+    accepted: { title: string; starts_at: string; ends_at: string }[];
+    shifted: { title: string; from: string; to: string; conflictsWith: string }[];
+    skipped: { title: string; starts_at: string; conflictsWith: string }[];
+    conflicts: { title: string; starts_at: string; conflictsWith: string }[];
+    existingCount?: number;
+  } | null;
   resolution: Resolution;
 }) {
   if (loading && !preview) {
@@ -252,16 +365,20 @@ function ConfirmSummary({
       <div className="rounded-lg border border-border bg-secondary/30 p-3">
         <p className="text-xs font-medium text-foreground">Confirm changes</p>
         <div className="mt-1.5 flex flex-wrap gap-2 text-[11px]">
-          <Pill tone="ok"><Check className="h-3 w-3" /> {cleanAdds.length} adding cleanly</Pill>
+          <Pill tone="ok">
+            <Check className="h-3 w-3" /> {cleanAdds.length} adding cleanly
+          </Pill>
           {preview.shifted.length > 0 && (
-            <Pill tone="warn"><MoveRight className="h-3 w-3" /> {preview.shifted.length} shifted</Pill>
+            <Pill tone="warn">
+              <MoveRight className="h-3 w-3" /> {preview.shifted.length} shifted
+            </Pill>
           )}
           {preview.skipped.length > 0 && (
-            <Pill tone="muted"><X className="h-3 w-3" /> {preview.skipped.length} skipped</Pill>
+            <Pill tone="muted">
+              <X className="h-3 w-3" /> {preview.skipped.length} skipped
+            </Pill>
           )}
-          {preview.conflicts.length === 0 && (
-            <Pill tone="muted">No conflicts</Pill>
-          )}
+          {preview.conflicts.length === 0 && <Pill tone="muted">No conflicts</Pill>}
         </div>
       </div>
 
@@ -309,7 +426,10 @@ function ConfirmSummary({
       {resolution === "force" && preview.conflicts.length > 0 && (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-700 inline-flex items-start gap-2">
           <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-          <span><b>{preview.conflicts.length}</b> block{preview.conflicts.length === 1 ? "" : "s"} will overlap existing appointments.</span>
+          <span>
+            <b>{preview.conflicts.length}</b> block{preview.conflicts.length === 1 ? "" : "s"} will
+            overlap existing appointments.
+          </span>
         </div>
       )}
     </div>
@@ -319,18 +439,33 @@ function ConfirmSummary({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="rounded-lg border border-border/60">
-      <div className="px-3 py-2 border-b border-border/60 text-[11px] uppercase tracking-wide text-muted-foreground">{title}</div>
+      <div className="px-3 py-2 border-b border-border/60 text-[11px] uppercase tracking-wide text-muted-foreground">
+        {title}
+      </div>
       <ul className="divide-y divide-border/40">{children}</ul>
     </div>
   );
 }
 
-function Row({ time, title, hint, tone }: { time: string; title: string; hint?: string; tone: "ok" | "warn" | "muted" }) {
-  const dot = tone === "ok" ? "bg-emerald-500" : tone === "warn" ? "bg-amber-500" : "bg-muted-foreground/40";
+function Row({
+  time,
+  title,
+  hint,
+  tone,
+}: {
+  time: string;
+  title: string;
+  hint?: string;
+  tone: "ok" | "warn" | "muted";
+}) {
+  const dot =
+    tone === "ok" ? "bg-emerald-500" : tone === "warn" ? "bg-amber-500" : "bg-muted-foreground/40";
   return (
     <li className="flex items-start gap-3 px-3 py-2">
       <span className={`mt-1.5 h-1.5 w-1.5 rounded-full ${dot} shrink-0`} />
-      <span className="font-mono text-[11px] text-muted-foreground w-28 shrink-0 pt-0.5">{time}</span>
+      <span className="font-mono text-[11px] text-muted-foreground w-28 shrink-0 pt-0.5">
+        {time}
+      </span>
       <div className="flex-1 min-w-0">
         <p className="text-sm text-foreground truncate">{title}</p>
         {hint && <p className="text-[11px] text-muted-foreground mt-0.5">{hint}</p>}
@@ -340,12 +475,17 @@ function Row({ time, title, hint, tone }: { time: string; title: string; hint?: 
 }
 
 function Pill({ tone, children }: { tone: "ok" | "warn" | "muted"; children: React.ReactNode }) {
-  const cls = tone === "ok"
-    ? "bg-emerald-500/10 text-emerald-700"
-    : tone === "warn"
-      ? "bg-amber-500/10 text-amber-700"
-      : "bg-muted text-muted-foreground";
-  return <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 ${cls}`}>{children}</span>;
+  const cls =
+    tone === "ok"
+      ? "bg-emerald-500/10 text-emerald-700"
+      : tone === "warn"
+        ? "bg-amber-500/10 text-amber-700"
+        : "bg-muted text-muted-foreground";
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 ${cls}`}>
+      {children}
+    </span>
+  );
 }
 
 function QuickTask() {
@@ -363,17 +503,35 @@ function QuickTask() {
       setText("");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't schedule");
-    } finally { setBusy(false); }
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
     <div className="space-y-3">
       <Label htmlFor="qt">Describe a task</Label>
-      <Textarea id="qt" value={text} onChange={(e) => setText(e.target.value)} rows={4} maxLength={1000}
+      <Textarea
+        id="qt"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        rows={4}
+        maxLength={1000}
         placeholder='e.g. "30 min workout tomorrow morning" or "Call mom Sunday evening"'
-        className="resize-none" />
-      <Button onClick={run} disabled={busy || !text.trim()} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
-        {busy ? "Scheduling…" : (<><Sparkles className="h-4 w-4 mr-1.5" /> Schedule it</>)}
+        className="resize-none"
+      />
+      <Button
+        onClick={run}
+        disabled={busy || !text.trim()}
+        className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
+      >
+        {busy ? (
+          "Scheduling…"
+        ) : (
+          <>
+            <Sparkles className="h-4 w-4 mr-1.5" /> Schedule it
+          </>
+        )}
       </Button>
     </div>
   );
@@ -395,7 +553,10 @@ type WeekDraft = {
 
 function WeekPlanner() {
   const qc = useQueryClient();
-  const { data: profiles } = useQuery({ queryKey: ["planner-profiles"], queryFn: () => listPlannerProfiles() });
+  const { data: profiles } = useQuery({
+    queryKey: ["planner-profiles"],
+    queryFn: () => listPlannerProfiles(),
+  });
   const [goals, setGoals] = useState("");
   const [startDate, setStartDate] = useState(format(addDays(new Date(), 1), "yyyy-MM-dd"));
   const [days, setDays] = useState(7);
@@ -409,7 +570,16 @@ function WeekPlanner() {
     if (!goals.trim()) return;
     setBusy(true);
     try {
-      const res = await planWeek({ data: { goals, startDate, days, profileId: profileId || undefined, resolution, dryRun: true } });
+      const res = await planWeek({
+        data: {
+          goals,
+          startDate,
+          days,
+          profileId: profileId || undefined,
+          resolution,
+          dryRun: true,
+        },
+      });
       if (!res.dryRun) return;
       setDraft({
         summary: res.summary,
@@ -421,20 +591,24 @@ function WeekPlanner() {
       });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't plan");
-    } finally { setBusy(false); }
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function apply() {
     if (!draft) return;
     setApplying(true);
     try {
-      const res = await applyWeekPlan({ data: {
-        startDate: draft.startDate,
-        days: draft.days,
-        items: draft.proposals,
-        resolution,
-        profileId: draft.profileId || undefined,
-      }});
+      const res = await applyWeekPlan({
+        data: {
+          startDate: draft.startDate,
+          days: draft.days,
+          items: draft.proposals,
+          resolution,
+          profileId: draft.profileId || undefined,
+        },
+      });
       const bits: string[] = [];
       if (res.created > 0) bits.push(`${res.created} added`);
       if (res.shifted?.length) bits.push(`${res.shifted.length} shifted`);
@@ -445,7 +619,9 @@ function WeekPlanner() {
       setGoals("");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't apply");
-    } finally { setApplying(false); }
+    } finally {
+      setApplying(false);
+    }
   }
 
   // Re-resolve preview locally when resolution changes? Cheaper: re-call planWeek dry would re-pay AI.
@@ -457,28 +633,54 @@ function WeekPlanner() {
     <div className="space-y-3">
       <div className="space-y-1.5">
         <Label htmlFor="wg">Goals for this stretch</Label>
-        <Textarea id="wg" value={goals} onChange={(e) => setGoals(e.target.value)} rows={5} maxLength={2000}
+        <Textarea
+          id="wg"
+          value={goals}
+          onChange={(e) => setGoals(e.target.value)}
+          rows={5}
+          maxLength={2000}
           placeholder="e.g. Finish Q3 report draft, run 3x, prep onboarding doc for new hire, read 2 chapters of Designing Data-Intensive Apps"
-          className="resize-none" />
+          className="resize-none"
+        />
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-1.5">
           <Label htmlFor="sd">Start</Label>
-          <Input id="sd" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          <Input
+            id="sd"
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+          />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="dn">Days</Label>
-          <Input id="dn" type="number" min={1} max={14} value={days} onChange={(e) => setDays(Number(e.target.value) || 7)} />
+          <Input
+            id="dn"
+            type="number"
+            min={1}
+            max={14}
+            value={days}
+            onChange={(e) => setDays(Number(e.target.value) || 7)}
+          />
         </div>
       </div>
       <div className="space-y-1.5">
         <Label>Profile</Label>
-        <Select value={profileId || "__auto"} onValueChange={(v) => setProfileId(v === "__auto" ? "" : v)}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
+        <Select
+          value={profileId || "__auto"}
+          onValueChange={(v) => setProfileId(v === "__auto" ? "" : v)}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="__auto">Auto (use assigned/default for start date)</SelectItem>
             {(profiles ?? []).map((p) => (
-              <SelectItem key={p.id} value={p.id}>{p.name}{p.is_default ? " (default)" : ""}</SelectItem>
+              <SelectItem key={p.id} value={p.id}>
+                {p.name}
+                {p.is_default ? " (default)" : ""}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -486,7 +688,9 @@ function WeekPlanner() {
       <div className="space-y-1.5">
         <Label>On conflict with existing appointments</Label>
         <Select value={resolution} onValueChange={(v) => setResolution(v as Resolution)}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="shift">Shift block after the conflict</SelectItem>
             <SelectItem value="skip">Skip conflicting blocks</SelectItem>
@@ -494,8 +698,18 @@ function WeekPlanner() {
           </SelectContent>
         </Select>
       </div>
-      <Button onClick={preview} disabled={busy || !goals.trim()} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
-        {busy ? "Planning week…" : (<><Sparkles className="h-4 w-4 mr-1.5" /> Preview my week</>)}
+      <Button
+        onClick={preview}
+        disabled={busy || !goals.trim()}
+        className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
+      >
+        {busy ? (
+          "Planning week…"
+        ) : (
+          <>
+            <Sparkles className="h-4 w-4 mr-1.5" /> Preview my week
+          </>
+        )}
       </Button>
 
       {draft && (
@@ -506,7 +720,8 @@ function WeekPlanner() {
 
           {draft.preview.skipped.length + draft.preview.shifted.length > 0 && (
             <p className="text-[11px] text-muted-foreground">
-              Preview reflects "<b>{resolutionLabel(resolution)}</b>". Change the strategy above and click <i>Preview my week</i> again to re-resolve.
+              Preview reflects "<b>{resolutionLabel(resolution)}</b>". Change the strategy above and
+              click <i>Preview my week</i> again to re-resolve.
             </p>
           )}
 
@@ -520,7 +735,9 @@ function WeekPlanner() {
                 ? "Adding…"
                 : `Confirm & add ${draft.preview.accepted.length} block${draft.preview.accepted.length === 1 ? "" : "s"}`}
             </Button>
-            <Button variant="ghost" onClick={() => setDraft(null)} disabled={applying}>Discard</Button>
+            <Button variant="ghost" onClick={() => setDraft(null)} disabled={applying}>
+              Discard
+            </Button>
           </div>
         </div>
       )}
@@ -529,7 +746,11 @@ function WeekPlanner() {
 }
 
 function resolutionLabel(r: Resolution) {
-  return r === "shift" ? "Shift after the conflict" : r === "skip" ? "Skip conflicts" : "Add anyway";
+  return r === "shift"
+    ? "Shift after the conflict"
+    : r === "skip"
+      ? "Skip conflicts"
+      : "Add anyway";
 }
 
 function WeekConfirm({ draft, resolution }: { draft: WeekDraft; resolution: Resolution }) {
@@ -540,11 +761,23 @@ function WeekConfirm({ draft, resolution }: { draft: WeekDraft; resolution: Reso
   return (
     <div className="space-y-3">
       <div className="rounded-lg border border-border bg-secondary/30 p-3">
-        <p className="text-xs font-medium text-foreground">Confirm changes across {draft.days} day{draft.days === 1 ? "" : "s"}</p>
+        <p className="text-xs font-medium text-foreground">
+          Confirm changes across {draft.days} day{draft.days === 1 ? "" : "s"}
+        </p>
         <div className="mt-1.5 flex flex-wrap gap-2 text-[11px]">
-          <Pill tone="ok"><Check className="h-3 w-3" /> {cleanAdds.length} adding cleanly</Pill>
-          {p.shifted.length > 0 && <Pill tone="warn"><MoveRight className="h-3 w-3" /> {p.shifted.length} shifted</Pill>}
-          {p.skipped.length > 0 && <Pill tone="muted"><X className="h-3 w-3" /> {p.skipped.length} skipped</Pill>}
+          <Pill tone="ok">
+            <Check className="h-3 w-3" /> {cleanAdds.length} adding cleanly
+          </Pill>
+          {p.shifted.length > 0 && (
+            <Pill tone="warn">
+              <MoveRight className="h-3 w-3" /> {p.shifted.length} shifted
+            </Pill>
+          )}
+          {p.skipped.length > 0 && (
+            <Pill tone="muted">
+              <X className="h-3 w-3" /> {p.skipped.length} skipped
+            </Pill>
+          )}
           {p.conflicts.length === 0 && <Pill tone="muted">No conflicts</Pill>}
         </div>
       </div>
@@ -559,21 +792,36 @@ function WeekConfirm({ draft, resolution }: { draft: WeekDraft; resolution: Reso
       {p.shifted.length > 0 && (
         <Section title={`Shifted to avoid conflicts (${p.shifted.length})`}>
           {p.shifted.map((s, i) => (
-            <Row key={`s${i}`} time={`${fmtDateTime(s.from)} → ${fmtTime(s.to)}`} title={s.title} hint={`overlapped "${s.conflictsWith}"`} tone="warn" />
+            <Row
+              key={`s${i}`}
+              time={`${fmtDateTime(s.from)} → ${fmtTime(s.to)}`}
+              title={s.title}
+              hint={`overlapped "${s.conflictsWith}"`}
+              tone="warn"
+            />
           ))}
         </Section>
       )}
       {p.skipped.length > 0 && (
         <Section title={`Will be skipped (${p.skipped.length})`}>
           {p.skipped.map((s, i) => (
-            <Row key={`k${i}`} time={fmtDateTime(s.starts_at)} title={s.title} hint={`conflicts with "${s.conflictsWith}"${resolution === "shift" ? " — couldn't find a slot" : ""}`} tone="muted" />
+            <Row
+              key={`k${i}`}
+              time={fmtDateTime(s.starts_at)}
+              title={s.title}
+              hint={`conflicts with "${s.conflictsWith}"${resolution === "shift" ? " — couldn't find a slot" : ""}`}
+              tone="muted"
+            />
           ))}
         </Section>
       )}
       {resolution === "force" && p.conflicts.length > 0 && (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-700 inline-flex items-start gap-2">
           <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-          <span><b>{p.conflicts.length}</b> block{p.conflicts.length === 1 ? "" : "s"} will overlap existing appointments.</span>
+          <span>
+            <b>{p.conflicts.length}</b> block{p.conflicts.length === 1 ? "" : "s"} will overlap
+            existing appointments.
+          </span>
         </div>
       )}
     </div>
