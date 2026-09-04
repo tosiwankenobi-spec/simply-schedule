@@ -19,6 +19,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { InstallAppPrompt } from "@/components/InstallAppPrompt";
 
 type NavigationItem = {
   label: string;
@@ -163,6 +164,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </SheetContent>
       </Sheet>
+
+      <InstallAppPrompt />
     </div>
   );
 }
