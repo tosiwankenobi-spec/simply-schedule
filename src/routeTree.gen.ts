@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as Char91indexChar93RouteImport } from './routes/[index]'
+import { Route as McpRouteImport } from './routes/mcp'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
@@ -24,6 +25,7 @@ import { Route as AuthenticatedInboxRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedHouseholdRouteImport } from './routes/_authenticated/household'
 import { Route as AuthenticatedCalendarImportRouteImport } from './routes/_authenticated/calendar-import'
 import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/app'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as AuthenticatedSetupSyncRouteImport } from './routes/_authenticated/setup.sync'
 import { Route as AuthenticatedSetupNotificationsRouteImport } from './routes/_authenticated/setup.notifications'
 import { Route as AuthenticatedSetupGmailRouteImport } from './routes/_authenticated/setup.gmail'
@@ -33,6 +35,11 @@ import { Route as AuthenticatedPlannerPreferencesRouteImport } from './routes/_a
 const Char91indexChar93Route = Char91indexChar93RouteImport.update({
   id: '/index',
   path: '/index',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -106,6 +113,12 @@ const AuthenticatedAppRoute = AuthenticatedAppRouteImport.update({
   path: '/app',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedSetupSyncRoute = AuthenticatedSetupSyncRouteImport.update({
   id: '/setup/sync',
   path: '/setup/sync',
@@ -139,6 +152,8 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/index': typeof Char91indexChar93Route
+  '/mcp': typeof McpRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/app': typeof AuthenticatedAppRoute
   '/calendar-import': typeof AuthenticatedCalendarImportRoute
   '/household': typeof AuthenticatedHouseholdRoute
@@ -160,6 +175,8 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/index': typeof Char91indexChar93Route
+  '/mcp': typeof McpRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/app': typeof AuthenticatedAppRoute
   '/calendar-import': typeof AuthenticatedCalendarImportRoute
   '/household': typeof AuthenticatedHouseholdRoute
@@ -183,6 +200,8 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/index': typeof Char91indexChar93Route
+  '/mcp': typeof McpRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_authenticated/app': typeof AuthenticatedAppRoute
   '/_authenticated/calendar-import': typeof AuthenticatedCalendarImportRoute
   '/_authenticated/household': typeof AuthenticatedHouseholdRoute
@@ -206,6 +225,8 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/index'
+    | '/mcp'
+    | '/.well-known/oauth-protected-resource'
     | '/app'
     | '/calendar-import'
     | '/household'
@@ -227,6 +248,8 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/index'
+    | '/mcp'
+    | '/.well-known/oauth-protected-resource'
     | '/app'
     | '/calendar-import'
     | '/household'
@@ -249,6 +272,8 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/index'
+    | '/mcp'
+    | '/.well-known/oauth-protected-resource'
     | '/_authenticated/app'
     | '/_authenticated/calendar-import'
     | '/_authenticated/household'
@@ -272,6 +297,8 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   Char91indexChar93Route: typeof Char91indexChar93Route
+  McpRoute: typeof McpRoute
+  Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -281,6 +308,13 @@ declare module '@tanstack/react-router' {
       path: '/index'
       fullPath: '/index'
       preLoaderRoute: typeof Char91indexChar93RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -381,6 +415,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/setup/sync': {
       id: '/_authenticated/setup/sync'
       path: '/setup/sync'
@@ -474,6 +515,9 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   Char91indexChar93Route: Char91indexChar93Route,
+  McpRoute: McpRoute,
+  Char91DotwellKnownChar93OauthProtectedResourceRoute:
+    Char91DotwellKnownChar93OauthProtectedResourceRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
