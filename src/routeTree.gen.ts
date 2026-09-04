@@ -31,6 +31,7 @@ import { Route as AuthenticatedSetupNotificationsRouteImport } from './routes/_a
 import { Route as AuthenticatedSetupGmailRouteImport } from './routes/_authenticated/setup.gmail'
 import { Route as AuthenticatedSetupAndroidRouteImport } from './routes/_authenticated/setup.android'
 import { Route as AuthenticatedPlannerPreferencesRouteImport } from './routes/_authenticated/planner.preferences'
+import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 
 const Char91indexChar93Route = Char91indexChar93RouteImport.update({
   id: '/index',
@@ -147,6 +148,11 @@ const AuthenticatedPlannerPreferencesRoute =
     path: '/preferences',
     getParentRoute: () => AuthenticatedPlannerRoute,
   } as any)
+const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
+  id: '/.lovable/oauth/consent',
+  path: '/.lovable/oauth/consent',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -165,6 +171,7 @@ export interface FileRoutesByFullPath {
   '/today': typeof AuthenticatedTodayRoute
   '/tomorrow': typeof AuthenticatedTomorrowRoute
   '/weekly-reset': typeof AuthenticatedWeeklyResetRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/planner/preferences': typeof AuthenticatedPlannerPreferencesRoute
   '/setup/android': typeof AuthenticatedSetupAndroidRoute
   '/setup/gmail': typeof AuthenticatedSetupGmailRoute
@@ -188,6 +195,7 @@ export interface FileRoutesByTo {
   '/today': typeof AuthenticatedTodayRoute
   '/tomorrow': typeof AuthenticatedTomorrowRoute
   '/weekly-reset': typeof AuthenticatedWeeklyResetRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/planner/preferences': typeof AuthenticatedPlannerPreferencesRoute
   '/setup/android': typeof AuthenticatedSetupAndroidRoute
   '/setup/gmail': typeof AuthenticatedSetupGmailRoute
@@ -213,6 +221,7 @@ export interface FileRoutesById {
   '/_authenticated/today': typeof AuthenticatedTodayRoute
   '/_authenticated/tomorrow': typeof AuthenticatedTomorrowRoute
   '/_authenticated/weekly-reset': typeof AuthenticatedWeeklyResetRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/_authenticated/planner/preferences': typeof AuthenticatedPlannerPreferencesRoute
   '/_authenticated/setup/android': typeof AuthenticatedSetupAndroidRoute
   '/_authenticated/setup/gmail': typeof AuthenticatedSetupGmailRoute
@@ -238,6 +247,7 @@ export interface FileRouteTypes {
     | '/today'
     | '/tomorrow'
     | '/weekly-reset'
+    | '/.lovable/oauth/consent'
     | '/planner/preferences'
     | '/setup/android'
     | '/setup/gmail'
@@ -261,6 +271,7 @@ export interface FileRouteTypes {
     | '/today'
     | '/tomorrow'
     | '/weekly-reset'
+    | '/.lovable/oauth/consent'
     | '/planner/preferences'
     | '/setup/android'
     | '/setup/gmail'
@@ -285,6 +296,7 @@ export interface FileRouteTypes {
     | '/_authenticated/today'
     | '/_authenticated/tomorrow'
     | '/_authenticated/weekly-reset'
+    | '/.lovable/oauth/consent'
     | '/_authenticated/planner/preferences'
     | '/_authenticated/setup/android'
     | '/_authenticated/setup/gmail'
@@ -299,6 +311,7 @@ export interface RootRouteChildren {
   Char91indexChar93Route: typeof Char91indexChar93Route
   McpRoute: typeof McpRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -457,6 +470,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPlannerPreferencesRouteImport
       parentRoute: typeof AuthenticatedPlannerRoute
     }
+    '/.lovable/oauth/consent': {
+      id: '/.lovable/oauth/consent'
+      path: '/.lovable/oauth/consent'
+      fullPath: '/.lovable/oauth/consent'
+      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -518,6 +538,7 @@ const rootRouteChildren: RootRouteChildren = {
   McpRoute: McpRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
+  DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
