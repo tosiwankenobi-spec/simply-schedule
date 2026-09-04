@@ -19,7 +19,17 @@ import { DayReplanner } from "@/components/DayReplanner";
 import { TravelGuidanceCard } from "@/components/TravelGuidance";
 import { MorningPlanner } from "@/components/MorningPlanner";
 import { QuickCapture } from "@/components/QuickCapture";
-import { CalendarDays, CheckCircle2, Circle, Clock, ListTodo, MapPin, Moon } from "lucide-react";
+import {
+  ArrowRight,
+  CalendarDays,
+  CheckCircle2,
+  Circle,
+  Clock,
+  ListTodo,
+  MapPin,
+  Moon,
+  Sparkles,
+} from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/today")({
   component: TodayPage,
@@ -47,7 +57,10 @@ function TodayPage() {
 
   const { data: events, isLoading, isError, error, refetch } = useScheduleEvents();
 
-  const { data: tasks } = useQuery({ queryKey: ["tasks"], queryFn: () => listTasks() });
+  const { data: tasks, isLoading: tasksLoading } = useQuery({
+    queryKey: ["tasks"],
+    queryFn: () => listTasks(),
+  });
 
   const list = events ?? [];
   const next = upcomingEvents(list, now).find((event) => !event.is_all_day) ?? null;
@@ -87,6 +100,42 @@ function TodayPage() {
         </header>
 
         <SyncAlert />
+
+        {!isLoading &&
+        !tasksLoading &&
+        !isError &&
+        list.length === 0 &&
+        (tasks ?? []).length === 0 ? (
+          <section className="relative mt-5 overflow-hidden rounded-3xl bg-ink px-5 py-6 text-paper shadow-[0_22px_55px_rgba(0,46,40,0.16)] sm:px-7 sm:py-7">
+            <div className="pointer-events-none absolute -right-14 -top-16 h-44 w-44 rounded-full border border-paper/10" />
+            <div className="relative grid gap-5 sm:grid-cols-[1fr_auto] sm:items-center">
+              <div className="flex items-start gap-4">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-paper/10 text-gold ring-1 ring-paper/15">
+                  <Sparkles className="h-5 w-5" />
+                </span>
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-leaf">
+                    Welcome to Chronos-V
+                  </p>
+                  <h2 className="mt-1 font-serif text-2xl">Build your first useful day</h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-paper/60">
+                    A three-minute setup helps Chronos-V understand your hours, commitments, and
+                    first priority. Every step is optional.
+                  </p>
+                </div>
+              </div>
+              <Button
+                asChild
+                variant="ghost"
+                className="h-11 w-full rounded-xl bg-paper text-ink hover:bg-paper/90 hover:text-ink sm:w-auto"
+              >
+                <Link to="/welcome">
+                  Start setup <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+          </section>
+        ) : null}
 
         <div className="mt-2 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <main className="min-w-0">

@@ -14,6 +14,7 @@ import { Route as McpRouteImport } from './routes/mcp'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedWelcomeRouteImport } from './routes/_authenticated/welcome'
 import { Route as AuthenticatedWeeklyResetRouteImport } from './routes/_authenticated/weekly-reset'
 import { Route as AuthenticatedTomorrowRouteImport } from './routes/_authenticated/tomorrow'
 import { Route as AuthenticatedTodayRouteImport } from './routes/_authenticated/today'
@@ -56,6 +57,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedWelcomeRoute = AuthenticatedWelcomeRouteImport.update({
+  id: '/welcome',
+  path: '/welcome',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedWeeklyResetRoute =
   AuthenticatedWeeklyResetRouteImport.update({
@@ -171,6 +177,7 @@ export interface FileRoutesByFullPath {
   '/today': typeof AuthenticatedTodayRoute
   '/tomorrow': typeof AuthenticatedTomorrowRoute
   '/weekly-reset': typeof AuthenticatedWeeklyResetRoute
+  '/welcome': typeof AuthenticatedWelcomeRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/planner/preferences': typeof AuthenticatedPlannerPreferencesRoute
   '/setup/android': typeof AuthenticatedSetupAndroidRoute
@@ -195,6 +202,7 @@ export interface FileRoutesByTo {
   '/today': typeof AuthenticatedTodayRoute
   '/tomorrow': typeof AuthenticatedTomorrowRoute
   '/weekly-reset': typeof AuthenticatedWeeklyResetRoute
+  '/welcome': typeof AuthenticatedWelcomeRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/planner/preferences': typeof AuthenticatedPlannerPreferencesRoute
   '/setup/android': typeof AuthenticatedSetupAndroidRoute
@@ -221,6 +229,7 @@ export interface FileRoutesById {
   '/_authenticated/today': typeof AuthenticatedTodayRoute
   '/_authenticated/tomorrow': typeof AuthenticatedTomorrowRoute
   '/_authenticated/weekly-reset': typeof AuthenticatedWeeklyResetRoute
+  '/_authenticated/welcome': typeof AuthenticatedWelcomeRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/_authenticated/planner/preferences': typeof AuthenticatedPlannerPreferencesRoute
   '/_authenticated/setup/android': typeof AuthenticatedSetupAndroidRoute
@@ -247,6 +256,7 @@ export interface FileRouteTypes {
     | '/today'
     | '/tomorrow'
     | '/weekly-reset'
+    | '/welcome'
     | '/.lovable/oauth/consent'
     | '/planner/preferences'
     | '/setup/android'
@@ -271,6 +281,7 @@ export interface FileRouteTypes {
     | '/today'
     | '/tomorrow'
     | '/weekly-reset'
+    | '/welcome'
     | '/.lovable/oauth/consent'
     | '/planner/preferences'
     | '/setup/android'
@@ -296,6 +307,7 @@ export interface FileRouteTypes {
     | '/_authenticated/today'
     | '/_authenticated/tomorrow'
     | '/_authenticated/weekly-reset'
+    | '/_authenticated/welcome'
     | '/.lovable/oauth/consent'
     | '/_authenticated/planner/preferences'
     | '/_authenticated/setup/android'
@@ -350,6 +362,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/welcome': {
+      id: '/_authenticated/welcome'
+      path: '/welcome'
+      fullPath: '/welcome'
+      preLoaderRoute: typeof AuthenticatedWelcomeRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/weekly-reset': {
       id: '/_authenticated/weekly-reset'
@@ -503,6 +522,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedTodayRoute: typeof AuthenticatedTodayRoute
   AuthenticatedTomorrowRoute: typeof AuthenticatedTomorrowRoute
   AuthenticatedWeeklyResetRoute: typeof AuthenticatedWeeklyResetRoute
+  AuthenticatedWelcomeRoute: typeof AuthenticatedWelcomeRoute
   AuthenticatedSetupAndroidRoute: typeof AuthenticatedSetupAndroidRoute
   AuthenticatedSetupGmailRoute: typeof AuthenticatedSetupGmailRoute
   AuthenticatedSetupNotificationsRoute: typeof AuthenticatedSetupNotificationsRoute
@@ -521,6 +541,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedTodayRoute: AuthenticatedTodayRoute,
   AuthenticatedTomorrowRoute: AuthenticatedTomorrowRoute,
   AuthenticatedWeeklyResetRoute: AuthenticatedWeeklyResetRoute,
+  AuthenticatedWelcomeRoute: AuthenticatedWelcomeRoute,
   AuthenticatedSetupAndroidRoute: AuthenticatedSetupAndroidRoute,
   AuthenticatedSetupGmailRoute: AuthenticatedSetupGmailRoute,
   AuthenticatedSetupNotificationsRoute: AuthenticatedSetupNotificationsRoute,
