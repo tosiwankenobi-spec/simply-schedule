@@ -7,7 +7,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ArrowLeft, Copy, Check, ExternalLink, Smartphone, AlertCircle, ShieldCheck, X, Terminal, Wrench } from "lucide-react";
+import {
+  Copy,
+  Check,
+  ExternalLink,
+  AlertCircle,
+  ShieldCheck,
+  X,
+  Terminal,
+  Wrench,
+} from "lucide-react";
+import { WorkspaceHeader } from "@/components/WorkspaceHeader";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/setup/android")({
@@ -15,9 +25,16 @@ export const Route = createFileRoute("/_authenticated/setup/android")({
   head: () => ({
     meta: [
       { title: "Android OAuth setup · Chronos-V" },
-      { name: "description", content: "Save your Android package name, SHA-1 fingerprints and Google OAuth client IDs for Chronos-V." },
+      {
+        name: "description",
+        content:
+          "Save your Android package name, SHA-1 fingerprints and Google OAuth client IDs for Chronos-V.",
+      },
       { property: "og:title", content: "Android OAuth setup · Chronos-V" },
-      { property: "og:description", content: "Validate and store your Android SHA-1 and Google OAuth client details." },
+      {
+        property: "og:description",
+        content: "Validate and store your Android SHA-1 and Google OAuth client details.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -125,7 +142,9 @@ function runOAuthChecks(form: Form): CheckResult[] {
         : "Not a valid SHA-1 — expected 40 hex characters as 20 colon-separated pairs.",
   );
 
-  const shaValues = [form.debug_sha1, form.release_sha1, form.play_sha1].filter((v) => SHA1_RE.test(v));
+  const shaValues = [form.debug_sha1, form.release_sha1, form.play_sha1].filter((v) =>
+    SHA1_RE.test(v),
+  );
   const uniqueSha = new Set(shaValues);
   if (shaValues.length > 1) {
     push(
@@ -157,7 +176,8 @@ function runOAuthChecks(form: Form): CheckResult[] {
         : "Should end in .apps.googleusercontent.com.",
   );
 
-  const bothIds = CLIENT_ID_RE.test(form.android_client_id) && CLIENT_ID_RE.test(form.web_client_id);
+  const bothIds =
+    CLIENT_ID_RE.test(form.android_client_id) && CLIENT_ID_RE.test(form.web_client_id);
   if (bothIds) {
     push(
       "Client IDs are distinct",
@@ -199,10 +219,12 @@ const KEYSTORE_GUIDES: Record<
     body: (
       <>
         Android Studio creates this automatically the first time you build. The password is always{" "}
-        <code>android</code>. Copy the line starting with <code>SHA1:</code> into the Debug SHA-1 field.
+        <code>android</code>. Copy the line starting with <code>SHA1:</code> into the Debug SHA-1
+        field.
       </>
     ),
-    command: "keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android",
+    command:
+      "keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android",
   },
   release: {
     title: "Release keystore",
@@ -210,8 +232,8 @@ const KEYSTORE_GUIDES: Record<
     label: "Release SHA-1 fingerprint",
     body: (
       <>
-        Use your own upload keystore. Create it once and back it up — losing it means you cannot ship updates. Paste
-        the <code>SHA1:</code> value into the Release SHA-1 field.
+        Use your own upload keystore. Create it once and back it up — losing it means you cannot
+        ship updates. Paste the <code>SHA1:</code> value into the Release SHA-1 field.
       </>
     ),
     command: "keytool -list -v -keystore release.keystore -alias upload",
@@ -223,8 +245,9 @@ const KEYSTORE_GUIDES: Record<
     body: (
       <>
         Google re-signs your app before distribution. Copy the SHA-1 from{" "}
-        <b>Play Console → your app → Test and release → Setup → App signing</b> into the Play App Signing SHA-1
-        field. Register this fingerprint on the same Android OAuth client in Google Cloud.
+        <b>Play Console → your app → Test and release → Setup → App signing</b> into the Play App
+        Signing SHA-1 field. Register this fingerprint on the same Android OAuth client in Google
+        Cloud.
       </>
     ),
   },
@@ -306,244 +329,285 @@ function AndroidSetupPage() {
   const guide = KEYSTORE_GUIDES[keystore];
 
   return (
-    <div className="relative min-h-screen bg-background">
-      <div className="absolute inset-0 paper-grain opacity-30 pointer-events-none" />
-      <div className="relative mx-auto max-w-2xl px-5 py-8 md:py-12">
-        <Link to="/app" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4 mr-1" /> Back to schedule
-        </Link>
+    <div className="verolane-wash relative min-h-screen bg-background">
+      <div className="pointer-events-none absolute inset-0 paper-grain opacity-20" />
+      <div className="relative mx-auto max-w-[1180px] px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
+        <WorkspaceHeader
+          eyebrow="Android · Google OAuth"
+          title={
+            <>
+              Prepare Android for <span className="text-accent italic">trusted sign-in.</span>
+            </>
+          }
+          description="Validate the package name, signing fingerprints, and public OAuth client IDs needed to connect Chronos-V on Android."
+          action={
+            <Button asChild variant="outline" className="bg-card/80">
+              <Link to="/setup/gmail">
+                <ShieldCheck className="mr-1.5 h-4 w-4" /> Gmail setup
+              </Link>
+            </Button>
+          }
+        />
 
-        <div className="mt-6">
-          <div className="inline-flex items-center gap-2 rounded-full bg-accent/10 px-3 py-1 text-xs text-accent">
-            <Smartphone className="h-3 w-3" /> Android · Google OAuth
+        <div className="mt-8 grid items-start gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
+          <div className="rounded-2xl border border-border bg-card/90 px-5 py-5 shadow-[0_18px_45px_rgba(0,46,40,0.04)]">
+            <p className="text-sm font-medium text-foreground">
+              1. Choose the certificate you are configuring
+            </p>
+            <Tabs
+              value={keystore}
+              onValueChange={(v) => handleKeystoreChange(v as KeystoreType)}
+              className="mt-3"
+            >
+              <TabsList className="grid h-auto w-full grid-cols-3">
+                <TabsTrigger value="debug" className="min-h-10 px-2 text-xs sm:text-sm">
+                  Debug
+                </TabsTrigger>
+                <TabsTrigger value="release" className="min-h-10 px-2 text-xs sm:text-sm">
+                  Release
+                </TabsTrigger>
+                <TabsTrigger value="play" className="min-h-10 px-2 text-xs sm:text-sm">
+                  Play signing
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value={keystore} className="mt-4">
+                <div className="rounded-xl border border-border bg-background px-4 py-3 text-sm">
+                  <p className="font-medium text-foreground flex items-center gap-2">
+                    <Terminal className="h-4 w-4 text-accent" /> {guide.title}
+                  </p>
+                  <p className="mt-2 text-muted-foreground text-xs">{guide.body}</p>
+                  {guide.command ? (
+                    <div className="mt-3">
+                      <p className="text-xs text-muted-foreground mb-1">Command to run</p>
+                      <CopyRow value={guide.command} />
+                    </div>
+                  ) : null}
+                  <p className="mt-3 text-xs text-accent">
+                    Paste the resulting SHA-1 into the <b>{guide.label}</b> field below.
+                  </p>
+                </div>
+              </TabsContent>
+            </Tabs>
           </div>
-          <h1 className="mt-3 font-serif text-4xl md:text-5xl text-foreground leading-tight">
-            Your Android <span className="text-accent italic">signing</span> details.
-          </h1>
-          <p className="mt-2 text-muted-foreground text-sm">
-            Paste your SHA-1 fingerprints and OAuth client IDs here so they're validated and kept in one place while
-            you configure Google Cloud.
-          </p>
-        </div>
 
-        <div className="mt-8 rounded-xl border border-border bg-card px-5 py-5">
-          <p className="text-sm font-medium text-foreground">1. Choose the certificate you are configuring</p>
-          <Tabs value={keystore} onValueChange={(v) => handleKeystoreChange(v as KeystoreType)} className="mt-3">
-            <TabsList className="w-full grid grid-cols-3">
-              <TabsTrigger value="debug">Debug</TabsTrigger>
-              <TabsTrigger value="release">Release</TabsTrigger>
-              <TabsTrigger value="play">Play App Signing</TabsTrigger>
-            </TabsList>
-            <TabsContent value={keystore} className="mt-4">
-              <div className="rounded-lg border border-border bg-background px-4 py-3 text-sm">
-                <p className="font-medium text-foreground flex items-center gap-2">
-                  <Terminal className="h-4 w-4 text-accent" /> {guide.title}
+          <div className="space-y-5 rounded-2xl border border-border bg-card/90 px-5 py-5 shadow-[0_18px_45px_rgba(0,46,40,0.04)] sm:px-6">
+            <Field
+              label="Android package name"
+              hint="Must match applicationId in android/app/build.gradle and capacitor.config.ts."
+              value={form.package_name}
+              onChange={(v) => set("package_name", v)}
+              error={touched ? errors.package_name : undefined}
+              placeholder="ca.verolane.chronosv"
+            />
+            <Field
+              ref={fieldRefs.debug}
+              label="Debug SHA-1 fingerprint"
+              hint="From: keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android"
+              value={form.debug_sha1}
+              onChange={(v) => set("debug_sha1", v)}
+              onBlurFormat={(v) => set("debug_sha1", normalizeSha1(v))}
+              error={touched ? errors.debug_sha1 : undefined}
+              placeholder="AB:CD:12:…:9F"
+              mono
+              active={keystore === "debug"}
+            />
+            <Field
+              ref={fieldRefs.release}
+              label="Release SHA-1 fingerprint"
+              hint="From your release keystore, or Play Console → Setup → App signing."
+              value={form.release_sha1}
+              onChange={(v) => set("release_sha1", v)}
+              onBlurFormat={(v) => set("release_sha1", normalizeSha1(v))}
+              error={touched ? errors.release_sha1 : undefined}
+              placeholder="AB:CD:12:…:9F"
+              mono
+              active={keystore === "release"}
+            />
+            <Field
+              ref={fieldRefs.play}
+              label="Play App Signing SHA-1 fingerprint"
+              hint="From Play Console → Test and release → Setup → App signing. Only needed once Google re-signs your app."
+              value={form.play_sha1}
+              onChange={(v) => set("play_sha1", v)}
+              onBlurFormat={(v) => set("play_sha1", normalizeSha1(v))}
+              error={touched ? errors.play_sha1 : undefined}
+              placeholder="AB:CD:12:…:9F"
+              mono
+              active={keystore === "play"}
+            />
+            <Field
+              label="Android OAuth client ID"
+              hint="Google Cloud → Credentials → OAuth client ID → Android."
+              value={form.android_client_id}
+              onChange={(v) => set("android_client_id", v.trim())}
+              error={touched ? errors.android_client_id : undefined}
+              placeholder="1234567890-abc123.apps.googleusercontent.com"
+              mono
+            />
+            <Field
+              label="Web OAuth client ID"
+              hint="The Web client used for server-side token exchange and Gmail import."
+              value={form.web_client_id}
+              onChange={(v) => set("web_client_id", v.trim())}
+              error={touched ? errors.web_client_id : undefined}
+              placeholder="1234567890-xyz789.apps.googleusercontent.com"
+              mono
+            />
+
+            <div className="space-y-1.5">
+              <Label htmlFor="android-notes">Notes</Label>
+              <Textarea
+                id="android-notes"
+                value={form.notes}
+                maxLength={1000}
+                onChange={(e) => set("notes", e.target.value)}
+                placeholder="Which keystore, who holds it, tester emails added…"
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              <Button
+                onClick={() => {
+                  setTouched(true);
+                  if (hasErrors) {
+                    toast.error("Fix the highlighted fields first");
+                    return;
+                  }
+                  save.mutate();
+                }}
+                disabled={save.isPending}
+              >
+                {save.isPending ? "Saving…" : "Save details"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const results = runOAuthChecks(form);
+                  setChecks(results);
+                  const failed = results.filter((r) => !r.ok).length;
+                  if (failed === 0) toast.success("All Google OAuth checks passed");
+                  else toast.error(`${failed} check${failed === 1 ? "" : "s"} need attention`);
+                }}
+              >
+                <ShieldCheck className="h-4 w-4 mr-1.5" /> Test Google OAuth
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                Never paste the OAuth <b>client secret</b> here — it belongs in project secrets, not
+                the database.
+              </p>
+            </div>
+
+            {checks ? (
+              <div className="rounded-xl border border-border bg-background px-4 py-3">
+                <p className="text-sm font-medium text-foreground">
+                  Check results · {checks.filter((c) => c.ok).length}/{checks.length} passed
                 </p>
-                <p className="mt-2 text-muted-foreground text-xs">{guide.body}</p>
-                {guide.command ? (
-                  <div className="mt-3">
-                    <p className="text-xs text-muted-foreground mb-1">Command to run</p>
-                    <CopyRow value={guide.command} />
-                  </div>
-                ) : null}
-                <p className="mt-3 text-xs text-accent">
-                  Paste the resulting SHA-1 into the <b>{guide.label}</b> field below.
+                <ul className="mt-2.5 space-y-2">
+                  {checks.map((c) => (
+                    <li key={c.label} className="flex gap-2.5 text-sm">
+                      {c.ok ? (
+                        <Check className="h-4 w-4 mt-0.5 shrink-0 text-accent" />
+                      ) : (
+                        <X className="h-4 w-4 mt-0.5 shrink-0 text-destructive" />
+                      )}
+                      <span>
+                        <span className={c.ok ? "text-foreground" : "text-destructive"}>
+                          {c.label}
+                        </span>
+                        <span className="block text-xs text-muted-foreground">{c.detail}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  These checks validate the values you pasted and how they fit together. The final
+                  live handshake still depends on the SHA-1 and package name being registered on the
+                  Android client in Google Cloud.
                 </p>
               </div>
-            </TabsContent>
-          </Tabs>
+            ) : null}
+          </div>
         </div>
 
-        <div className="mt-6 rounded-xl border border-border bg-card px-5 py-5 space-y-5">
-          <Field
-            label="Android package name"
-            hint="Must match applicationId in android/app/build.gradle and capacitor.config.ts."
-            value={form.package_name}
-            onChange={(v) => set("package_name", v)}
-            error={touched ? errors.package_name : undefined}
-            placeholder="ca.verolane.chronosv"
-          />
-          <Field
-            ref={fieldRefs.debug}
-            label="Debug SHA-1 fingerprint"
-            hint="From: keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android"
-            value={form.debug_sha1}
-            onChange={(v) => set("debug_sha1", v)}
-            onBlurFormat={(v) => set("debug_sha1", normalizeSha1(v))}
-            error={touched ? errors.debug_sha1 : undefined}
-            placeholder="AB:CD:12:…:9F"
-            mono
-            active={keystore === "debug"}
-          />
-          <Field
-            ref={fieldRefs.release}
-            label="Release SHA-1 fingerprint"
-            hint="From your release keystore, or Play Console → Setup → App signing."
-            value={form.release_sha1}
-            onChange={(v) => set("release_sha1", v)}
-            onBlurFormat={(v) => set("release_sha1", normalizeSha1(v))}
-            error={touched ? errors.release_sha1 : undefined}
-            placeholder="AB:CD:12:…:9F"
-            mono
-            active={keystore === "release"}
-          />
-          <Field
-            ref={fieldRefs.play}
-            label="Play App Signing SHA-1 fingerprint"
-            hint="From Play Console → Test and release → Setup → App signing. Only needed once Google re-signs your app."
-            value={form.play_sha1}
-            onChange={(v) => set("play_sha1", v)}
-            onBlurFormat={(v) => set("play_sha1", normalizeSha1(v))}
-            error={touched ? errors.play_sha1 : undefined}
-            placeholder="AB:CD:12:…:9F"
-            mono
-            active={keystore === "play"}
-          />
-          <Field
-            label="Android OAuth client ID"
-            hint="Google Cloud → Credentials → OAuth client ID → Android."
-            value={form.android_client_id}
-            onChange={(v) => set("android_client_id", v.trim())}
-            error={touched ? errors.android_client_id : undefined}
-            placeholder="1234567890-abc123.apps.googleusercontent.com"
-            mono
-          />
-          <Field
-            label="Web OAuth client ID"
-            hint="The Web client used for server-side token exchange and Gmail import."
-            value={form.web_client_id}
-            onChange={(v) => set("web_client_id", v.trim())}
-            error={touched ? errors.web_client_id : undefined}
-            placeholder="1234567890-xyz789.apps.googleusercontent.com"
-            mono
-          />
+        <div className="mt-6 grid items-start gap-6 xl:grid-cols-2">
+          <div className="rounded-2xl border border-border bg-card/90 px-5 py-4 text-sm shadow-[0_18px_45px_rgba(0,46,40,0.04)] sm:px-6 sm:py-5">
+            <p className="text-foreground font-medium flex items-center gap-2">
+              <Terminal className="h-4 w-4 text-accent" /> How to retrieve your SHA-1 fingerprints
+            </p>
 
-          <div className="space-y-1.5">
-            <Label>Notes</Label>
-            <Textarea
-              value={form.notes}
-              maxLength={1000}
-              onChange={(e) => set("notes", e.target.value)}
-              placeholder="Which keystore, who holds it, tester emails added…"
-            />
-          </div>
+            <p className="mt-3 text-xs uppercase tracking-wide text-muted-foreground">
+              Debug keystore (local testing)
+            </p>
+            <p className="mt-1 text-muted-foreground text-xs">
+              Android Studio creates this automatically the first time you build. Password is always{" "}
+              <code>android</code>.
+            </p>
+            <div className="mt-2 space-y-2">
+              <p className="text-xs text-muted-foreground">macOS / Linux</p>
+              <CopyRow value="keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android" />
+              <p className="text-xs text-muted-foreground">Windows (PowerShell)</p>
+              <CopyRow value="keytool -list -v -keystore $env:USERPROFILE\\.android\\debug.keystore -alias androiddebugkey -storepass android -keypass android" />
+              <p className="text-xs text-muted-foreground">Or from the project (Gradle)</p>
+              <CopyRow value="cd android && ./gradlew signingReport" />
+            </div>
 
-          <div className="flex flex-wrap items-center gap-3 pt-1">
-            <Button
-              onClick={() => {
-                setTouched(true);
-                if (hasErrors) {
-                  toast.error("Fix the highlighted fields first");
-                  return;
-                }
-                save.mutate();
-              }}
-              disabled={save.isPending}
-            >
-              {save.isPending ? "Saving…" : "Save details"}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                const results = runOAuthChecks(form);
-                setChecks(results);
-                const failed = results.filter((r) => !r.ok).length;
-                if (failed === 0) toast.success("All Google OAuth checks passed");
-                else toast.error(`${failed} check${failed === 1 ? "" : "s"} need attention`);
-              }}
-            >
-              <ShieldCheck className="h-4 w-4 mr-1.5" /> Test Google OAuth
-            </Button>
-            <p className="text-xs text-muted-foreground">
-              Never paste the OAuth <b>client secret</b> here — it belongs in project secrets, not the database.
+            <p className="mt-4 text-xs uppercase tracking-wide text-muted-foreground">
+              Release keystore (Play Store)
+            </p>
+            <p className="mt-1 text-muted-foreground text-xs">
+              Use your own upload keystore. Create one once, then keep it backed up — losing it
+              means you cannot ship updates.
+            </p>
+            <div className="mt-2 space-y-2">
+              <p className="text-xs text-muted-foreground">Create a release keystore</p>
+              <CopyRow value="keytool -genkeypair -v -keystore release.keystore -alias upload -keyalg RSA -keysize 2048 -validity 10000" />
+              <p className="text-xs text-muted-foreground">Read its fingerprint</p>
+              <CopyRow value="keytool -list -v -keystore release.keystore -alias upload" />
+            </div>
+
+            <p className="mt-4 text-xs uppercase tracking-wide text-muted-foreground">
+              Play App Signing
+            </p>
+            <p className="mt-1 text-muted-foreground text-xs">
+              Google re-signs your app before distribution. Copy the SHA-1 shown under{" "}
+              <b>Play Console → your app → Test and release → Setup → App signing</b> and paste it
+              into the Play App Signing SHA-1 field above. Register that same fingerprint on your
+              Android OAuth client in Google Cloud.
+            </p>
+
+            <p className="mt-4 text-muted-foreground text-xs">
+              In the command output, look for the line starting with <code>SHA1:</code> and copy the
+              colon-separated hex value into the matching field above — pasting it without colons
+              works too, it gets formatted on blur.
             </p>
           </div>
 
-          {checks ? (
-            <div className="rounded-lg border border-border bg-background px-4 py-3">
-              <p className="text-sm font-medium text-foreground">
-                Check results · {checks.filter((c) => c.ok).length}/{checks.length} passed
-              </p>
-              <ul className="mt-2.5 space-y-2">
-                {checks.map((c) => (
-                  <li key={c.label} className="flex gap-2.5 text-sm">
-                    {c.ok ? (
-                      <Check className="h-4 w-4 mt-0.5 shrink-0 text-accent" />
-                    ) : (
-                      <X className="h-4 w-4 mt-0.5 shrink-0 text-destructive" />
-                    )}
-                    <span>
-                      <span className={c.ok ? "text-foreground" : "text-destructive"}>{c.label}</span>
-                      <span className="block text-xs text-muted-foreground">{c.detail}</span>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-3 text-xs text-muted-foreground">
-                These checks validate the values you pasted and how they fit together. The final live handshake still
-                depends on the SHA-1 and package name being registered on the Android client in Google Cloud.
-              </p>
-            </div>
-          ) : null}
+          <TroubleshootingPanel form={form} />
         </div>
 
-        <div className="mt-6 rounded-xl border border-border bg-card px-5 py-4 text-sm">
-          <p className="text-foreground font-medium flex items-center gap-2">
-            <Terminal className="h-4 w-4 text-accent" /> How to retrieve your SHA-1 fingerprints
-          </p>
-
-          <p className="mt-3 text-xs uppercase tracking-wide text-muted-foreground">Debug keystore (local testing)</p>
-          <p className="mt-1 text-muted-foreground text-xs">
-            Android Studio creates this automatically the first time you build. Password is always <code>android</code>.
-          </p>
-          <div className="mt-2 space-y-2">
-            <p className="text-xs text-muted-foreground">macOS / Linux</p>
-            <CopyRow value="keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android" />
-            <p className="text-xs text-muted-foreground">Windows (PowerShell)</p>
-            <CopyRow value="keytool -list -v -keystore $env:USERPROFILE\\.android\\debug.keystore -alias androiddebugkey -storepass android -keypass android" />
-            <p className="text-xs text-muted-foreground">Or from the project (Gradle)</p>
-            <CopyRow value="cd android && ./gradlew signingReport" />
-          </div>
-
-          <p className="mt-4 text-xs uppercase tracking-wide text-muted-foreground">Release keystore (Play Store)</p>
-          <p className="mt-1 text-muted-foreground text-xs">
-            Use your own upload keystore. Create one once, then keep it backed up — losing it means you cannot ship
-            updates.
-          </p>
-          <div className="mt-2 space-y-2">
-            <p className="text-xs text-muted-foreground">Create a release keystore</p>
-            <CopyRow value="keytool -genkeypair -v -keystore release.keystore -alias upload -keyalg RSA -keysize 2048 -validity 10000" />
-            <p className="text-xs text-muted-foreground">Read its fingerprint</p>
-            <CopyRow value="keytool -list -v -keystore release.keystore -alias upload" />
-          </div>
-
-          <p className="mt-4 text-xs uppercase tracking-wide text-muted-foreground">Play App Signing</p>
-          <p className="mt-1 text-muted-foreground text-xs">
-            Google re-signs your app before distribution. Copy the SHA-1 shown under{" "}
-            <b>Play Console → your app → Test and release → Setup → App signing</b> and paste it into the Play App
-            Signing SHA-1 field above. Register that same fingerprint on your Android OAuth client in Google Cloud.
-          </p>
-
-          <p className="mt-4 text-muted-foreground text-xs">
-            In the command output, look for the line starting with <code>SHA1:</code> and copy the colon-separated hex
-            value into the matching field above — pasting it without colons works too, it gets formatted on blur.
-          </p>
-        </div>
-
-        <TroubleshootingPanel form={form} />
-
-
-
-        <div className="mt-6 rounded-xl border border-dashed border-border bg-card/40 px-5 py-4 text-sm">
+        <div className="mt-6 rounded-2xl border border-dashed border-border bg-card/60 px-5 py-4 text-sm sm:px-6 sm:py-5">
           <p className="text-foreground font-medium flex items-center gap-2">
             <AlertCircle className="h-4 w-4 text-accent" /> Where these go in Google Cloud
           </p>
           <ol className="mt-2 space-y-1.5 list-decimal pl-5 text-muted-foreground">
-            <li>Open <b>APIs &amp; Services → Credentials → Create credentials → OAuth client ID</b>.</li>
-            <li>Application type <b>Android</b>; paste the package name and the <b>debug</b> SHA-1. Save.</li>
-            <li>Add the <b>release</b> SHA-1 as a second fingerprint (a second Android client, or edit the same one).</li>
-            <li>If you use Play App Signing, also add the <b>Play App Signing</b> SHA-1 to the Android client.</li>
-            <li>Add every tester's Google address under <b>OAuth consent screen → Test users</b>.</li>
+            <li>
+              Open <b>APIs &amp; Services → Credentials → Create credentials → OAuth client ID</b>.
+            </li>
+            <li>
+              Application type <b>Android</b>; paste the package name and the <b>debug</b> SHA-1.
+              Save.
+            </li>
+            <li>
+              Add the <b>release</b> SHA-1 as a second fingerprint (a second Android client, or edit
+              the same one).
+            </li>
+            <li>
+              If you use Play App Signing, also add the <b>Play App Signing</b> SHA-1 to the Android
+              client.
+            </li>
+            <li>
+              Add every tester's Google address under <b>OAuth consent screen → Test users</b>.
+            </li>
             <li>Copy the generated client IDs back into the fields above and press Save.</li>
           </ol>
           <a
@@ -560,8 +624,12 @@ function AndroidSetupPage() {
           </div>
         </div>
 
-        <p className="mt-6 text-xs text-muted-foreground">
-          Also see the <Link to="/setup/gmail" className="text-accent hover:underline">Gmail setup guide</Link> for consent screen and scope configuration.
+        <p className="mt-6 text-center text-xs text-muted-foreground">
+          Also see the{" "}
+          <Link to="/setup/gmail" className="text-accent hover:underline">
+            Gmail setup guide
+          </Link>{" "}
+          for consent screen and scope configuration.
         </p>
       </div>
     </div>
@@ -581,8 +649,15 @@ const Field = React.forwardRef<
     mono?: boolean;
     active?: boolean;
   }
->(function Field({ label, hint, value, onChange, onBlurFormat, error, placeholder, mono, active }, ref) {
-  const fieldId = `field-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
+>(function Field(
+  { label, hint, value, onChange, onBlurFormat, error, placeholder, mono, active },
+  ref,
+) {
+  const fieldId = `field-${label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")}`;
+  const messageId = `${fieldId}-message`;
   return (
     <div className="space-y-1.5">
       <Label htmlFor={fieldId} className="flex items-center gap-2">
@@ -601,12 +676,18 @@ const Field = React.forwardRef<
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
         onBlur={(e) => onBlurFormat?.(e.target.value)}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error || hint ? messageId : undefined}
         className={`${mono ? "font-mono text-xs" : ""} ${error ? "border-destructive" : ""} ${active ? "border-accent ring-1 ring-accent/40" : ""}`}
       />
       {error ? (
-        <p className="text-xs text-destructive">{error}</p>
+        <p id={messageId} className="text-xs text-destructive">
+          {error}
+        </p>
       ) : hint ? (
-        <p className="text-xs text-muted-foreground">{hint}</p>
+        <p id={messageId} className="text-xs text-muted-foreground">
+          {hint}
+        </p>
       ) : null}
     </div>
   );
@@ -621,27 +702,67 @@ function TroubleshootingPanel({ form }: { form: Form }) {
   const reversedId = androidId ? androidId.split(".").reverse().join(".") : "";
 
   const rows: { label: string; value: string; where: string }[] = [
-    { label: "Package name", value: pkg, where: "Google Cloud → Credentials → Android OAuth client → Package name" },
-    { label: "Debug SHA-1", value: form.debug_sha1, where: "Android client → SHA-1 certificate fingerprint" },
-    { label: "Release SHA-1", value: form.release_sha1, where: "Android client → second fingerprint (or a second client)" },
-    { label: "Play App Signing SHA-1", value: form.play_sha1, where: "Android client → fingerprint from Play Console app signing" },
-    { label: "Android client ID", value: androidId, where: "Used by the native Google Sign-In flow" },
-    { label: "Web client ID", value: form.web_client_id, where: "Used for server-side token exchange and Gmail import" },
-    { label: "Authorized JavaScript origin", value: origin, where: "Web OAuth client → Authorized JavaScript origins" },
-    { label: "Authorized redirect URI", value: origin ? `${origin}/auth` : "", where: "Web OAuth client → Authorized redirect URIs" },
-    { label: "OAuth callback URI", value: origin ? `${origin}/~oauth/callback` : "", where: "Web OAuth client → Authorized redirect URIs" },
-    { label: "Android reversed-client scheme", value: reversedId, where: "Custom URL scheme, if your native flow needs one" },
+    {
+      label: "Package name",
+      value: pkg,
+      where: "Google Cloud → Credentials → Android OAuth client → Package name",
+    },
+    {
+      label: "Debug SHA-1",
+      value: form.debug_sha1,
+      where: "Android client → SHA-1 certificate fingerprint",
+    },
+    {
+      label: "Release SHA-1",
+      value: form.release_sha1,
+      where: "Android client → second fingerprint (or a second client)",
+    },
+    {
+      label: "Play App Signing SHA-1",
+      value: form.play_sha1,
+      where: "Android client → fingerprint from Play Console app signing",
+    },
+    {
+      label: "Android client ID",
+      value: androidId,
+      where: "Used by the native Google Sign-In flow",
+    },
+    {
+      label: "Web client ID",
+      value: form.web_client_id,
+      where: "Used for server-side token exchange and Gmail import",
+    },
+    {
+      label: "Authorized JavaScript origin",
+      value: origin,
+      where: "Web OAuth client → Authorized JavaScript origins",
+    },
+    {
+      label: "Authorized redirect URI",
+      value: origin ? `${origin}/auth` : "",
+      where: "Web OAuth client → Authorized redirect URIs",
+    },
+    {
+      label: "OAuth callback URI",
+      value: origin ? `${origin}/~oauth/callback` : "",
+      where: "Web OAuth client → Authorized redirect URIs",
+    },
+    {
+      label: "Android reversed-client scheme",
+      value: reversedId,
+      where: "Custom URL scheme, if your native flow needs one",
+    },
   ];
 
   return (
-    <div className="mt-6 rounded-xl border border-border bg-card px-5 py-4 text-sm">
+    <div className="rounded-2xl border border-border bg-card/90 px-5 py-4 text-sm shadow-[0_18px_45px_rgba(0,46,40,0.04)] sm:px-6 sm:py-5">
       <p className="text-foreground font-medium flex items-center gap-2">
         <Wrench className="h-4 w-4 text-accent" /> Troubleshooting · exact values to register
       </p>
       <p className="mt-1 text-xs text-muted-foreground">
-        Every value Google Cloud asks for, exactly as this app uses it. Copy each one straight into the matching field —
-        mismatched characters, trailing slashes or a wrong fingerprint are the usual cause of{" "}
-        <code>redirect_uri_mismatch</code> and <code>DEVELOPER_ERROR</code>.
+        Every value Google Cloud asks for, exactly as this app uses it. Copy each one straight into
+        the matching field — mismatched characters, trailing slashes or a wrong fingerprint are the
+        usual cause of <code>redirect_uri_mismatch</code> and <code>DEVELOPER_ERROR</code>.
       </p>
 
       <div className="mt-4 space-y-3">
@@ -650,7 +771,9 @@ function TroubleshootingPanel({ form }: { form: Form }) {
             <div className="flex items-baseline justify-between gap-3">
               <p className="text-xs font-medium text-foreground">{row.label}</p>
               {!row.value ? (
-                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">not set yet</span>
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  not set yet
+                </span>
               ) : null}
             </div>
             {row.value ? (
@@ -670,20 +793,21 @@ function TroubleshootingPanel({ form }: { form: Form }) {
       <p className="mt-4 text-xs uppercase tracking-wide text-muted-foreground">Common errors</p>
       <ul className="mt-1.5 space-y-1.5 text-xs text-muted-foreground list-disc pl-5">
         <li>
-          <code>redirect_uri_mismatch</code> — the origin or redirect URI above is missing from the Web client, or was
-          saved with a trailing slash.
+          <code>redirect_uri_mismatch</code> — the origin or redirect URI above is missing from the
+          Web client, or was saved with a trailing slash.
         </li>
         <li>
-          <code>DEVELOPER_ERROR</code> / code 10 on device — the SHA-1 of the build you installed is not on the Android
-          client. Debug builds need the debug fingerprint; Play installs need the Play App Signing fingerprint.
+          <code>DEVELOPER_ERROR</code> / code 10 on device — the SHA-1 of the build you installed is
+          not on the Android client. Debug builds need the debug fingerprint; Play installs need the
+          Play App Signing fingerprint.
         </li>
         <li>
-          <code>access_denied</code> — your Google account is not listed under OAuth consent screen → Test users while
-          the app is in Testing.
+          <code>access_denied</code> — your Google account is not listed under OAuth consent screen
+          → Test users while the app is in Testing.
         </li>
         <li>
-          <code>invalid_client</code> — the client ID belongs to a different Google Cloud project than the one the
-          consent screen is configured in.
+          <code>invalid_client</code> — the client ID belongs to a different Google Cloud project
+          than the one the consent screen is configured in.
         </li>
       </ul>
     </div>
@@ -691,7 +815,6 @@ function TroubleshootingPanel({ form }: { form: Form }) {
 }
 
 function CopyRow({ value }: { value: string }) {
-
   const [copied, setCopied] = useState(false);
   async function copy() {
     await navigator.clipboard.writeText(value);
@@ -700,9 +823,9 @@ function CopyRow({ value }: { value: string }) {
     setTimeout(() => setCopied(false), 1500);
   }
   return (
-    <div className="flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2">
-      <code className="text-xs text-foreground/90 truncate flex-1">{value}</code>
-      <Button size="sm" variant="ghost" onClick={copy} className="h-7 px-2">
+    <div className="flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2">
+      <code className="flex-1 truncate text-xs text-foreground/90">{value}</code>
+      <Button size="sm" variant="ghost" onClick={copy} className="h-7 px-2" aria-label="Copy value">
         {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
       </Button>
     </div>
