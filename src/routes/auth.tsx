@@ -9,21 +9,32 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
+  validateSearch: (s: Record<string, unknown>) => ({
+    next: typeof s.next === "string" && s.next.startsWith("/") && !s.next.startsWith("//") ? s.next : undefined,
+  }),
   component: AuthPage,
 });
 
 function AuthPage() {
   const navigate = useNavigate();
+  const { next } = Route.useSearch();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const goNext = () => {
+    if (next) window.location.href = next;
+    else navigate({ to: "/app" });
+  };
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
-      if (data.user) navigate({ to: "/app" });
+      if (!data.user) return;
+      if (next) window.location.href = next;
+      else navigate({ to: "/app" });
     });
-  }, [navigate]);
+  }, [navigate, next]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -33,7 +44,7 @@ function AuthPage() {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: window.location.origin },
+          options: { emailRedirectTo: next ? window.location.origin + next : window.location.origin },
         });
         if (error) throw error;
         toast.success("Welcome — check your inbox if confirmation is required.");
@@ -41,7 +52,7 @@ function AuthPage() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       }
-      navigate({ to: "/app" });
+      goNext();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Authentication failed");
     } finally {
@@ -52,7 +63,7 @@ function AuthPage() {
   async function handleGoogle() {
     setLoading(true);
     const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
+      redirect_uri: next ? window.location.origin + next : window.location.origin,
     });
     if (result.error) {
       toast.error("Google sign-in failed");
@@ -60,7 +71,7 @@ function AuthPage() {
       return;
     }
     if (result.redirected) return;
-    navigate({ to: "/app" });
+    goNext();
   }
 
   return (
