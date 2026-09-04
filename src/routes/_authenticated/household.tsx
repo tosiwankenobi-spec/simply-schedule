@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { ArrowLeft, Copy, Home, Link2, LogOut, ShieldCheck, Trash2, Users } from "lucide-react";
+import { Copy, Home, Link2, LogOut, ShieldCheck, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import {
@@ -31,6 +31,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { WorkspaceHeader } from "@/components/WorkspaceHeader";
 
 export const Route = createFileRoute("/_authenticated/household")({
   validateSearch: z.object({ invite: z.string().optional() }),
@@ -154,25 +155,37 @@ function HouseholdPage() {
   if (overview.isLoading) {
     return (
       <PageShell>
-        <div className="h-40 animate-pulse rounded-xl bg-card" />
+        <WorkspaceHeader
+          eyebrow="Shared household"
+          title={
+            <>
+              Coordinate without <span className="text-accent italic">oversharing.</span>
+            </>
+          }
+          description="One place for family commitments, pickups, and shared responsibilities—with privacy decided item by item."
+        />
+        <div className="mt-8 h-40 animate-pulse rounded-2xl border border-border bg-card" />
       </PageShell>
     );
   }
   if (!overview.data) {
     return (
       <PageShell>
-        <div className="mt-6">
-          <p className="flex items-center gap-2 text-sm font-medium text-accent">
-            <Users className="h-4 w-4" /> Coordinate without oversharing
-          </p>
-          <h1 className="mt-2 font-serif text-4xl">Household schedule</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Create a household or use a private invitation. Every schedule item stays private until
-            its owner explicitly shares busy time or full details.
-          </p>
+        <WorkspaceHeader
+          eyebrow="Shared household"
+          title={
+            <>
+              Coordinate without <span className="text-accent italic">oversharing.</span>
+            </>
+          }
+          description="Create a household or use a private invitation. Every schedule item stays private until its owner explicitly shares busy time or full details."
+        />
+        <div className="mt-8 flex items-start gap-2 rounded-2xl border border-border bg-card/70 p-4 text-xs text-muted-foreground">
+          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+          <p>Sharing is opt-in per item. Connections can be revoked or left at any time.</p>
         </div>
-        <div className="mt-8 grid gap-5 sm:grid-cols-2">
-          <section className="rounded-xl border border-border bg-card p-5">
+        <div className="mt-6 grid gap-5 md:grid-cols-2">
+          <section className="rounded-2xl border border-border bg-card/90 p-5 shadow-[0_18px_45px_rgba(0,46,40,0.04)]">
             <h2 className="font-serif text-xl">Create a household</h2>
             <Field
               label="Household name"
@@ -194,7 +207,7 @@ function HouseholdPage() {
               <Home className="mr-1.5 h-4 w-4" /> Create household
             </Button>
           </section>
-          <section className="rounded-xl border border-border bg-card p-5">
+          <section className="rounded-2xl border border-border bg-card/90 p-5 shadow-[0_18px_45px_rgba(0,46,40,0.04)]">
             <h2 className="font-serif text-xl">Join with an invitation</h2>
             <Field
               label="Invitation code"
@@ -226,152 +239,169 @@ function HouseholdPage() {
   const isOwner = data.membership.role === "owner";
   return (
     <PageShell>
-      <div className="mt-6 flex items-start justify-between gap-4">
-        <div>
-          <p className="flex items-center gap-2 text-sm font-medium text-accent">
-            <Users className="h-4 w-4" /> {data.members.length} member
-            {data.members.length === 1 ? "" : "s"}
-          </p>
-          <h1 className="mt-2 font-serif text-4xl">{data.household.name}</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Busy-only items hide their title, notes, and location. Private items never leave the
-            owner’s schedule.
-          </p>
-        </div>
-        {isOwner ? (
-          <Button
-            variant="outline"
-            onClick={() => makeInvite.mutate(data.household.id)}
-            disabled={makeInvite.isPending}
-          >
-            <Copy className="mr-1.5 h-4 w-4" /> Invite
-          </Button>
-        ) : (
-          <Button
-            variant="outline"
-            onClick={() => leave.mutate(data.household.id)}
-            disabled={leave.isPending}
-          >
-            <LogOut className="mr-1.5 h-4 w-4" /> Leave
-          </Button>
-        )}
-      </div>
+      <WorkspaceHeader
+        eyebrow={`${data.members.length} member${data.members.length === 1 ? "" : "s"} · shared household`}
+        title={data.household.name}
+        description="Busy-only items hide their title, notes, and location. Private items never leave the owner's schedule."
+        action={
+          isOwner ? (
+            <Button
+              variant="outline"
+              className="bg-card/80"
+              onClick={() => makeInvite.mutate(data.household.id)}
+              disabled={makeInvite.isPending}
+            >
+              <Copy className="mr-1.5 h-4 w-4" /> Invite
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              className="bg-card/80"
+              onClick={() => leave.mutate(data.household.id)}
+              disabled={leave.isPending}
+            >
+              <LogOut className="mr-1.5 h-4 w-4" /> Leave
+            </Button>
+          )
+        }
+      />
 
-      <section className="mt-8 rounded-xl border border-border bg-card p-5">
-        <h2 className="font-serif text-xl">People</h2>
-        <ul className="mt-3 divide-y divide-border">
-          {data.members.map((member) => (
-            <li key={member.user_id} className="flex items-center justify-between py-3 text-sm">
-              <span>
-                {member.display_name}
-                {member.user_id === data.membership.user_id ? " · You" : ""}
-              </span>
-              <span className="flex items-center gap-2">
-                <span className="text-xs capitalize text-muted-foreground">{member.role}</span>
-                {isOwner && member.role === "member" && (
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    aria-label={`Disconnect ${member.display_name}`}
-                    disabled={disconnect.isPending}
-                    onClick={() =>
-                      disconnect.mutate({
+      <div className="mt-8 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <main className="min-w-0">
+          <section>
+            <h2 className="font-serif text-2xl">Your sharing choices</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Choose visibility separately for each upcoming item.
+            </p>
+            <div className="mt-4 space-y-3">
+              {data.appointments.length === 0 ? (
+                <Empty label="No upcoming items to share." />
+              ) : (
+                data.appointments.map((appointment) => (
+                  <AppointmentSharingRow
+                    key={appointment.id}
+                    appointment={appointment}
+                    disabled={share.isPending}
+                    onChange={(visibility) =>
+                      share.mutate({
+                        appointmentId: appointment.id,
                         householdId: data.household.id,
-                        userId: member.user_id,
+                        visibility,
                       })
                     }
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                )}
-              </span>
-            </li>
-          ))}
-        </ul>
-        {isOwner && data.invites.length > 0 && (
-          <div className="mt-4 border-t border-border pt-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Active invitations
+                  />
+                ))
+              )}
+            </div>
+          </section>
+
+          <section className="mt-10">
+            <h2 className="font-serif text-2xl">Shared by others</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              These appear automatically in your main timeline.
             </p>
-            {data.invites.map((activeInvite) => (
-              <div
-                key={activeInvite.id}
-                className="mt-2 flex items-center justify-between gap-2 text-xs"
-              >
-                <span>Expires {format(new Date(activeInvite.expires_at), "MMM d, h:mm a")}</span>
-                <span className="flex items-center gap-1">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => void copyInvite(activeInvite.id)}
+            <div className="mt-4 space-y-3">
+              {sharedFromOthers.length === 0 ? (
+                <Empty label="Nothing has been shared with you yet." />
+              ) : (
+                sharedFromOthers.slice(0, 30).map((event) => (
+                  <div
+                    key={event.id}
+                    className="rounded-2xl border border-border bg-card/90 p-4 shadow-[0_14px_35px_rgba(0,46,40,0.035)]"
                   >
-                    Copy link
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => revoke.mutate(activeInvite.id)}>
-                    Revoke
-                  </Button>
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="mt-8">
-        <h2 className="font-serif text-2xl">Your sharing choices</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Choose visibility separately for each upcoming item.
-        </p>
-        <div className="mt-4 space-y-3">
-          {data.appointments.length === 0 ? (
-            <Empty label="No upcoming items to share." />
-          ) : (
-            data.appointments.map((appointment) => (
-              <AppointmentSharingRow
-                key={appointment.id}
-                appointment={appointment}
-                disabled={share.isPending}
-                onChange={(visibility) =>
-                  share.mutate({
-                    appointmentId: appointment.id,
-                    householdId: data.household.id,
-                    visibility,
-                  })
-                }
-              />
-            ))
-          )}
-        </div>
-      </section>
-
-      <section className="mt-8">
-        <h2 className="font-serif text-2xl">Shared by others</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          These appear automatically in your main timeline.
-        </p>
-        <div className="mt-4 space-y-3">
-          {sharedFromOthers.length === 0 ? (
-            <Empty label="Nothing has been shared with you yet." />
-          ) : (
-            sharedFromOthers.slice(0, 30).map((event) => (
-              <div key={event.id} className="rounded-xl border border-border bg-card p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="font-medium">{event.title}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {format(new Date(event.starts_at), "EEE, MMM d · h:mm a")} ·{" "}
-                      {event.shared_by_name}
-                    </p>
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="font-medium">{event.title}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {format(new Date(event.starts_at), "EEE, MMM d · h:mm a")} ·{" "}
+                          {event.shared_by_name}
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-secondary px-2 py-1 text-[10px] uppercase text-muted-foreground">
+                        {event.household_visibility === "busy" ? "Busy only" : "Details"}
+                      </span>
+                    </div>
                   </div>
-                  <span className="rounded-full bg-secondary px-2 py-1 text-[10px] uppercase text-muted-foreground">
-                    {event.household_visibility === "busy" ? "Busy only" : "Details"}
+                ))
+              )}
+            </div>
+          </section>
+        </main>
+
+        <aside className="rounded-2xl border border-border bg-card/90 p-5 shadow-[0_18px_45px_rgba(0,46,40,0.04)] xl:sticky xl:top-8">
+          <div className="flex items-center gap-2 text-accent">
+            <Users className="h-4 w-4" />
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em]">
+              Household access
+            </p>
+          </div>
+          <h2 className="mt-2 font-serif text-xl">People</h2>
+          <ul className="mt-3 divide-y divide-border">
+            {data.members.map((member) => (
+              <li key={member.user_id} className="flex items-center justify-between py-3 text-sm">
+                <span>
+                  {member.display_name}
+                  {member.user_id === data.membership.user_id ? " · You" : ""}
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="text-xs capitalize text-muted-foreground">{member.role}</span>
+                  {isOwner && member.role === "member" && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      aria-label={`Disconnect ${member.display_name}`}
+                      disabled={disconnect.isPending}
+                      onClick={() =>
+                        disconnect.mutate({
+                          householdId: data.household.id,
+                          userId: member.user_id,
+                        })
+                      }
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {isOwner && data.invites.length > 0 && (
+            <div className="mt-4 border-t border-border pt-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Active invitations
+              </p>
+              {data.invites.map((activeInvite) => (
+                <div
+                  key={activeInvite.id}
+                  className="mt-2 flex items-center justify-between gap-2 text-xs"
+                >
+                  <span>Expires {format(new Date(activeInvite.expires_at), "MMM d, h:mm a")}</span>
+                  <span className="flex items-center gap-1">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => void copyInvite(activeInvite.id)}
+                    >
+                      Copy link
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => revoke.mutate(activeInvite.id)}
+                    >
+                      Revoke
+                    </Button>
                   </span>
                 </div>
-              </div>
-            ))
+              ))}
+            </div>
           )}
-        </div>
-      </section>
+          <div className="mt-4 flex items-start gap-2 rounded-xl bg-secondary/60 p-3 text-xs text-muted-foreground">
+            <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" />
+            <p>Sharing is opt-in per item. Connections can be revoked or left at any time.</p>
+          </div>
+        </aside>
+      </div>
 
       {isOwner && (
         <div className="mt-10 border-t border-border pt-6">
@@ -418,7 +448,7 @@ function AppointmentSharingRow({
   onChange: (visibility: Visibility) => void;
 }) {
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card/90 p-4 shadow-[0_14px_35px_rgba(0,46,40,0.035)] sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
         <p className="truncate font-medium">{appointment.title}</p>
         <p className="mt-1 text-xs text-muted-foreground">
@@ -469,7 +499,7 @@ function Field({
 
 function Empty({ label }: { label: string }) {
   return (
-    <div className="rounded-xl border border-dashed border-border p-7 text-center text-sm text-muted-foreground">
+    <div className="rounded-2xl border border-dashed border-border bg-card/45 p-7 text-center text-sm text-muted-foreground">
       {label}
     </div>
   );
@@ -477,18 +507,9 @@ function Empty({ label }: { label: string }) {
 
 function PageShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative min-h-screen bg-background">
-      <div className="absolute inset-0 paper-grain pointer-events-none opacity-30" />
-      <div className="relative mx-auto max-w-2xl px-5 py-8 md:py-12">
-        <Button asChild variant="ghost" size="sm" className="-ml-2 text-muted-foreground">
-          <Link to="/app">
-            <ArrowLeft className="mr-1 h-4 w-4" /> Schedule
-          </Link>
-        </Button>
-        <div className="mt-4 flex items-start gap-2 rounded-xl border border-border bg-card p-4 text-xs text-muted-foreground">
-          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
-          <p>Sharing is opt-in per item. Connections can be revoked or left at any time.</p>
-        </div>
+    <div className="verolane-wash relative min-h-screen bg-background">
+      <div className="pointer-events-none absolute inset-0 paper-grain opacity-20" />
+      <div className="relative mx-auto max-w-[1180px] px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
         {children}
       </div>
     </div>

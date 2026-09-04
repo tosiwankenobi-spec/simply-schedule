@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { addDays, format, startOfWeek } from "date-fns";
 import {
@@ -12,7 +12,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  ArrowLeft,
   CalendarCheck,
   CalendarDays,
   CheckCircle2,
@@ -22,6 +21,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
+import { WorkspaceHeader } from "@/components/WorkspaceHeader";
 
 export const Route = createFileRoute("/_authenticated/weekly-reset")({
   component: WeeklyResetPage,
@@ -51,41 +51,35 @@ function WeeklyResetPage() {
   });
 
   return (
-    <main className="min-h-screen bg-background">
-      <div className="mx-auto max-w-4xl px-5 py-10">
-        <Link
-          to="/app"
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" /> Back to schedule
-        </Link>
-        <div className="mt-5 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-accent">
-              Weekly Reset
-            </p>
-            <h1 className="mt-2 font-serif text-4xl text-foreground">
-              Close the loop. Start clear.
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-              See what moved, recover what slipped, and approve a realistic week without disturbing
-              fixed commitments.
-            </p>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="week-start">Week starting</Label>
-            <Input
-              id="week-start"
-              type="date"
-              value={weekStart}
-              onChange={(event) => setWeekStart(event.target.value)}
-              className="w-44"
-            />
-          </div>
-        </div>
+    <main className="verolane-wash relative min-h-screen bg-background">
+      <div className="pointer-events-none absolute inset-0 paper-grain opacity-20" />
+      <div className="relative mx-auto max-w-[1180px] px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
+        <WorkspaceHeader
+          eyebrow="Weekly reset"
+          title={
+            <>
+              Close the loop. <span className="text-accent italic">Start clear.</span>
+            </>
+          }
+          description="See what moved, recover what slipped, and approve a realistic week without disturbing fixed commitments."
+          action={
+            <div className="space-y-1.5 rounded-xl border border-border bg-card/80 p-3">
+              <Label htmlFor="week-start" className="text-xs">
+                Week starting
+              </Label>
+              <Input
+                id="week-start"
+                type="date"
+                value={weekStart}
+                onChange={(event) => setWeekStart(event.target.value)}
+                className="w-44 bg-background"
+              />
+            </div>
+          }
+        />
 
         {preview.isLoading ? (
-          <div className="mt-8 flex items-center gap-2 rounded-xl border border-border bg-card p-5 text-sm text-muted-foreground">
+          <div className="mt-8 flex items-center gap-2 rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">
             <RefreshCw className="h-4 w-4 animate-spin" /> Building your reset…
           </div>
         ) : null}
@@ -106,7 +100,7 @@ function WeeklyResetPage() {
           />
         ) : null}
 
-        <div className="mt-6 flex items-start gap-2 rounded-xl bg-muted/50 p-4 text-xs text-muted-foreground">
+        <div className="mt-6 flex items-start gap-2 rounded-2xl border border-border/70 bg-card/60 p-4 text-xs text-muted-foreground">
           <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
           Weekly Reset uses only your own tasks, appointments, and planner preferences. Planning is
           deterministic and no schedule details are sent to an AI service.

@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
-  ArrowLeft,
   CalendarClock,
   Pause,
   Pencil,
@@ -51,6 +50,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { WorkspaceHeader } from "@/components/WorkspaceHeader";
 
 export const Route = createFileRoute("/_authenticated/routines")({
   component: RoutinesPage,
@@ -261,130 +261,142 @@ function RoutinesPage() {
   };
 
   return (
-    <div className="relative min-h-screen bg-background">
+    <div className="verolane-wash relative min-h-screen bg-background">
       <div className="absolute inset-0 paper-grain opacity-30 pointer-events-none" />
-      <div className="relative mx-auto max-w-2xl px-5 py-8 md:py-12">
-        <div className="flex items-center justify-between gap-3">
-          <Button asChild variant="ghost" size="sm" className="-ml-2 text-muted-foreground">
-            <Link to="/app">
-              <ArrowLeft className="mr-1 h-4 w-4" /> Schedule
-            </Link>
-          </Button>
-          <Button onClick={openNew}>
-            <Plus className="mr-1.5 h-4 w-4" /> New routine
-          </Button>
-        </div>
+      <div className="relative mx-auto max-w-[1180px] px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
+        <WorkspaceHeader
+          eyebrow="Repeat without re-entering"
+          title={
+            <>
+              Life's rhythm, <span className="text-accent italic">remembered.</span>
+            </>
+          }
+          description="Put the repeating parts of life on the same timeline as meetings and tasks—including birthdays and annual commitments."
+          action={
+            <Button onClick={openNew}>
+              <Plus className="mr-1.5 h-4 w-4" /> New routine
+            </Button>
+          }
+        />
 
-        <div className="mt-6">
-          <p className="flex items-center gap-2 text-sm font-medium text-accent">
-            <Repeat2 className="h-4 w-4" /> Repeat without re-entering
-          </p>
-          <h1 className="mt-2 font-serif text-4xl text-foreground">Personal routines</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Put the repeating parts of life on the same timeline as meetings and tasks. Chronos-V
-            keeps recurring time ready automatically—including birthdays and annual commitments.
-          </p>
-        </div>
-
-        <div className="mt-5 flex items-start gap-2 rounded-xl border border-border bg-card p-4 text-xs text-muted-foreground">
-          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
-          <p>
-            Routines are private to your account. Fixed routines are protected from replanning;
-            flexible routines may move when your day changes.
-          </p>
-        </div>
-
-        <section className="mt-8">
-          {routines.isLoading ? (
-            <div className="h-28 animate-pulse rounded-xl border border-border bg-card" />
-          ) : routines.isError ? (
-            <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-5 text-sm">
-              <p>Couldn't load your routines.</p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-3"
-                onClick={() => routines.refetch()}
-              >
-                Try again
-              </Button>
-            </div>
-          ) : routines.data?.length ? (
-            <ul className="space-y-3">
-              {routines.data.map((routine) => (
-                <li
-                  key={routine.id}
-                  className={`rounded-xl border border-border bg-card p-5 ${routine.active ? "" : "opacity-60"}`}
+        <div className="mt-8 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <section className="min-w-0">
+            {routines.isLoading ? (
+              <div className="h-28 animate-pulse rounded-2xl border border-border bg-card" />
+            ) : routines.isError ? (
+              <div className="rounded-2xl border border-destructive/40 bg-destructive/5 p-5 text-sm">
+                <p>Couldn't load your routines.</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3"
+                  onClick={() => routines.refetch()}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h2 className="truncate font-serif text-xl">{routine.title}</h2>
-                        <Badge variant="secondary">{CATEGORY_LABELS[routine.category]}</Badge>
-                        {!routine.active && <Badge variant="outline">Paused</Badge>}
+                  Try again
+                </Button>
+              </div>
+            ) : routines.data?.length ? (
+              <ul className="space-y-3">
+                {routines.data.map((routine) => (
+                  <li
+                    key={routine.id}
+                    className={`rounded-2xl border border-border bg-card/90 p-5 shadow-[0_14px_35px_rgba(0,46,40,0.035)] ${routine.active ? "" : "opacity-60"}`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h2 className="truncate font-serif text-xl">{routine.title}</h2>
+                          <Badge variant="secondary">{CATEGORY_LABELS[routine.category]}</Badge>
+                          {!routine.active && <Badge variant="outline">Paused</Badge>}
+                        </div>
+                        <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+                          <CalendarClock className="h-3.5 w-3.5" /> {routineCadenceLabel(routine)}
+                          {routine.is_all_day
+                            ? " · All day"
+                            : ` at ${format(new Date(`2000-01-01T${routine.local_time}`), "h:mm a")} · ${routine.duration_min} min`}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {routine.commitment_type === "fixed"
+                            ? "Fixed commitment"
+                            : "Flexible time block"}
+                          {routine.location ? ` · ${routine.location}` : ""}
+                        </p>
                       </div>
-                      <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-                        <CalendarClock className="h-3.5 w-3.5" /> {routineCadenceLabel(routine)}
-                        {routine.is_all_day
-                          ? " · All day"
-                          : ` at ${format(new Date(`2000-01-01T${routine.local_time}`), "h:mm a")} · ${routine.duration_min} min`}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {routine.commitment_type === "fixed"
-                          ? "Fixed commitment"
-                          : "Flexible time block"}
-                        {routine.location ? ` · ${routine.location}` : ""}
-                      </p>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={routine.active ? "Pause routine" : "Resume routine"}
+                          onClick={() => toggle.mutate(routine)}
+                          disabled={toggle.isPending}
+                        >
+                          {routine.active ? (
+                            <Pause className="h-4 w-4" />
+                          ) : (
+                            <Play className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Edit routine"
+                          onClick={() => openEdit(routine)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Delete routine"
+                          className="text-muted-foreground hover:text-destructive"
+                          onClick={() => setDeleting(routine)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex shrink-0 items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={routine.active ? "Pause routine" : "Resume routine"}
-                        onClick={() => toggle.mutate(routine)}
-                        disabled={toggle.isPending}
-                      >
-                        {routine.active ? (
-                          <Pause className="h-4 w-4" />
-                        ) : (
-                          <Play className="h-4 w-4" />
-                        )}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label="Edit routine"
-                        onClick={() => openEdit(routine)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label="Delete routine"
-                        className="text-muted-foreground hover:text-destructive"
-                        onClick={() => setDeleting(routine)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div className="rounded-xl border border-dashed border-border px-5 py-12 text-center">
-              <Repeat2 className="mx-auto h-7 w-7 text-muted-foreground" />
-              <p className="mt-3 font-medium">No routines yet</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Add medication, exercise, school pickup, chores, birthdays, bills, or pet care.
-              </p>
-              <Button className="mt-4" onClick={openNew}>
-                Create your first routine
-              </Button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-border bg-card/50 px-5 py-12 text-center">
+                <Repeat2 className="mx-auto h-7 w-7 text-muted-foreground" />
+                <p className="mt-3 font-medium">No routines yet</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Add medication, exercise, school pickup, chores, birthdays, bills, or pet care.
+                </p>
+                <Button className="mt-4" onClick={openNew}>
+                  Create your first routine
+                </Button>
+              </div>
+            )}
+          </section>
+
+          <aside className="rounded-2xl bg-ink p-5 text-paper shadow-[0_24px_55px_rgba(0,46,40,0.14)] xl:sticky xl:top-8">
+            <div className="flex items-center gap-2 text-paper/75">
+              <ShieldCheck className="h-4 w-4" />
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em]">Routine model</p>
             </div>
-          )}
-        </section>
+            <p className="mt-4 font-serif text-2xl">
+              {routines.data?.length ?? 0} routine{routines.data?.length === 1 ? "" : "s"} held in
+              your rhythm.
+            </p>
+            <p className="mt-3 text-sm leading-relaxed text-paper/65">
+              Routines stay private to your account. Fixed routines are protected from replanning;
+              flexible routines may move when your day changes.
+            </p>
+            <div className="mt-5 grid grid-cols-2 gap-2 text-xs">
+              <div className="rounded-xl bg-paper/10 p-3">
+                <p className="font-medium text-paper">Fixed</p>
+                <p className="mt-1 text-paper/55">Never moved automatically</p>
+              </div>
+              <div className="rounded-xl bg-paper/10 p-3">
+                <p className="font-medium text-paper">Flexible</p>
+                <p className="mt-1 text-paper/55">Replanned when needed</p>
+              </div>
+            </div>
+          </aside>
+        </div>
       </div>
 
       <RoutineDialog
