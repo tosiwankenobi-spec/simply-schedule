@@ -571,6 +571,48 @@ export type Database = {
         }
         Relationships: []
       }
+      plan_runs: {
+        Row: {
+          applied_at: string
+          changes: Json
+          created_at: string
+          id: string
+          kind: string
+          plan_date: string
+          summary: string
+          undo_note: string | null
+          undone_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          applied_at?: string
+          changes?: Json
+          created_at?: string
+          id?: string
+          kind?: string
+          plan_date: string
+          summary?: string
+          undo_note?: string | null
+          undone_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          applied_at?: string
+          changes?: Json
+          created_at?: string
+          id?: string
+          kind?: string
+          plan_date?: string
+          summary?: string
+          undo_note?: string | null
+          undone_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       planner_profile_assignments: {
         Row: {
           created_at: string
