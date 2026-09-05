@@ -210,13 +210,14 @@ function providerKey(calendarId: string) {
 async function readDeltaLink(supabase: SupabaseClient, userId: string, calendarId: string) {
   const { data, error } = await supabase
     .from("sync_state")
-    .select("sync_token, last_success_at, last_error")
+    .select("sync_token, cursor, last_success_at, last_error")
     .eq("user_id", userId)
     .eq("provider", providerKey(calendarId))
     .maybeSingle();
   if (error) throw new Error("Your Outlook sync history could not be read.");
   return (data ?? null) as {
     sync_token: string | null;
+    cursor: string | null;
     last_success_at: string | null;
     last_error: string | null;
   } | null;
@@ -224,6 +225,8 @@ async function readDeltaLink(supabase: SupabaseClient, userId: string, calendarI
 
 type DeltaPatch = {
   sync_token?: string | null;
+  /** Continuation link for a chain that has not finished yet. */
+  cursor?: string | null;
   pages_synced?: number;
   events_seen?: number;
   last_error?: string | null;
@@ -254,42 +257,27 @@ async function writeDeltaState(
   assertWrite(error, "Your Outlook sync progress");
 }
 
-/** Best-effort mutual exclusion so two syncs never fight over the same calendars. */
-async function claimSyncLock(supabase: SupabaseClient, userId: string): Promise<void> {
-  const { data, error } = await supabase
-    .from("sync_state")
-    .select("last_attempt_at, cursor")
-    .eq("user_id", userId)
-    .eq("provider", LOCK_PROVIDER)
-    .maybeSingle();
+/**
+ * Atomic, user-scoped mutual exclusion. The database claims the lock in a
+ * single statement (stale locks older than the TTL are taken over), so two
+ * concurrent runs can never both proceed. The token proves ownership on
+ * release; the caller is always the session user — never an id from input.
+ */
+async function claimSyncLock(supabase: SupabaseClient, userId: string): Promise<string> {
+  const { data, error } = await supabase.rpc("claim_sync_lock", {
+    p_lock_key: LOCK_KEY,
+    p_ttl_seconds: Math.round(LOCK_TTL_MS / 1000),
+  });
   if (error) throw new Error("Your Outlook sync status could not be read.");
-  const startedAt = Date.parse(data?.last_attempt_at ?? "");
-  if (
-    data?.cursor === "running" &&
-    Number.isFinite(startedAt) &&
-    Date.now() - startedAt < LOCK_TTL_MS
-  ) {
-    throw new OutlookBusyError();
-  }
-  const { error: writeError } = await supabase.from("sync_state").upsert(
-    {
-      user_id: userId,
-      provider: LOCK_PROVIDER,
-      cursor: "running",
-      last_attempt_at: new Date().toISOString(),
-    },
-    { onConflict: "user_id,provider" },
-  );
-  assertWrite(writeError, "Your Outlook sync status");
+  const token = typeof data === "string" ? data : null;
+  if (!token) throw new OutlookBusyError();
+  return token;
 }
 
-async function releaseSyncLock(supabase: SupabaseClient, userId: string) {
-  await supabase
-    .from("sync_state")
-    .update({ cursor: "idle" })
-    .eq("user_id", userId)
-    .eq("provider", LOCK_PROVIDER);
+async function releaseSyncLock(supabase: SupabaseClient, userId: string, token: string) {
+  await supabase.rpc("release_sync_lock", { p_lock_key: LOCK_KEY, p_token: token });
 }
+
 
 /* ------------------------------------------------------------------ */
 /* Calendars                                                           */
