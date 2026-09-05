@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { normalizeSmartInboxExtraction } from "../src/lib/gmail-inbox.server";
 
 describe("Smart Inbox extraction", () => {
