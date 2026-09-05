@@ -61,6 +61,7 @@ export type Database = {
           calendar_etag: string | null
           calendar_event_id: string | null
           calendar_id: string | null
+          commitment_type: string
           created_at: string
           ends_at: string | null
           external_id: string | null
@@ -71,13 +72,25 @@ export type Database = {
           gmail_subject: string | null
           gmail_thread_id: string | null
           id: string
+          is_all_day: boolean
           last_synced_at: string | null
           location: string | null
           notes: string | null
+          preparation_minutes: number | null
+          privacy_level: string
+          provider: string | null
+          provider_account_id: string | null
+          recurrence_rule: string | null
           remote_updated_at: string | null
+          routine_id: string | null
+          routine_occurrence_date: string | null
           source: string
+          source_metadata: Json | null
           starts_at: string
+          sync_status: string
+          timezone: string
           title: string
+          travel_minutes: number | null
           updated_at: string
           user_id: string
         }
@@ -85,6 +98,7 @@ export type Database = {
           calendar_etag?: string | null
           calendar_event_id?: string | null
           calendar_id?: string | null
+          commitment_type?: string
           created_at?: string
           ends_at?: string | null
           external_id?: string | null
@@ -95,13 +109,25 @@ export type Database = {
           gmail_subject?: string | null
           gmail_thread_id?: string | null
           id?: string
+          is_all_day?: boolean
           last_synced_at?: string | null
           location?: string | null
           notes?: string | null
+          preparation_minutes?: number | null
+          privacy_level?: string
+          provider?: string | null
+          provider_account_id?: string | null
+          recurrence_rule?: string | null
           remote_updated_at?: string | null
+          routine_id?: string | null
+          routine_occurrence_date?: string | null
           source?: string
+          source_metadata?: Json | null
           starts_at: string
+          sync_status?: string
+          timezone?: string
           title: string
+          travel_minutes?: number | null
           updated_at?: string
           user_id: string
         }
@@ -109,6 +135,7 @@ export type Database = {
           calendar_etag?: string | null
           calendar_event_id?: string | null
           calendar_id?: string | null
+          commitment_type?: string
           created_at?: string
           ends_at?: string | null
           external_id?: string | null
@@ -119,17 +146,37 @@ export type Database = {
           gmail_subject?: string | null
           gmail_thread_id?: string | null
           id?: string
+          is_all_day?: boolean
           last_synced_at?: string | null
           location?: string | null
           notes?: string | null
+          preparation_minutes?: number | null
+          privacy_level?: string
+          provider?: string | null
+          provider_account_id?: string | null
+          recurrence_rule?: string | null
           remote_updated_at?: string | null
+          routine_id?: string | null
+          routine_occurrence_date?: string | null
           source?: string
+          source_metadata?: Json | null
           starts_at?: string
+          sync_status?: string
+          timezone?: string
           title?: string
+          travel_minutes?: number | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "appointments_routine_id_fkey"
+            columns: ["routine_id"]
+            isOneToOne: false
+            referencedRelation: "routines"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notification_log: {
         Row: {
@@ -174,6 +221,8 @@ export type Database = {
         Row: {
           appointment_lead_min: number[]
           created_at: string
+          default_prep_min: number
+          default_travel_min: number
           email_enabled: boolean
           email_to: string | null
           id: string
@@ -184,12 +233,17 @@ export type Database = {
           push_enabled: boolean
           quiet_end: string
           quiet_start: string
+          travel_buffer_min: number
+          travel_mode: string
+          travel_reminders_enabled: boolean
           updated_at: string
           user_id: string
         }
         Insert: {
           appointment_lead_min?: number[]
           created_at?: string
+          default_prep_min?: number
+          default_travel_min?: number
           email_enabled?: boolean
           email_to?: string | null
           id?: string
@@ -200,12 +254,17 @@ export type Database = {
           push_enabled?: boolean
           quiet_end?: string
           quiet_start?: string
+          travel_buffer_min?: number
+          travel_mode?: string
+          travel_reminders_enabled?: boolean
           updated_at?: string
           user_id: string
         }
         Update: {
           appointment_lead_min?: number[]
           created_at?: string
+          default_prep_min?: number
+          default_travel_min?: number
           email_enabled?: boolean
           email_to?: string | null
           id?: string
@@ -216,6 +275,9 @@ export type Database = {
           push_enabled?: boolean
           quiet_end?: string
           quiet_start?: string
+          travel_buffer_min?: number
+          travel_mode?: string
+          travel_reminders_enabled?: boolean
           updated_at?: string
           user_id?: string
         }
@@ -328,6 +390,75 @@ export type Database = {
           user_id?: string
           work_end?: string
           work_start?: string
+        }
+        Relationships: []
+      }
+      routines: {
+        Row: {
+          active: boolean
+          annual_day: number | null
+          annual_month: number | null
+          category: string
+          commitment_type: string
+          created_at: string
+          days_of_week: number[]
+          duration_min: number
+          end_date: string | null
+          frequency: string
+          id: string
+          is_all_day: boolean
+          local_time: string
+          location: string | null
+          notes: string | null
+          start_date: string
+          timezone: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          annual_day?: number | null
+          annual_month?: number | null
+          category?: string
+          commitment_type?: string
+          created_at?: string
+          days_of_week?: number[]
+          duration_min?: number
+          end_date?: string | null
+          frequency?: string
+          id?: string
+          is_all_day?: boolean
+          local_time: string
+          location?: string | null
+          notes?: string | null
+          start_date?: string
+          timezone?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          annual_day?: number | null
+          annual_month?: number | null
+          category?: string
+          commitment_type?: string
+          created_at?: string
+          days_of_week?: number[]
+          duration_min?: number
+          end_date?: string | null
+          frequency?: string
+          id?: string
+          is_all_day?: boolean
+          local_time?: string
+          location?: string | null
+          notes?: string | null
+          start_date?: string
+          timezone?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
