@@ -759,7 +759,7 @@ export async function runOutlookSync(
 ): Promise<OutlookSyncResult> {
   const result = emptyResult();
   const key = await requireKey(userId);
-  await claimSyncLock(supabase, userId);
+  const lockToken = await claimSyncLock(supabase, userId);
 
   try {
     const { data: settings, error: settingsError } = await supabase
@@ -829,7 +829,7 @@ export async function runOutlookSync(
     );
     return result;
   } finally {
-    await releaseSyncLock(supabase, userId);
+    await releaseSyncLock(supabase, userId, lockToken);
   }
 }
 
@@ -870,7 +870,7 @@ export async function readOutlookStatus(
     .eq("provider", OUTLOOK_PROVIDER)
     .in("source", OWNED_SOURCES);
 
-  const calendarStates = (states ?? []).filter((s) => s.provider !== LOCK_PROVIDER);
+  const calendarStates = (states ?? []).filter((s) => s.provider !== LOCK_KEY);
   const pick = (field: "last_attempt_at" | "last_success_at") =>
     calendarStates
       .map((s) => s[field] as string | null)
