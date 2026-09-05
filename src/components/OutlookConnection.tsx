@@ -22,10 +22,13 @@ import {
   disconnectOutlookAccount,
   getOutlookStatus,
   listOutlookCalendars,
+  listOutlookExportCandidates,
   resetOutlookSyncState,
   selectOutlookCalendars,
+  setOutlookEventExport,
   startOutlookConnect,
   syncOutlookNow,
+  updateOutlookExportSettings,
 } from "@/lib/outlook.functions";
 
 const CONNECTOR_ID = "microsoft_outlook";
@@ -124,9 +127,12 @@ export function OutlookConnection() {
   const sync = useMutation({
     mutationFn: () => syncOutlookNow(),
     onSuccess: (r) => {
-      toast.success(
-        `Outlook synced — ${r.updatedLocal} updated, ${r.removedLocal} removed, ${r.pushedNew + r.pushedUpdates} sent.`,
-      );
+      const detail = `${r.updatedLocal} updated, ${r.removedLocal} removed, ${r.pushedNew + r.pushedUpdates} sent`;
+      if (r.ok && r.complete) toast.success(`Outlook synced — ${detail}.`);
+      else
+        toast.warning(
+          `Outlook sync did not finish — ${detail}. ${r.errors[0] ?? "Please try again."}`,
+        );
       invalidate();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -143,8 +149,9 @@ export function OutlookConnection() {
 
   const disconnect = useMutation({
     mutationFn: () => disconnectOutlookAccount(),
-    onSuccess: () => {
-      toast.success("Outlook disconnected. Your saved events were kept.");
+    onSuccess: (outcome) => {
+      if (outcome.revoked) toast.success(outcome.message);
+      else toast.error(outcome.message);
       invalidate();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -157,6 +164,26 @@ export function OutlookConnection() {
       setConfirmDelete(false);
       invalidate();
     },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const candidates = useQuery({
+    queryKey: ["outlook", "export-candidates"],
+    queryFn: () => listOutlookExportCandidates(),
+    enabled: Boolean(status.data?.connected),
+  });
+
+  const exportSettings = useMutation({
+    mutationFn: (patch: { enabled?: boolean; targetCalendarId?: string | null }) =>
+      updateOutlookExportSettings({ data: patch }),
+    onSuccess: () => invalidate(),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const eventExport = useMutation({
+    mutationFn: (vars: { appointmentId: string; shouldExport: boolean }) =>
+      setOutlookEventExport({ data: vars }),
+    onSuccess: () => invalidate(),
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -181,6 +208,16 @@ export function OutlookConnection() {
           ) : (
             <Badge variant="outline">Not connected</Badge>
           )}
+          {s?.incomplete ? (
+            <Badge variant="outline" className="border-amber-500/40 text-amber-700">
+              <AlertTriangle className="mr-1 h-3.5 w-3.5" aria-hidden /> Sync incomplete
+            </Badge>
+          ) : null}
+          {s?.revocationPending ? (
+            <Badge variant="destructive">
+              <AlertTriangle className="mr-1 h-3.5 w-3.5" aria-hidden /> Disconnect unconfirmed
+            </Badge>
+          ) : null}
           {s?.needsReauth ? (
             <Badge variant="destructive">
               <AlertTriangle className="mr-1 h-3.5 w-3.5" aria-hidden /> Needs reconnect
@@ -189,7 +226,7 @@ export function OutlookConnection() {
         </div>
         <CardDescription>
           {s?.connected
-            ? `${s.accountLabel ?? "Microsoft account"} · last sync ${relative(s.lastSyncedAt)} · ${s.localEventCount} events in Chronos-V`
+            ? `${s.accountLabel ?? "Microsoft account"} · last successful sync ${relative(s.lastSuccessAt)} · last attempt ${relative(s.lastAttemptAt)} · ${s.localEventCount} events in Chronos-V`
             : "Sign in with your own Microsoft account. Chronos-V never sees your Microsoft password or tokens."}
         </CardDescription>
       </CardHeader>
@@ -304,6 +341,94 @@ export function OutlookConnection() {
                   No calendars found yet. Use Sync now to look again.
                 </p>
               )}
+            </section>
+
+            <section aria-labelledby="outlook-export-heading" className="space-y-3">
+              <h3
+                id="outlook-export-heading"
+                className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+              >
+                Send Chronos-V events to Outlook
+              </h3>
+              <div className="flex items-start gap-3 rounded-xl border border-border/60 bg-background/60 px-3 py-2">
+                <Checkbox
+                  id="outlook-export-enabled"
+                  className="mt-0.5"
+                  checked={s.exportEnabled}
+                  onCheckedChange={(checked) =>
+                    exportSettings.mutate({ enabled: checked === true })
+                  }
+                />
+                <label htmlFor="outlook-export-enabled" className="cursor-pointer text-sm">
+                  Allow Chronos-V to add events to Outlook
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    Nothing is sent automatically. Only the events you tick below are added.
+                  </span>
+                </label>
+              </div>
+
+              {s.exportEnabled ? (
+                <>
+                  <label
+                    htmlFor="outlook-target-calendar"
+                    className="block text-xs text-muted-foreground"
+                  >
+                    Add them to this calendar
+                  </label>
+                  <select
+                    id="outlook-target-calendar"
+                    className="min-h-11 w-full rounded-xl border border-border/60 bg-background px-3 text-sm sm:w-auto"
+                    value={s.targetCalendarId ?? ""}
+                    onChange={(e) =>
+                      exportSettings.mutate({ targetCalendarId: e.target.value || null })
+                    }
+                  >
+                    <option value="">First selected calendar</option>
+                    {(calendars.data ?? [])
+                      .filter((c) => c.selected && c.canEdit)
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                  </select>
+
+                  {candidates.data?.length ? (
+                    <ul className="grid gap-2 sm:grid-cols-2">
+                      {candidates.data.map((c) => (
+                        <li
+                          key={c.id}
+                          className="flex items-center gap-3 rounded-xl border border-border/60 bg-background/60 px-3 py-2"
+                        >
+                          <Checkbox
+                            id={`outlook-export-${c.id}`}
+                            checked={c.export_to_outlook}
+                            onCheckedChange={(checked) =>
+                              eventExport.mutate({
+                                appointmentId: c.id,
+                                shouldExport: checked === true,
+                              })
+                            }
+                          />
+                          <label
+                            htmlFor={`outlook-export-${c.id}`}
+                            className="flex-1 cursor-pointer text-sm"
+                          >
+                            {c.title}
+                            <span className="block text-xs text-muted-foreground">
+                              {new Date(c.starts_at).toLocaleString()}
+                            </span>
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No upcoming Chronos-V events to send yet.
+                    </p>
+                  )}
+                </>
+              ) : null}
             </section>
           </>
         )}

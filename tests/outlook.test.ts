@@ -6,7 +6,10 @@ import {
   isAuthFailure,
   isDeltaResyncRequired,
   isRetryable,
+  graphErrorSummary,
   normalizeGraphEvent,
+  rowToGraphEvent,
+  toIanaZone,
   outlookEventKey,
   readDeltaPage,
 } from "../src/lib/outlook";
@@ -164,5 +167,61 @@ describe("pagination and delta fallback", () => {
     const b = backoffDelayMs(3, 0.5);
     expect(b).toBeGreaterThan(a);
     expect(backoffDelayMs(20, 1)).toBeLessThanOrEqual(8000);
+  });
+});
+
+describe("time zone fidelity when sending events", () => {
+  test("keeps the event's own zone instead of forcing UTC", () => {
+    const payload = rowToGraphEvent({
+      title: "Dentist",
+      starts_at: "2026-03-10T13:30:00.000Z",
+      ends_at: "2026-03-10T14:00:00.000Z",
+      location: "Main St",
+      notes: null,
+      is_all_day: false,
+      timezone: "America/Toronto",
+    }) as { start: { dateTime: string; timeZone: string }; isAllDay: boolean };
+    expect(payload.start.timeZone).toBe("America/Toronto");
+    expect(payload.start.dateTime).toBe("2026-03-10T09:30:00");
+    expect(payload.isAllDay).toBe(false);
+  });
+
+  test("all-day events sit on midnight boundaries and end the next day", () => {
+    const payload = rowToGraphEvent({
+      title: "Holiday",
+      starts_at: "2026-07-01T04:00:00.000Z",
+      ends_at: null,
+      location: null,
+      notes: null,
+      is_all_day: true,
+      timezone: "America/Toronto",
+    }) as { start: { dateTime: string }; end: { dateTime: string } };
+    expect(payload.start.dateTime).toBe("2026-07-01T00:00:00");
+    expect(payload.end.dateTime).toBe("2026-07-02T00:00:00");
+  });
+
+  test("Windows zone names are mapped to standard ones", () => {
+    expect(toIanaZone("Eastern Standard Time")).toBe("America/New_York");
+    expect(toIanaZone("nonsense/zone")).toBe("UTC");
+  });
+});
+
+describe("error reporting never leaks provider data", () => {
+  test("keeps only status, code and request id", () => {
+    const body = JSON.stringify({
+      error: { code: "InvalidAuthenticationToken", message: "Bearer lovack_secret_value" },
+    });
+    const summary = graphErrorSummary(401, body, "req-42");
+    expect(summary).toBe(
+      "Microsoft responded 401 · code InvalidAuthenticationToken · request req-42",
+    );
+    expect(summary).not.toContain("lovack");
+    expect(summary).not.toContain("Bearer");
+  });
+
+  test("discards non-JSON bodies entirely", () => {
+    const summary = graphErrorSummary(500, "<html>token=abc123</html>");
+    expect(summary).toBe("Microsoft responded 500");
+    expect(summary).not.toContain("abc123");
   });
 });
