@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState, type ComponentType, type ReactNode } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   CalendarDays,
@@ -8,6 +8,7 @@ import {
   Inbox,
   ListTodo,
   LogOut,
+  Menu,
   Plus,
   Repeat2,
   Settings2,
@@ -32,6 +33,7 @@ type NavigationItem = {
     | "/routines"
     | "/household"
     | "/weekly-reset"
+    | "/settings"
     | "/privacy"
     | "/setup/sync";
   icon: ComponentType<{ className?: string }>;
@@ -48,7 +50,17 @@ const PRIMARY_NAV: NavigationItem[] = [
   { label: "Weekly reset", to: "/weekly-reset", icon: CheckSquare2 },
 ];
 
-const MOBILE_NAV = PRIMARY_NAV.slice(0, 2).concat(PRIMARY_NAV.slice(3, 5));
+const MOBILE_NAV = PRIMARY_NAV.slice(0, 2);
+const MOBILE_MORE_NAV: NavigationItem[] = [
+  { label: "AI planner", to: "/planner", icon: Sparkles },
+  { label: "Smart inbox", to: "/inbox", icon: Inbox },
+  { label: "Routines", to: "/routines", icon: Repeat2 },
+  { label: "Household", to: "/household", icon: Users },
+  { label: "Weekly reset", to: "/weekly-reset", icon: CheckSquare2 },
+  { label: "Connections", to: "/setup/sync", icon: CalendarDays },
+  { label: "Settings", to: "/settings", icon: Settings2 },
+  { label: "Privacy", to: "/privacy", icon: ShieldCheck },
+];
 const QuickCapture = lazy(async () => {
   const module = await import("@/components/QuickCapture");
   return { default: module.QuickCapture };
@@ -56,8 +68,13 @@ const QuickCapture = lazy(async () => {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
   const queryClient = useQueryClient();
   const [captureOpen, setCaptureOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreActive = MOBILE_MORE_NAV.some(
+    (item) => pathname === item.to || pathname.startsWith(`${item.to}/`),
+  );
 
   const signOut = async () => {
     await queryClient.cancelQueries();
@@ -103,9 +120,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </Button>
 
         <div className="mt-auto space-y-1 pt-8">
-          <DesktopNavigationLink
-            item={{ label: "Connections", to: "/setup/sync", icon: Settings2 }}
-          />
+          <DesktopNavigationLink item={{ label: "Settings", to: "/settings", icon: Settings2 }} />
           <DesktopNavigationLink item={{ label: "Privacy", to: "/privacy", icon: ShieldCheck }} />
           <button
             type="button"
@@ -126,7 +141,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         className="fixed inset-x-0 bottom-0 z-40 grid h-[4.75rem] grid-cols-5 border-t border-border/80 bg-paper/95 px-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-10px_30px_rgba(0,46,40,0.06)] backdrop-blur-xl lg:hidden"
         aria-label="Mobile navigation"
       >
-        {MOBILE_NAV.slice(0, 2).map((item) => (
+        {MOBILE_NAV.map((item) => (
           <MobileNavigationLink key={item.to} item={item} />
         ))}
         <button
@@ -140,9 +155,18 @@ export function AppShell({ children }: { children: ReactNode }) {
           </span>
           <span className="-mt-2">Capture</span>
         </button>
-        {MOBILE_NAV.slice(2).map((item) => (
-          <MobileNavigationLink key={item.to} item={item} />
-        ))}
+        <MobileNavigationLink item={{ label: "Tasks", to: "/tasks", icon: ListTodo }} />
+        <button
+          type="button"
+          onClick={() => setMoreOpen(true)}
+          className={`flex flex-col items-center justify-end gap-1 pb-2 text-[10px] font-medium ${
+            moreActive ? "text-ink" : "text-muted-foreground"
+          }`}
+          aria-label="Open more navigation"
+        >
+          <Menu className="h-[1.15rem] w-[1.15rem]" />
+          <span>More</span>
+        </button>
       </nav>
 
       <Sheet open={captureOpen} onOpenChange={setCaptureOpen}>
@@ -161,6 +185,48 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <QuickCapture />
               </Suspense>
             ) : null}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+        <SheetContent
+          side="bottom"
+          className="max-h-[88vh] overflow-y-auto rounded-t-3xl px-4 pb-8"
+        >
+          <SheetHeader className="mx-auto max-w-3xl text-left">
+            <SheetTitle className="font-serif text-2xl">Explore Chronos-V</SheetTitle>
+          </SheetHeader>
+          <nav
+            className="mx-auto mt-4 grid max-w-3xl grid-cols-2 gap-2"
+            aria-label="More navigation"
+          >
+            {MOBILE_MORE_NAV.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  onClick={() => setMoreOpen(false)}
+                  className="flex min-h-20 items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 text-sm font-medium text-foreground"
+                  activeProps={{ className: "border-accent bg-accent/5" }}
+                >
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-secondary text-ink">
+                    <Icon className="h-4 w-4" />
+                  </span>
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
+          <div className="mx-auto mt-4 max-w-3xl border-t border-border pt-4">
+            <button
+              type="button"
+              onClick={() => void signOut()}
+              className="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground"
+            >
+              <LogOut className="h-4 w-4" /> Sign out
+            </button>
           </div>
         </SheetContent>
       </Sheet>

@@ -19,6 +19,7 @@ import { Route as AuthenticatedWeeklyResetRouteImport } from './routes/_authenti
 import { Route as AuthenticatedTomorrowRouteImport } from './routes/_authenticated/tomorrow'
 import { Route as AuthenticatedTodayRouteImport } from './routes/_authenticated/today'
 import { Route as AuthenticatedTasksRouteImport } from './routes/_authenticated/tasks'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedRoutinesRouteImport } from './routes/_authenticated/routines'
 import { Route as AuthenticatedPrivacyRouteImport } from './routes/_authenticated/privacy'
 import { Route as AuthenticatedPlannerRouteImport } from './routes/_authenticated/planner'
@@ -82,6 +83,11 @@ const AuthenticatedTodayRoute = AuthenticatedTodayRouteImport.update({
 const AuthenticatedTasksRoute = AuthenticatedTasksRouteImport.update({
   id: '/tasks',
   path: '/tasks',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedRoutinesRoute = AuthenticatedRoutinesRouteImport.update({
@@ -173,6 +179,7 @@ export interface FileRoutesByFullPath {
   '/planner': typeof AuthenticatedPlannerRouteWithChildren
   '/privacy': typeof AuthenticatedPrivacyRoute
   '/routines': typeof AuthenticatedRoutinesRoute
+  '/settings': typeof AuthenticatedSettingsRoute
   '/tasks': typeof AuthenticatedTasksRoute
   '/today': typeof AuthenticatedTodayRoute
   '/tomorrow': typeof AuthenticatedTomorrowRoute
@@ -198,6 +205,7 @@ export interface FileRoutesByTo {
   '/planner': typeof AuthenticatedPlannerRouteWithChildren
   '/privacy': typeof AuthenticatedPrivacyRoute
   '/routines': typeof AuthenticatedRoutinesRoute
+  '/settings': typeof AuthenticatedSettingsRoute
   '/tasks': typeof AuthenticatedTasksRoute
   '/today': typeof AuthenticatedTodayRoute
   '/tomorrow': typeof AuthenticatedTomorrowRoute
@@ -225,6 +233,7 @@ export interface FileRoutesById {
   '/_authenticated/planner': typeof AuthenticatedPlannerRouteWithChildren
   '/_authenticated/privacy': typeof AuthenticatedPrivacyRoute
   '/_authenticated/routines': typeof AuthenticatedRoutinesRoute
+  '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/tasks': typeof AuthenticatedTasksRoute
   '/_authenticated/today': typeof AuthenticatedTodayRoute
   '/_authenticated/tomorrow': typeof AuthenticatedTomorrowRoute
@@ -252,6 +261,7 @@ export interface FileRouteTypes {
     | '/planner'
     | '/privacy'
     | '/routines'
+    | '/settings'
     | '/tasks'
     | '/today'
     | '/tomorrow'
@@ -277,6 +287,7 @@ export interface FileRouteTypes {
     | '/planner'
     | '/privacy'
     | '/routines'
+    | '/settings'
     | '/tasks'
     | '/today'
     | '/tomorrow'
@@ -303,6 +314,7 @@ export interface FileRouteTypes {
     | '/_authenticated/planner'
     | '/_authenticated/privacy'
     | '/_authenticated/routines'
+    | '/_authenticated/settings'
     | '/_authenticated/tasks'
     | '/_authenticated/today'
     | '/_authenticated/tomorrow'
@@ -396,6 +408,13 @@ declare module '@tanstack/react-router' {
       path: '/tasks'
       fullPath: '/tasks'
       preLoaderRoute: typeof AuthenticatedTasksRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/routines': {
@@ -518,6 +537,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPlannerRoute: typeof AuthenticatedPlannerRouteWithChildren
   AuthenticatedPrivacyRoute: typeof AuthenticatedPrivacyRoute
   AuthenticatedRoutinesRoute: typeof AuthenticatedRoutinesRoute
+  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedTasksRoute: typeof AuthenticatedTasksRoute
   AuthenticatedTodayRoute: typeof AuthenticatedTodayRoute
   AuthenticatedTomorrowRoute: typeof AuthenticatedTomorrowRoute
@@ -537,6 +557,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPlannerRoute: AuthenticatedPlannerRouteWithChildren,
   AuthenticatedPrivacyRoute: AuthenticatedPrivacyRoute,
   AuthenticatedRoutinesRoute: AuthenticatedRoutinesRoute,
+  AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedTasksRoute: AuthenticatedTasksRoute,
   AuthenticatedTodayRoute: AuthenticatedTodayRoute,
   AuthenticatedTomorrowRoute: AuthenticatedTomorrowRoute,
