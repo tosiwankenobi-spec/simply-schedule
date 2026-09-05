@@ -29,6 +29,7 @@ export function canonicalPreviewPayload(
     [
       move.appointmentId,
       move.taskId,
+      move.title,
       move.version,
       move.fromStart,
       move.fromEnd,
