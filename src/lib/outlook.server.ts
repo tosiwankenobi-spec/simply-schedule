@@ -4,7 +4,8 @@
  * Reads the per-user connection key from encrypted service-role storage and
  * calls Microsoft Graph through the Lovable connector gateway. Provider
  * tokens never enter this process; only the opaque lovack_* handle does, and
- * it never leaves the server.
+ * it never leaves the server. Graph responses are never logged verbatim —
+ * only status codes, Microsoft error codes and request ids.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { callAsAppUser, disconnectAppUser } from "@/integrations/lovable/appUserConnector";
@@ -12,18 +13,21 @@ import {
   getConnectionKeyForUser,
   deleteConnectionForUser,
   getConnectionMetaForUser,
+  markRevocationState,
   updateConnectionLabel,
 } from "@/server/appUserConnections.server";
 import {
   OUTLOOK_CONNECTOR_ID,
   OUTLOOK_PROVIDER,
   backoffDelayMs,
+  graphErrorSummary,
   isAuthFailure,
   isDeltaResyncRequired,
   isRetryable,
   normalizeGraphEvent,
   outlookEventKey,
   readDeltaPage,
+  rowToGraphEvent,
   type GraphEvent,
 } from "./outlook";
 import { logEvent } from "./calendar.server";
@@ -33,6 +37,10 @@ const MAX_ATTEMPTS = 4;
 const MAX_PAGES = 25;
 const WINDOW_PAST_DAYS = 7;
 const WINDOW_FUTURE_DAYS = 60;
+const LOCK_PROVIDER = `${OUTLOOK_PROVIDER}:lock`;
+const LOCK_TTL_MS = 5 * 60 * 1000;
+/** Sources this engine owns; imported .ics files are never touched. */
+const OWNED_SOURCES = ["microsoft_outlook", "outlook_push"];
 
 export type OutlookCalendar = {
   id: string;
@@ -47,15 +55,22 @@ export type OutlookStatus = {
   connected: boolean;
   accountLabel: string | null;
   connectedAt: string | null;
-  lastSyncedAt: string | null;
+  lastAttemptAt: string | null;
+  lastSuccessAt: string | null;
   lastError: string | null;
+  incomplete: boolean;
   needsReauth: boolean;
+  revocationPending: boolean;
+  exportEnabled: boolean;
+  targetCalendarId: string | null;
   selectedCalendars: number;
   totalCalendars: number;
   localEventCount: number;
 };
 
 export type OutlookSyncResult = {
+  ok: boolean;
+  complete: boolean;
   pulled: number;
   updatedLocal: number;
   removedLocal: number;
@@ -72,6 +87,8 @@ export type OutlookSyncResult = {
 
 function emptyResult(): OutlookSyncResult {
   return {
+    ok: true,
+    complete: true,
     pulled: 0,
     updatedLocal: 0,
     removedLocal: 0,
@@ -94,11 +111,30 @@ export class OutlookAuthError extends Error {
   }
 }
 
+export class OutlookBusyError extends Error {
+  constructor(message = "An Outlook sync is already running. Please try again in a moment.") {
+    super(message);
+    this.name = "OutlookBusyError";
+  }
+}
+
+/** Every Supabase write in this engine goes through here, so no failure is silent. */
+function assertWrite(error: { message?: string } | null, what: string) {
+  if (error) throw new Error(`${what} could not be saved. Please try again.`);
+}
+
 /* ------------------------------------------------------------------ */
 /* Gateway plumbing                                                    */
 /* ------------------------------------------------------------------ */
 
-type GraphCall = { status: number; json: Record<string, unknown> | null; text: string };
+type GraphCall = {
+  status: number;
+  json: Record<string, unknown> | null;
+  /** Raw text is kept in-process for delta detection only — never logged. */
+  text: string;
+  requestId: string | null;
+  summary: string;
+};
 
 async function graphFetch(
   connectionKey: string,
@@ -111,7 +147,7 @@ async function graphFetch(
     ? pathOrUrl.replace(/^https:\/\/graph\.microsoft\.com\/v1\.0/, "")
     : pathOrUrl;
 
-  let lastReason = "unknown error";
+  let lastSummary = "Microsoft could not be reached.";
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     const res = await callAsAppUser({
       gatewayBaseUrl: GATEWAY_BASE_URL,
@@ -120,10 +156,17 @@ async function graphFetch(
       path,
       init: {
         ...init,
-        headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+        headers: {
+          "Content-Type": "application/json",
+          // Ask Graph for UTC so zone-less timestamps are unambiguous.
+          Prefer: 'outlook.timezone="UTC"',
+          ...(init?.headers ?? {}),
+        },
       },
     });
     const text = await res.text();
+    const requestId =
+      res.headers.get("request-id") ?? res.headers.get("client-request-id") ?? null;
 
     if (res.ok) {
       let json: Record<string, unknown> | null = null;
@@ -132,20 +175,23 @@ async function graphFetch(
       } catch {
         json = null;
       }
-      return { status: res.status, json, text };
+      return { status: res.status, json, text, requestId, summary: "" };
     }
 
+    const summary = graphErrorSummary(res.status, text, requestId);
     if (isAuthFailure(res.status)) throw new OutlookAuthError();
-    if (isDeltaResyncRequired(res.status, text)) return { status: res.status, json: null, text };
+    if (isDeltaResyncRequired(res.status, text)) {
+      return { status: res.status, json: null, text, requestId, summary };
+    }
     if (!isRetryable(res.status) || attempt === MAX_ATTEMPTS) {
-      return { status: res.status, json: null, text };
+      return { status: res.status, json: null, text, requestId, summary };
     }
 
-    lastReason = `Microsoft responded ${res.status}`;
-    onRetry?.(attempt, lastReason);
+    lastSummary = summary;
+    onRetry?.(attempt, summary);
     await new Promise((r) => setTimeout(r, backoffDelayMs(attempt)));
   }
-  throw new Error(lastReason);
+  throw new Error(lastSummary);
 }
 
 async function requireKey(userId: string): Promise<string> {
@@ -163,40 +209,83 @@ function providerKey(calendarId: string) {
 }
 
 async function readDeltaLink(supabase: SupabaseClient, userId: string, calendarId: string) {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("sync_state")
-    .select("sync_token, last_synced_at, last_error")
+    .select("sync_token, last_success_at, last_error")
     .eq("user_id", userId)
     .eq("provider", providerKey(calendarId))
     .maybeSingle();
+  if (error) throw new Error("Your Outlook sync history could not be read.");
   return (data ?? null) as {
     sync_token: string | null;
-    last_synced_at: string | null;
+    last_success_at: string | null;
     last_error: string | null;
   } | null;
 }
+
+type DeltaPatch = {
+  sync_token?: string | null;
+  pages_synced?: number;
+  events_seen?: number;
+  last_error?: string | null;
+  incomplete?: boolean;
+  /** Only a fully finished, error-free pull records success. */
+  success?: boolean;
+};
 
 async function writeDeltaState(
   supabase: SupabaseClient,
   userId: string,
   calendarId: string,
-  patch: {
-    sync_token?: string | null;
-    pages_synced?: number;
-    events_seen?: number;
-    last_error?: string | null;
-  },
+  patch: DeltaPatch,
 ) {
-  await supabase.from("sync_state").upsert(
+  const { success, ...rest } = patch;
+  const nowIso = new Date().toISOString();
+  const { error } = await supabase.from("sync_state").upsert(
     {
       user_id: userId,
       provider: providerKey(calendarId),
       calendar_id: calendarId,
-      last_synced_at: new Date().toISOString(),
-      ...patch,
+      last_attempt_at: nowIso,
+      ...(success ? { last_success_at: nowIso, last_synced_at: nowIso } : {}),
+      ...rest,
     },
     { onConflict: "user_id,provider" },
   );
+  assertWrite(error, "Your Outlook sync progress");
+}
+
+/** Best-effort mutual exclusion so two syncs never fight over the same calendars. */
+async function claimSyncLock(supabase: SupabaseClient, userId: string): Promise<void> {
+  const { data, error } = await supabase
+    .from("sync_state")
+    .select("last_attempt_at, cursor")
+    .eq("user_id", userId)
+    .eq("provider", LOCK_PROVIDER)
+    .maybeSingle();
+  if (error) throw new Error("Your Outlook sync status could not be read.");
+  const startedAt = Date.parse(data?.last_attempt_at ?? "");
+  if (data?.cursor === "running" && Number.isFinite(startedAt) && Date.now() - startedAt < LOCK_TTL_MS) {
+    throw new OutlookBusyError();
+  }
+  const { error: writeError } = await supabase.from("sync_state").upsert(
+    {
+      user_id: userId,
+      provider: LOCK_PROVIDER,
+      cursor: "running",
+      last_attempt_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id,provider" },
+  );
+  assertWrite(writeError, "Your Outlook sync status");
+}
+
+async function releaseSyncLock(supabase: SupabaseClient, userId: string) {
+  await supabase
+    .from("sync_state")
+    .update({ cursor: "idle" })
+    .eq("user_id", userId)
+    .eq("provider", LOCK_PROVIDER);
 }
 
 /* ------------------------------------------------------------------ */
@@ -208,18 +297,18 @@ export async function discoverCalendars(
   userId: string,
 ): Promise<OutlookCalendar[]> {
   const key = await requireKey(userId);
-  const { status, json, text } = await graphFetch(key, "/me/calendars?$top=50");
-  if (!json)
-    throw new Error(`Outlook calendars could not be listed (${status}). ${text.slice(0, 120)}`);
+  const { json, summary } = await graphFetch(key, "/me/calendars?$top=50");
+  if (!json) throw new Error(`Your Outlook calendars could not be listed. ${summary}`);
 
   const remote = (Array.isArray(json["value"]) ? json["value"] : []) as Array<
     Record<string, unknown>
   >;
 
-  const { data: existing } = await supabase
+  const { data: existing, error: readError } = await supabase
     .from("outlook_calendars")
     .select("calendar_id, selected")
     .eq("user_id", userId);
+  if (readError) throw new Error("Your saved Outlook calendars could not be read.");
   const selectedMap = new Map(
     (existing ?? []).map((r) => [r.calendar_id as string, r.selected as boolean]),
   );
@@ -246,7 +335,26 @@ export async function discoverCalendars(
     const { error } = await supabase
       .from("outlook_calendars")
       .upsert(rows, { onConflict: "user_id,account_id,calendar_id" });
-    if (error) throw new Error("Could not save your Outlook calendar list.");
+    assertWrite(error, "Your Outlook calendar list");
+
+    // Calendars removed in Outlook must stop syncing here too.
+    const liveIds = rows.map((r) => r.calendar_id);
+    const stale = (existing ?? [])
+      .map((r) => r.calendar_id as string)
+      .filter((id) => !liveIds.includes(id));
+    for (const calendarId of stale) {
+      const { error: dropError } = await supabase
+        .from("outlook_calendars")
+        .delete()
+        .eq("user_id", userId)
+        .eq("calendar_id", calendarId);
+      assertWrite(dropError, "Your Outlook calendar list");
+      await supabase
+        .from("sync_state")
+        .delete()
+        .eq("user_id", userId)
+        .eq("provider", providerKey(calendarId));
+    }
   }
 
   return rows.map((r) => ({
@@ -264,26 +372,29 @@ export async function setSelectedCalendars(
   userId: string,
   calendarIds: string[],
 ) {
-  const { data: all } = await supabase
+  const { data: all, error } = await supabase
     .from("outlook_calendars")
     .select("calendar_id")
     .eq("user_id", userId);
+  if (error) throw new Error("Your Outlook calendars could not be read.");
   const wanted = new Set(calendarIds);
   for (const row of all ?? []) {
-    await supabase
+    const { error: updateError } = await supabase
       .from("outlook_calendars")
       .update({ selected: wanted.has(row.calendar_id as string) })
       .eq("user_id", userId)
       .eq("calendar_id", row.calendar_id as string);
+    assertWrite(updateError, "Your calendar choice");
   }
 }
 
 async function selectedCalendarIds(supabase: SupabaseClient, userId: string): Promise<string[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("outlook_calendars")
     .select("calendar_id")
     .eq("user_id", userId)
     .eq("selected", true);
+  if (error) throw new Error("Your Outlook calendars could not be read.");
   return (data ?? []).map((r) => r.calendar_id as string);
 }
 
@@ -310,15 +421,21 @@ async function pullCalendar(
   let pages = 0;
   let seen = 0;
   let deltaLink: string | null = null;
+  let pendingNextLink: string | null = null;
   let usedFallback = false;
 
   while (pages < MAX_PAGES) {
-    const { status, json, text } = await graphFetch(key, url, undefined, (attempt, reason) => {
-      result.retries++;
-      void logEvent(supabase, userId, "warn", "outlook_retry", `Retry ${attempt}: ${reason}`, {
-        calendarId,
-      });
-    });
+    const { status, json, text, summary } = await graphFetch(
+      key,
+      url,
+      undefined,
+      (attempt, reason) => {
+        result.retries++;
+        void logEvent(supabase, userId, "warn", "outlook_retry", `Retry ${attempt}: ${reason}`, {
+          calendarId,
+        });
+      },
+    );
 
     if (!json) {
       if (isDeltaResyncRequired(status, text) && !usedFallback) {
@@ -336,7 +453,7 @@ async function pullCalendar(
         url = deltaStartUrl(calendarId);
         continue;
       }
-      throw new Error(`Outlook sync failed (${status}).`);
+      throw new Error(summary || `Outlook sync failed (${status}).`);
     }
 
     const page = readDeltaPage(json);
@@ -347,18 +464,39 @@ async function pullCalendar(
     }
     if (page.deltaLink) {
       deltaLink = page.deltaLink;
+      pendingNextLink = null;
       break;
     }
     if (!page.nextLink) break;
+    pendingNextLink = page.nextLink;
     url = page.nextLink;
   }
 
   result.pulled += seen;
+
+  // Hit the page ceiling with more waiting: this run is NOT a complete sync,
+  // so the delta position and success timestamp must not move forward.
+  if (pages >= MAX_PAGES && pendingNextLink) {
+    result.complete = false;
+    const message = "Outlook had more changes than one run can fetch; sync will continue shortly.";
+    result.errors.push(message);
+    await writeDeltaState(supabase, userId, calendarId, {
+      pages_synced: pages,
+      events_seen: seen,
+      incomplete: true,
+      last_error: message,
+    });
+    await logEvent(supabase, userId, "warn", "outlook_incomplete", message, { calendarId });
+    return;
+  }
+
   await writeDeltaState(supabase, userId, calendarId, {
     sync_token: deltaLink,
     pages_synced: pages,
     events_seen: seen,
+    incomplete: false,
     last_error: null,
+    success: true,
   });
 }
 
@@ -386,13 +524,16 @@ async function applyRemoteEvent(
   }
   const eventKey = outlookEventKey("me", calendarId, ev.eventId);
 
-  const { data: existing } = await supabase
+  const { data: existing, error: readError } = await supabase
     .from("appointments")
     .select("id, updated_at, last_synced_at, title, household_id, household_visibility")
     .eq("user_id", userId)
     .eq("provider", OUTLOOK_PROVIDER)
+    .eq("provider_account_id", "me")
+    .eq("calendar_id", calendarId)
     .eq("calendar_event_id", eventKey)
     .maybeSingle();
+  if (readError) throw new Error("Your schedule could not be read while syncing Outlook.");
 
   if (ev.removed) {
     if (!existing) return;
@@ -401,13 +542,18 @@ async function applyRemoteEvent(
       result.skipped++;
       return;
     }
-    await supabase.from("appointments").delete().eq("id", existing.id);
-    await supabase
+    const { error: deleteError } = await supabase
+      .from("appointments")
+      .delete()
+      .eq("id", existing.id);
+    assertWrite(deleteError, "The removed Outlook event");
+    const { error: queueError } = await supabase
       .from("pending_calendar_deletions")
       .delete()
       .eq("user_id", userId)
       .eq("provider", OUTLOOK_PROVIDER)
       .eq("calendar_event_id", eventKey);
+    assertWrite(queueError, "The Outlook deletion queue");
     result.removedLocal++;
     return;
   }
@@ -452,10 +598,10 @@ async function applyRemoteEvent(
 
   if (existing) {
     const { error } = await supabase.from("appointments").update(payload).eq("id", existing.id);
-    if (error) throw new Error(error.message);
+    assertWrite(error, "The Outlook event");
   } else {
     const { error } = await supabase.from("appointments").insert(payload);
-    if (error) throw new Error(error.message);
+    assertWrite(error, "The Outlook event");
   }
   result.updatedLocal++;
 }
@@ -463,24 +609,6 @@ async function applyRemoteEvent(
 /* ------------------------------------------------------------------ */
 /* Push                                                                */
 /* ------------------------------------------------------------------ */
-
-function rowToGraphEvent(row: {
-  title: string;
-  starts_at: string;
-  ends_at: string | null;
-  location: string | null;
-  notes: string | null;
-}) {
-  const start = new Date(row.starts_at);
-  const end = row.ends_at ? new Date(row.ends_at) : new Date(start.getTime() + 30 * 60000);
-  return {
-    subject: row.title,
-    body: { contentType: "Text", content: row.notes ?? "" },
-    location: row.location ? { displayName: row.location } : undefined,
-    start: { dateTime: start.toISOString().replace(/Z$/, ""), timeZone: "UTC" },
-    end: { dateTime: end.toISOString().replace(/Z$/, ""), timeZone: "UTC" },
-  };
-}
 
 function parseEventKey(key: string): { calendarId: string; eventId: string } | null {
   const parts = key.split(":");
@@ -494,98 +622,107 @@ async function push(
   key: string,
   targetCalendar: string,
   conflictPolicy: string,
+  exportEnabled: boolean,
   result: OutlookSyncResult,
 ) {
   // 1. Deletions queued for Outlook only.
-  const { data: pending } = await supabase
+  const { data: pending, error: pendingError } = await supabase
     .from("pending_calendar_deletions")
     .select("id, calendar_event_id")
     .eq("user_id", userId)
     .eq("provider", OUTLOOK_PROVIDER)
     .limit(50);
+  if (pendingError) throw new Error("The Outlook deletion queue could not be read.");
 
   for (const p of pending ?? []) {
     const parsed = parseEventKey(p.calendar_event_id as string);
-    if (!parsed) {
-      await supabase.from("pending_calendar_deletions").delete().eq("id", p.id);
+    if (!parsed || conflictPolicy === "remote") {
+      const { error } = await supabase.from("pending_calendar_deletions").delete().eq("id", p.id);
+      assertWrite(error, "The Outlook deletion queue");
+      if (parsed) result.skipped++;
       continue;
     }
-    if (conflictPolicy === "remote") {
-      await supabase.from("pending_calendar_deletions").delete().eq("id", p.id);
-      result.skipped++;
-      continue;
-    }
-    const { status, text } = await graphFetch(
+    const { status, summary } = await graphFetch(
       key,
       `/me/events/${encodeURIComponent(parsed.eventId)}`,
-      {
-        method: "DELETE",
-      },
+      { method: "DELETE" },
     );
     if (status < 300 || status === 404) {
-      await supabase.from("pending_calendar_deletions").delete().eq("id", p.id);
+      const { error } = await supabase.from("pending_calendar_deletions").delete().eq("id", p.id);
+      assertWrite(error, "The Outlook deletion queue");
       result.pushedDeletes++;
     } else {
-      result.errors.push(`Delete failed (${status})`);
-      await logEvent(
-        supabase,
-        userId,
-        "error",
-        "outlook_push_delete",
-        `Delete failed (${status}). ${text.slice(0, 120)}`,
-      );
+      result.ok = false;
+      result.errors.push(summary);
+      await logEvent(supabase, userId, "error", "outlook_push_delete", summary);
     }
   }
 
-  // 2. Local-origin appointments that have never reached Outlook.
   const horizon = new Date(Date.now() - 86400000).toISOString();
-  const { data: fresh } = await supabase
-    .from("appointments")
-    .select("id, title, starts_at, ends_at, location, notes")
-    .eq("user_id", userId)
-    .eq("source", "outlook_push")
-    .is("calendar_event_id", null)
-    .gte("starts_at", horizon)
-    .limit(50);
 
-  for (const row of fresh ?? []) {
-    const { status, json } = await graphFetch(
-      key,
-      `/me/calendars/${encodeURIComponent(targetCalendar)}/events`,
-      { method: "POST", body: JSON.stringify(rowToGraphEvent(row as never)) },
-    );
-    const id = json && typeof json["id"] === "string" ? (json["id"] as string) : null;
-    if (id) {
-      const eventKey = outlookEventKey("me", targetCalendar, id);
-      await supabase
-        .from("appointments")
-        .update({
-          provider: OUTLOOK_PROVIDER,
-          provider_account_id: "me",
-          calendar_id: targetCalendar,
-          calendar_event_id: eventKey,
-          external_id: eventKey,
-          last_synced_at: new Date().toISOString(),
-          sync_status: "synced",
-        })
-        .eq("id", row.id);
-      result.pushedNew++;
-    } else {
-      result.errors.push(`Create failed (${status})`);
+  // 2. Chronos-V events the person explicitly chose to send to Outlook.
+  if (exportEnabled) {
+    const { data: fresh, error: freshError } = await supabase
+      .from("appointments")
+      .select("id, title, starts_at, ends_at, location, notes, is_all_day, timezone")
+      .eq("user_id", userId)
+      .eq("export_to_outlook", true)
+      .is("calendar_event_id", null)
+      .gte("starts_at", horizon)
+      .limit(50);
+    if (freshError) throw new Error("Your events waiting to be sent could not be read.");
+
+    for (const row of fresh ?? []) {
+      const { status, json, summary } = await graphFetch(
+        key,
+        `/me/calendars/${encodeURIComponent(targetCalendar)}/events`,
+        { method: "POST", body: JSON.stringify(rowToGraphEvent(row as never)) },
+      );
+      const id = json && typeof json["id"] === "string" ? (json["id"] as string) : null;
+      if (id) {
+        const eventKey = outlookEventKey("me", targetCalendar, id);
+        const { error } = await supabase
+          .from("appointments")
+          .update({
+            provider: OUTLOOK_PROVIDER,
+            provider_account_id: "me",
+            calendar_id: targetCalendar,
+            calendar_event_id: eventKey,
+            external_id: eventKey,
+            source: "outlook_push",
+            last_synced_at: new Date().toISOString(),
+            sync_status: "synced",
+          })
+          .eq("id", row.id);
+        assertWrite(error, "The event sent to Outlook");
+        result.pushedNew++;
+      } else {
+        result.ok = false;
+        result.errors.push(summary || `Create failed (${status})`);
+        await logEvent(
+          supabase,
+          userId,
+          "error",
+          "outlook_push_create",
+          summary || `Create failed (${status})`,
+        );
+      }
     }
   }
 
-  // 3. Local edits on Outlook-origin events.
-  const { data: edited } = await supabase
+  // 3. Local edits on events that already exist in Outlook.
+  const { data: edited, error: editedError } = await supabase
     .from("appointments")
     .select(
-      "id, title, starts_at, ends_at, location, notes, calendar_event_id, updated_at, last_synced_at, commitment_type",
+      "id, title, starts_at, ends_at, location, notes, is_all_day, timezone, calendar_event_id, updated_at, last_synced_at",
     )
     .eq("user_id", userId)
     .eq("provider", OUTLOOK_PROVIDER)
+    .in("source", OWNED_SOURCES)
     .not("calendar_event_id", "is", null)
     .gte("starts_at", horizon)
     .limit(50);
+  if (editedError) throw new Error("Your edited Outlook events could not be read.");
 
   for (const row of edited ?? []) {
     if (!hasLocalEdits(row.updated_at as string, row.last_synced_at as string)) continue;
@@ -595,28 +732,27 @@ async function push(
     }
     const parsed = parseEventKey(row.calendar_event_id as string);
     if (!parsed) continue;
-    const { status, text } = await graphFetch(
+    const { status, summary } = await graphFetch(
       key,
       `/me/events/${encodeURIComponent(parsed.eventId)}`,
-      {
-        method: "PATCH",
-        body: JSON.stringify(rowToGraphEvent(row as never)),
-      },
+      { method: "PATCH", body: JSON.stringify(rowToGraphEvent(row as never)) },
     );
     if (status < 300) {
-      await supabase
+      const { error } = await supabase
         .from("appointments")
         .update({ last_synced_at: new Date().toISOString(), sync_status: "synced" })
         .eq("id", row.id);
+      assertWrite(error, "The updated Outlook event");
       result.pushedUpdates++;
     } else {
-      result.errors.push(`Update failed (${status})`);
+      result.ok = false;
+      result.errors.push(summary || `Update failed (${status})`);
       await logEvent(
         supabase,
         userId,
         "error",
         "outlook_push_update",
-        `Update failed (${status}). ${text.slice(0, 120)}`,
+        summary || `Update failed (${status})`,
       );
     }
   }
@@ -632,54 +768,78 @@ export async function runOutlookSync(
 ): Promise<OutlookSyncResult> {
   const result = emptyResult();
   const key = await requireKey(userId);
-
-  const { data: settings } = await supabase
-    .from("sync_settings")
-    .select("conflict_policy")
-    .eq("user_id", userId)
-    .maybeSingle();
-  const conflictPolicy = (settings?.conflict_policy as string) ?? "newest";
-
-  let calendars = await selectedCalendarIds(supabase, userId);
-  if (!calendars.length) {
-    const discovered = await discoverCalendars(supabase, userId);
-    calendars = discovered.filter((c) => c.selected).map((c) => c.id);
-  }
-  if (!calendars.length) {
-    result.errors.push("No Outlook calendar is selected yet.");
-    return result;
-  }
-  result.calendars = calendars;
-
-  for (const calendarId of calendars) {
-    try {
-      await pullCalendar(supabase, userId, calendarId, key, conflictPolicy, result);
-    } catch (e) {
-      if (e instanceof OutlookAuthError) throw e;
-      const msg = e instanceof Error ? e.message : String(e);
-      result.errors.push(msg);
-      await writeDeltaState(supabase, userId, calendarId, { last_error: msg.slice(0, 300) });
-      await logEvent(supabase, userId, "error", "outlook_pull", msg, { calendarId });
-    }
-  }
+  await claimSyncLock(supabase, userId);
 
   try {
-    await push(supabase, userId, key, calendars[0]!, conflictPolicy, result);
-  } catch (e) {
-    if (e instanceof OutlookAuthError) throw e;
-    const msg = e instanceof Error ? e.message : String(e);
-    result.errors.push(msg);
-    await logEvent(supabase, userId, "error", "outlook_push", msg);
-  }
+    const { data: settings, error: settingsError } = await supabase
+      .from("sync_settings")
+      .select("conflict_policy, outlook_export_enabled, outlook_target_calendar_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (settingsError) throw new Error("Your sync settings could not be read.");
+    const conflictPolicy = (settings?.conflict_policy as string) ?? "newest";
+    const exportEnabled = settings?.outlook_export_enabled === true;
 
-  await logEvent(
-    supabase,
-    userId,
-    result.errors.length ? "warn" : "info",
-    "outlook_sync",
-    `Outlook sync finished: ${result.updatedLocal} updated, ${result.removedLocal} removed, ${result.pushedNew + result.pushedUpdates} sent.`,
-  );
-  return result;
+    let calendars = await selectedCalendarIds(supabase, userId);
+    if (!calendars.length) {
+      const discovered = await discoverCalendars(supabase, userId);
+      calendars = discovered.filter((c) => c.selected).map((c) => c.id);
+    }
+    if (!calendars.length) {
+      result.ok = false;
+      result.complete = false;
+      result.errors.push("No Outlook calendar is selected yet.");
+      return result;
+    }
+    result.calendars = calendars;
+
+    for (const calendarId of calendars) {
+      try {
+        await pullCalendar(supabase, userId, calendarId, key, conflictPolicy, result);
+      } catch (e) {
+        if (e instanceof OutlookAuthError) throw e;
+        const msg = e instanceof Error ? e.message : "Outlook sync failed.";
+        result.ok = false;
+        result.complete = false;
+        result.errors.push(msg);
+        await writeDeltaState(supabase, userId, calendarId, {
+          last_error: msg.slice(0, 300),
+          incomplete: true,
+        });
+        await logEvent(supabase, userId, "error", "outlook_pull", msg, { calendarId });
+      }
+    }
+
+    const target =
+      (settings?.outlook_target_calendar_id as string | null) &&
+      calendars.includes(settings?.outlook_target_calendar_id as string)
+        ? (settings?.outlook_target_calendar_id as string)
+        : calendars[0]!;
+
+    try {
+      await push(supabase, userId, key, target, conflictPolicy, exportEnabled, result);
+    } catch (e) {
+      if (e instanceof OutlookAuthError) throw e;
+      const msg = e instanceof Error ? e.message : "Sending changes to Outlook failed.";
+      result.ok = false;
+      result.complete = false;
+      result.errors.push(msg);
+      await logEvent(supabase, userId, "error", "outlook_push", msg);
+    }
+
+    await logEvent(
+      supabase,
+      userId,
+      result.ok ? "info" : "warn",
+      "outlook_sync",
+      result.ok
+        ? `Outlook sync finished: ${result.updatedLocal} updated, ${result.removedLocal} removed, ${result.pushedNew + result.pushedUpdates} sent.`
+        : `Outlook sync finished with problems: ${result.errors.length} issue(s).`,
+    );
+    return result;
+  } finally {
+    await releaseSyncLock(supabase, userId);
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -702,31 +862,45 @@ export async function readOutlookStatus(
 
   const { data: states } = await supabase
     .from("sync_state")
-    .select("last_synced_at, last_error")
+    .select("last_attempt_at, last_success_at, last_error, incomplete, provider")
     .eq("user_id", userId)
-    .like("provider", `${OUTLOOK_PROVIDER}%`);
+    .like("provider", `${OUTLOOK_PROVIDER}:%`);
+
+  const { data: settings } = await supabase
+    .from("sync_settings")
+    .select("outlook_export_enabled, outlook_target_calendar_id")
+    .eq("user_id", userId)
+    .maybeSingle();
 
   const { count } = await supabase
     .from("appointments")
     .select("id", { count: "exact", head: true })
     .eq("user_id", userId)
-    .eq("provider", OUTLOOK_PROVIDER);
+    .eq("provider", OUTLOOK_PROVIDER)
+    .in("source", OWNED_SOURCES);
 
-  const lastSyncedAt =
-    (states ?? [])
-      .map((s) => s.last_synced_at as string | null)
+  const calendarStates = (states ?? []).filter((s) => s.provider !== LOCK_PROVIDER);
+  const pick = (field: "last_attempt_at" | "last_success_at") =>
+    calendarStates
+      .map((s) => s[field] as string | null)
       .filter(Boolean)
       .sort()
       .pop() ?? null;
-  const lastError = (states ?? []).map((s) => s.last_error as string | null).find(Boolean) ?? null;
+
+  const lastError = calendarStates.map((s) => s.last_error as string | null).find(Boolean) ?? null;
 
   return {
     connected: Boolean(key),
     accountLabel: meta?.account_label ?? null,
     connectedAt: meta?.created_at ?? null,
-    lastSyncedAt,
+    lastAttemptAt: pick("last_attempt_at"),
+    lastSuccessAt: pick("last_success_at"),
     lastError,
+    incomplete: calendarStates.some((s) => s.incomplete === true),
     needsReauth: Boolean(lastError && /renew|401|403|unauthor/i.test(lastError)),
+    revocationPending: meta?.revocation_pending === true,
+    exportEnabled: settings?.outlook_export_enabled === true,
+    targetCalendarId: (settings?.outlook_target_calendar_id as string | null) ?? null,
     selectedCalendars: (cals ?? []).filter((c) => c.selected).length,
     totalCalendars: (cals ?? []).length,
     localEventCount: count ?? 0,
@@ -750,9 +924,19 @@ export async function refreshAccountLabel(userId: string): Promise<string | null
   }
 }
 
-/** Disconnect keeps every local copy of Outlook events. */
-export async function disconnectOutlook(supabase: SupabaseClient, userId: string) {
+export type DisconnectOutcome = { revoked: boolean; message: string };
+
+/**
+ * Disconnect keeps every local copy of Outlook events, and only forgets the
+ * stored connection when Microsoft access is confirmed gone. A failed
+ * revocation is retained and reported so access is never silently stranded.
+ */
+export async function disconnectOutlook(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<DisconnectOutcome> {
   const key = await getConnectionKeyForUser(userId, OUTLOOK_CONNECTOR_ID);
+
   if (key) {
     try {
       await disconnectAppUser({
@@ -760,21 +944,47 @@ export async function disconnectOutlook(supabase: SupabaseClient, userId: string
         connectionAPIKey: key,
         connectorId: OUTLOOK_CONNECTOR_ID,
       });
-    } catch {
-      /* the local record is removed regardless */
+    } catch (e) {
+      const raw = e instanceof Error ? e.message : "";
+      // A connection Microsoft no longer knows about is already revoked.
+      const alreadyGone = /\b404\b|not\s*found|unknown connection/i.test(raw);
+      if (!alreadyGone) {
+        await markRevocationState(userId, OUTLOOK_CONNECTOR_ID, {
+          pending: true,
+          error: "Microsoft did not confirm the disconnect.",
+        });
+        await logEvent(
+          supabase,
+          userId,
+          "error",
+          "outlook_disconnect",
+          "Microsoft did not confirm the disconnect; the connection was kept so it can be retried.",
+        );
+        return {
+          revoked: false,
+          message:
+            "Microsoft didn't confirm the disconnect, so Chronos-V kept the connection. Please try again in a moment.",
+        };
+      }
     }
   }
+
   await deleteConnectionForUser(userId, OUTLOOK_CONNECTOR_ID);
-  await supabase
+
+  const { error: stateError } = await supabase
     .from("sync_state")
     .delete()
     .eq("user_id", userId)
     .like("provider", `${OUTLOOK_PROVIDER}%`);
-  await supabase
+  assertWrite(stateError, "Your Outlook sync history");
+
+  const { error: queueError } = await supabase
     .from("pending_calendar_deletions")
     .delete()
     .eq("user_id", userId)
     .eq("provider", OUTLOOK_PROVIDER);
+  assertWrite(queueError, "The Outlook deletion queue");
+
   await logEvent(
     supabase,
     userId,
@@ -782,24 +992,92 @@ export async function disconnectOutlook(supabase: SupabaseClient, userId: string
     "outlook_disconnect",
     "Outlook disconnected. Local copies kept.",
   );
+  return { revoked: true, message: "Outlook disconnected. Your existing events were kept." };
 }
 
-/** Explicit, separate destructive action. */
+/** Explicit, separate destructive action — only synced/sent copies are removed. */
 export async function deleteLocalOutlookCopies(supabase: SupabaseClient, userId: string) {
   const { count } = await supabase
     .from("appointments")
     .select("id", { count: "exact", head: true })
     .eq("user_id", userId)
-    .eq("provider", OUTLOOK_PROVIDER);
-  await supabase
+    .eq("provider", OUTLOOK_PROVIDER)
+    .in("source", OWNED_SOURCES);
+
+  const { error } = await supabase
     .from("appointments")
     .delete()
     .eq("user_id", userId)
-    .eq("provider", OUTLOOK_PROVIDER);
-  await supabase
+    .eq("provider", OUTLOOK_PROVIDER)
+    .in("source", OWNED_SOURCES);
+  assertWrite(error, "Your Outlook copies");
+
+  const { error: queueError } = await supabase
     .from("pending_calendar_deletions")
     .delete()
     .eq("user_id", userId)
     .eq("provider", OUTLOOK_PROVIDER);
+  assertWrite(queueError, "The Outlook deletion queue");
+
   return { removed: count ?? 0 };
+}
+
+/* ------------------------------------------------------------------ */
+/* Explicit export controls                                            */
+/* ------------------------------------------------------------------ */
+
+export async function setOutlookExportSettings(
+  supabase: SupabaseClient,
+  userId: string,
+  patch: { enabled?: boolean; targetCalendarId?: string | null },
+) {
+  const update: Record<string, unknown> = { user_id: userId };
+  if (patch.enabled !== undefined) update["outlook_export_enabled"] = patch.enabled;
+  if (patch.targetCalendarId !== undefined)
+    update["outlook_target_calendar_id"] = patch.targetCalendarId;
+  const { error } = await supabase
+    .from("sync_settings")
+    .upsert(update, { onConflict: "user_id" });
+  assertWrite(error, "Your Outlook sending preference");
+}
+
+export async function setAppointmentExport(
+  supabase: SupabaseClient,
+  userId: string,
+  appointmentId: string,
+  shouldExport: boolean,
+) {
+  const { error } = await supabase
+    .from("appointments")
+    .update({ export_to_outlook: shouldExport })
+    .eq("user_id", userId)
+    .eq("id", appointmentId)
+    .is("calendar_event_id", null);
+  assertWrite(error, "Your choice to send this event to Outlook");
+}
+
+export type ExportCandidate = {
+  id: string;
+  title: string;
+  starts_at: string;
+  ends_at: string | null;
+  is_all_day: boolean;
+  export_to_outlook: boolean;
+};
+
+/** Upcoming Chronos-V-origin events that can be offered for export. */
+export async function listExportCandidates(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<ExportCandidate[]> {
+  const { data, error } = await supabase
+    .from("appointments")
+    .select("id, title, starts_at, ends_at, is_all_day, export_to_outlook")
+    .eq("user_id", userId)
+    .is("calendar_event_id", null)
+    .gte("starts_at", new Date().toISOString())
+    .order("starts_at", { ascending: true })
+    .limit(25);
+  if (error) throw new Error("Your upcoming events could not be read.");
+  return (data ?? []) as ExportCandidate[];
 }
