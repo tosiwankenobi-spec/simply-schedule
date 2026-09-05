@@ -12,6 +12,10 @@ import {
   toIanaZone,
   outlookEventKey,
   readDeltaPage,
+  pullStartUrl,
+  walkDeltaPages,
+  lockIsStale,
+  type LockRow,
 } from "../src/lib/outlook";
 import { decryptConnectionKey, encryptConnectionKey } from "../src/server/connectionKeyCrypto";
 
@@ -223,5 +227,179 @@ describe("error reporting never leaks provider data", () => {
     const summary = graphErrorSummary(500, "<html>token=abc123</html>");
     expect(summary).toBe("Microsoft responded 500");
     expect(summary).not.toContain("abc123");
+  });
+});
+
+describe("resumable pagination", () => {
+  test("an unfinished chain resumes from the stored continuation link", () => {
+    expect(pullStartUrl({ syncToken: "delta-1", pendingNextLink: "page-9" }, "fresh")).toBe(
+      "page-9",
+    );
+    expect(pullStartUrl({ syncToken: "delta-1", pendingNextLink: null }, "fresh")).toBe("delta-1");
+    expect(pullStartUrl(null, "fresh")).toBe("fresh");
+  });
+
+  test("a capped run resumes rather than looping or skipping pages", async () => {
+    // 6 pages of one event each; the chain only ends on the last page.
+    const chain = new Map<string, { id: string; next: string | null; delta: string | null }>();
+    for (let i = 0; i < 6; i++) {
+      chain.set(i === 0 ? "fresh" : `page-${i}`, {
+        id: `e${i}`,
+        next: i < 5 ? `page-${i + 1}` : null,
+        delta: i === 5 ? "delta-final" : null,
+      });
+    }
+    const fetched: string[] = [];
+    const collected: string[] = [];
+    const fetchPage = async (url: string) => {
+      fetched.push(url);
+      const node = chain.get(url)!;
+      return {
+        kind: "page" as const,
+        items: [{ id: node.id } as never],
+        nextLink: node.next,
+        deltaLink: node.delta,
+      };
+    };
+    const onItems = async (items: Array<{ id?: string }>) => {
+      for (const i of items) collected.push(i.id!);
+    };
+
+    // Persisted state, exactly as the engine stores it.
+    let position = { syncToken: null as string | null, pendingNextLink: null as string | null };
+    const runs: number[] = [];
+    for (let run = 0; run < 3; run++) {
+      const walk = await walkDeltaPages({
+        startUrl: pullStartUrl(position, "fresh"),
+        freshUrl: "fresh",
+        maxPages: 2,
+        fetchPage,
+        onItems,
+      });
+      runs.push(walk.pages);
+      position = {
+        syncToken: walk.pendingNextLink ? position.syncToken : walk.deltaLink,
+        pendingNextLink: walk.pendingNextLink,
+      };
+    }
+
+    expect(runs).toEqual([2, 2, 2]);
+    expect(collected).toEqual(["e0", "e1", "e2", "e3", "e4", "e5"]);
+    expect(new Set(fetched).size).toBe(fetched.length); // no page fetched twice
+    expect(position.pendingNextLink).toBeNull();
+    expect(position.syncToken).toBe("delta-final");
+  });
+
+  test("a completed chain records the delta link and clears the continuation", async () => {
+    const walk = await walkDeltaPages({
+      startUrl: "fresh",
+      freshUrl: "fresh",
+      maxPages: 10,
+      fetchPage: async () => ({ kind: "page", items: [], nextLink: null, deltaLink: "d1" }),
+      onItems: async () => {},
+    });
+    expect(walk.deltaLink).toBe("d1");
+    expect(walk.pendingNextLink).toBeNull();
+    expect(walk.error).toBeNull();
+  });
+
+  test("an expired delta restarts once from the fresh window", async () => {
+    let calls = 0;
+    const walk = await walkDeltaPages({
+      startUrl: "stale-delta",
+      freshUrl: "fresh",
+      maxPages: 5,
+      fetchPage: async (url) => {
+        calls++;
+        if (url === "stale-delta") return { kind: "resync" };
+        return { kind: "page", items: [], nextLink: null, deltaLink: "d2" };
+      },
+      onItems: async () => {},
+    });
+    expect(calls).toBe(2);
+    expect(walk.usedFallback).toBe(true);
+    expect(walk.deltaLink).toBe("d2");
+  });
+
+  test("a failure keeps the last good continuation instead of a delta link", async () => {
+    const walk = await walkDeltaPages({
+      startUrl: "fresh",
+      freshUrl: "fresh",
+      maxPages: 5,
+      fetchPage: async (url) =>
+        url === "fresh"
+          ? { kind: "page", items: [], nextLink: "page-1", deltaLink: null }
+          : { kind: "error", message: "Microsoft responded 503" },
+      onItems: async () => {},
+    });
+    expect(walk.error).toBe("Microsoft responded 503");
+    expect(walk.pendingNextLink).toBe("page-1");
+    expect(walk.deltaLink).toBeNull();
+  });
+});
+
+describe("sync lock semantics", () => {
+  // Mirrors public.claim_sync_lock / release_sync_lock: a single atomic
+  // insert-or-takeover keyed by (user_id, lock_key).
+  function makeLockStore() {
+    const rows = new Map<string, LockRow>();
+    let n = 0;
+    return {
+      claim(userId: string, lockKey: string, nowMs: number, ttlMs: number): string | null {
+        const k = `${userId}|${lockKey}`;
+        const existing = rows.get(k) ?? null;
+        if (existing && !lockIsStale(existing, nowMs, ttlMs)) return null;
+        const token = `t${++n}`;
+        rows.set(k, { userId, lockKey, token, claimedAtMs: nowMs });
+        return token;
+      },
+      release(userId: string, lockKey: string, token: string): boolean {
+        const k = `${userId}|${lockKey}`;
+        const existing = rows.get(k);
+        if (!existing || existing.userId !== userId || existing.token !== token) return false;
+        rows.delete(k);
+        return true;
+      },
+    };
+  }
+
+  const TTL = 300000;
+
+  test("only one of two concurrent claims wins", () => {
+    const store = makeLockStore();
+    const a = store.claim("u1", "outlook", 1000, TTL);
+    const b = store.claim("u1", "outlook", 1001, TTL);
+    expect(a).not.toBeNull();
+    expect(b).toBeNull();
+  });
+
+  test("releasing lets the next run claim again (idempotent cycles)", () => {
+    const store = makeLockStore();
+    const a = store.claim("u1", "outlook", 1000, TTL)!;
+    expect(store.release("u1", "outlook", a)).toBe(true);
+    expect(store.release("u1", "outlook", a)).toBe(false);
+    expect(store.claim("u1", "outlook", 1002, TTL)).not.toBeNull();
+  });
+
+  test("a stale lock is recovered after the timeout", () => {
+    const store = makeLockStore();
+    store.claim("u1", "outlook", 0, TTL);
+    expect(store.claim("u1", "outlook", TTL - 1, TTL)).toBeNull();
+    expect(store.claim("u1", "outlook", TTL + 1, TTL)).not.toBeNull();
+  });
+
+  test("a stale token cannot release the new owner's lock", () => {
+    const store = makeLockStore();
+    const stale = store.claim("u1", "outlook", 0, TTL)!;
+    const fresh = store.claim("u1", "outlook", TTL + 1, TTL)!;
+    expect(store.release("u1", "outlook", stale)).toBe(false);
+    expect(store.release("u1", "outlook", fresh)).toBe(true);
+  });
+
+  test("locks never cross users", () => {
+    const store = makeLockStore();
+    const a = store.claim("u1", "outlook", 1000, TTL)!;
+    expect(store.claim("u2", "outlook", 1000, TTL)).not.toBeNull();
+    expect(store.release("u2", "outlook", a)).toBe(false);
   });
 });
