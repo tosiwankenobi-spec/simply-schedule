@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { CalendarArrowUp, FileCheck2, HardDrive, Laptop, Trash2 } from "lucide-react";
+import { ArrowRight, CalendarArrowUp, FileCheck2, HardDrive, Laptop, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -129,6 +129,13 @@ function CalendarImportPage() {
             </>
           }
           description="Export an iCalendar file from Outlook, Apple Calendar, Android, or another calendar app. Chronos-V previews it on this device before anything is saved."
+          action={
+            <Button asChild variant="outline" className="bg-card/80">
+              <Link to="/setup/outlook">
+                Prepare live Outlook <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          }
         />
 
         <div className="mt-8 grid items-start gap-6 xl:grid-cols-2">

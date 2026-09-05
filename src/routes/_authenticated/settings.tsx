@@ -4,6 +4,7 @@ import {
   ArrowRight,
   BellRing,
   CalendarArrowUp,
+  CalendarClock,
   CalendarRange,
   Clock3,
   Mail,
@@ -34,6 +35,7 @@ type SettingsPath =
   | "/welcome"
   | "/setup/sync"
   | "/setup/gmail"
+  | "/setup/outlook"
   | "/setup/notifications"
   | "/privacy"
   | "/setup/android"
@@ -92,6 +94,13 @@ const SETTINGS_GROUPS: Array<{
         action: "Review Gmail setup",
         to: "/setup/gmail",
         icon: Mail,
+      },
+      {
+        title: "Microsoft Outlook",
+        description: "Prepare private per-user calendar and Smart Inbox access through Microsoft.",
+        action: "Review Outlook setup",
+        to: "/setup/outlook",
+        icon: CalendarClock,
       },
       {
         title: "Adaptive reminders",
@@ -189,7 +198,11 @@ function SettingsPage() {
               </div>
               <div
                 className={`grid gap-3 md:grid-cols-2 ${
-                  group.cards.length > 2 ? "xl:grid-cols-3" : ""
+                  group.cards.length > 3
+                    ? "xl:grid-cols-4"
+                    : group.cards.length > 2
+                      ? "xl:grid-cols-3"
+                      : ""
                 }`}
               >
                 {group.cards.map((card) => (

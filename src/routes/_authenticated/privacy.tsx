@@ -369,14 +369,20 @@ function PrivacyPage() {
                 </CardTitle>
                 <CardDescription>
                   Outlook and device calendars are never read automatically. You can preview and
-                  import a local iCalendar snapshot; only normalized event details are stored, and
-                  each imported calendar can be deleted independently.
+                  import a local iCalendar snapshot now, or prepare a per-user Outlook connector
+                  whose OAuth tokens stay in Lovable's encrypted gateway. Each imported snapshot can
+                  be deleted independently.
                 </CardDescription>
-                <Button asChild variant="outline" className="mt-3 w-fit">
-                  <Link to="/calendar-import">
-                    <CalendarArrowUp className="mr-1.5 h-4 w-4" /> Manage calendar imports
-                  </Link>
-                </Button>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button asChild variant="outline">
+                    <Link to="/calendar-import">
+                      <CalendarArrowUp className="mr-1.5 h-4 w-4" /> Manage calendar imports
+                    </Link>
+                  </Button>
+                  <Button asChild variant="ghost">
+                    <Link to="/setup/outlook">Review Outlook setup</Link>
+                  </Button>
+                </div>
               </CardHeader>
             </Card>
           </div>
