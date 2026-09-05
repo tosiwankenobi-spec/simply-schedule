@@ -291,3 +291,29 @@ export function appointmentRowsAreEqual(
     (a.location ?? null) === (b.location ?? null)
   );
 }
+
+/**
+ * Safe error text for logs and the UI: HTTP status, Microsoft's error code and
+ * request id only. Response bodies, tokens and account data are never kept.
+ */
+export function graphErrorSummary(
+  status: number,
+  body: string,
+  requestId?: string | null,
+): string {
+  let code: string | null = null;
+  try {
+    const parsed = JSON.parse(body) as { error?: { code?: unknown } };
+    if (typeof parsed?.error?.code === "string") code = parsed.error.code;
+  } catch {
+    /* non-JSON bodies are discarded entirely */
+  }
+  if (!code) {
+    const match = /"code"\s*:\s*"([A-Za-z0-9_.-]{1,64})"/.exec(body);
+    code = match?.[1] ?? null;
+  }
+  const parts = [`Microsoft responded ${status}`];
+  if (code) parts.push(`code ${code}`);
+  if (requestId) parts.push(`request ${requestId}`);
+  return parts.join(" · ");
+}
