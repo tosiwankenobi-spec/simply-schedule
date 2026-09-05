@@ -8,7 +8,8 @@ function key(): Buffer {
   const raw = process.env["APP_USER_CONNECTION_KEY_SECRET"];
   if (!raw) throw new Error("APP_USER_CONNECTION_KEY_SECRET is not set");
   const buf = Buffer.from(raw, "base64");
-  if (buf.length !== 32) throw new Error("APP_USER_CONNECTION_KEY_SECRET must be 32 bytes (base64)");
+  if (buf.length !== 32)
+    throw new Error("APP_USER_CONNECTION_KEY_SECRET must be 32 bytes (base64)");
   return buf;
 }
 

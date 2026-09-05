@@ -180,7 +180,12 @@ async function writeDeltaState(
   supabase: SupabaseClient,
   userId: string,
   calendarId: string,
-  patch: { sync_token?: string | null; pages_synced?: number; events_seen?: number; last_error?: string | null },
+  patch: {
+    sync_token?: string | null;
+    pages_synced?: number;
+    events_seen?: number;
+    last_error?: string | null;
+  },
 ) {
   await supabase.from("sync_state").upsert(
     {
@@ -204,15 +209,20 @@ export async function discoverCalendars(
 ): Promise<OutlookCalendar[]> {
   const key = await requireKey(userId);
   const { status, json, text } = await graphFetch(key, "/me/calendars?$top=50");
-  if (!json) throw new Error(`Outlook calendars could not be listed (${status}). ${text.slice(0, 120)}`);
+  if (!json)
+    throw new Error(`Outlook calendars could not be listed (${status}). ${text.slice(0, 120)}`);
 
-  const remote = (Array.isArray(json["value"]) ? json["value"] : []) as Array<Record<string, unknown>>;
+  const remote = (Array.isArray(json["value"]) ? json["value"] : []) as Array<
+    Record<string, unknown>
+  >;
 
   const { data: existing } = await supabase
     .from("outlook_calendars")
     .select("calendar_id, selected")
     .eq("user_id", userId);
-  const selectedMap = new Map((existing ?? []).map((r) => [r.calendar_id as string, r.selected as boolean]));
+  const selectedMap = new Map(
+    (existing ?? []).map((r) => [r.calendar_id as string, r.selected as boolean]),
+  );
   const anySelection = (existing ?? []).some((r) => r.selected);
 
   const rows = remote
@@ -408,7 +418,9 @@ async function applyRemoteEvent(
     let remoteWins: boolean;
     if (conflictPolicy === "remote") remoteWins = true;
     else if (conflictPolicy === "local") remoteWins = false;
-    else remoteWins = Number.isFinite(remoteUpdated) && remoteUpdated > Date.parse(existing.updated_at ?? "");
+    else
+      remoteWins =
+        Number.isFinite(remoteUpdated) && remoteUpdated > Date.parse(existing.updated_at ?? "");
     if (!remoteWins) {
       result.skipped++;
       return;
@@ -503,15 +515,25 @@ async function push(
       result.skipped++;
       continue;
     }
-    const { status, text } = await graphFetch(key, `/me/events/${encodeURIComponent(parsed.eventId)}`, {
-      method: "DELETE",
-    });
+    const { status, text } = await graphFetch(
+      key,
+      `/me/events/${encodeURIComponent(parsed.eventId)}`,
+      {
+        method: "DELETE",
+      },
+    );
     if (status < 300 || status === 404) {
       await supabase.from("pending_calendar_deletions").delete().eq("id", p.id);
       result.pushedDeletes++;
     } else {
       result.errors.push(`Delete failed (${status})`);
-      await logEvent(supabase, userId, "error", "outlook_push_delete", `Delete failed (${status}). ${text.slice(0, 120)}`);
+      await logEvent(
+        supabase,
+        userId,
+        "error",
+        "outlook_push_delete",
+        `Delete failed (${status}). ${text.slice(0, 120)}`,
+      );
     }
   }
 
@@ -556,7 +578,9 @@ async function push(
   // 3. Local edits on Outlook-origin events.
   const { data: edited } = await supabase
     .from("appointments")
-    .select("id, title, starts_at, ends_at, location, notes, calendar_event_id, updated_at, last_synced_at, commitment_type")
+    .select(
+      "id, title, starts_at, ends_at, location, notes, calendar_event_id, updated_at, last_synced_at, commitment_type",
+    )
     .eq("user_id", userId)
     .eq("provider", OUTLOOK_PROVIDER)
     .not("calendar_event_id", "is", null)
@@ -571,10 +595,14 @@ async function push(
     }
     const parsed = parseEventKey(row.calendar_event_id as string);
     if (!parsed) continue;
-    const { status, text } = await graphFetch(key, `/me/events/${encodeURIComponent(parsed.eventId)}`, {
-      method: "PATCH",
-      body: JSON.stringify(rowToGraphEvent(row as never)),
-    });
+    const { status, text } = await graphFetch(
+      key,
+      `/me/events/${encodeURIComponent(parsed.eventId)}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(rowToGraphEvent(row as never)),
+      },
+    );
     if (status < 300) {
       await supabase
         .from("appointments")
@@ -583,7 +611,13 @@ async function push(
       result.pushedUpdates++;
     } else {
       result.errors.push(`Update failed (${status})`);
-      await logEvent(supabase, userId, "error", "outlook_push_update", `Update failed (${status}). ${text.slice(0, 120)}`);
+      await logEvent(
+        supabase,
+        userId,
+        "error",
+        "outlook_push_update",
+        `Update failed (${status}). ${text.slice(0, 120)}`,
+      );
     }
   }
 }
@@ -731,13 +765,23 @@ export async function disconnectOutlook(supabase: SupabaseClient, userId: string
     }
   }
   await deleteConnectionForUser(userId, OUTLOOK_CONNECTOR_ID);
-  await supabase.from("sync_state").delete().eq("user_id", userId).like("provider", `${OUTLOOK_PROVIDER}%`);
+  await supabase
+    .from("sync_state")
+    .delete()
+    .eq("user_id", userId)
+    .like("provider", `${OUTLOOK_PROVIDER}%`);
   await supabase
     .from("pending_calendar_deletions")
     .delete()
     .eq("user_id", userId)
     .eq("provider", OUTLOOK_PROVIDER);
-  await logEvent(supabase, userId, "info", "outlook_disconnect", "Outlook disconnected. Local copies kept.");
+  await logEvent(
+    supabase,
+    userId,
+    "info",
+    "outlook_disconnect",
+    "Outlook disconnected. Local copies kept.",
+  );
 }
 
 /** Explicit, separate destructive action. */
@@ -747,7 +791,11 @@ export async function deleteLocalOutlookCopies(supabase: SupabaseClient, userId:
     .select("id", { count: "exact", head: true })
     .eq("user_id", userId)
     .eq("provider", OUTLOOK_PROVIDER);
-  await supabase.from("appointments").delete().eq("user_id", userId).eq("provider", OUTLOOK_PROVIDER);
+  await supabase
+    .from("appointments")
+    .delete()
+    .eq("user_id", userId)
+    .eq("provider", OUTLOOK_PROVIDER);
   await supabase
     .from("pending_calendar_deletions")
     .delete()

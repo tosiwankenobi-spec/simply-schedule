@@ -8,7 +8,8 @@ export const Route = createFileRoute("/oauth/microsoft/return")({
       { title: "Finishing Microsoft connection · Chronos-V" },
       {
         name: "description",
-        content: "Chronos-V is completing the private Microsoft Outlook connection for your account.",
+        content:
+          "Chronos-V is completing the private Microsoft Outlook connection for your account.",
       },
     ],
   }),

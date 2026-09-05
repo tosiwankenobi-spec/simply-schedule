@@ -309,7 +309,10 @@ export function OutlookConnection() {
           </>
         )}
 
-        <section aria-labelledby="outlook-danger-heading" className="border-t border-border/60 pt-4">
+        <section
+          aria-labelledby="outlook-danger-heading"
+          className="border-t border-border/60 pt-4"
+        >
           <h3
             id="outlook-danger-heading"
             className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground"

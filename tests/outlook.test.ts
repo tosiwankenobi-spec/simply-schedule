@@ -77,7 +77,9 @@ describe("event normalization", () => {
   });
 
   test("marks removed and cancelled events", () => {
-    expect(normalizeGraphEvent({ id: "e3", "@removed": { reason: "deleted" } })!.removed).toBe(true);
+    expect(normalizeGraphEvent({ id: "e3", "@removed": { reason: "deleted" } })!.removed).toBe(
+      true,
+    );
     expect(
       normalizeGraphEvent({
         id: "e4",
