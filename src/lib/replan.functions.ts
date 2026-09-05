@@ -186,6 +186,8 @@ const applySchema = contextSchema.extend({
 export type ApplyReplanResult = {
   moved: number;
   planRunId: string | null;
+  /** What was actually recorded, taken from the stored schedule rows. */
+  changes: PlanChange[];
   /** True when this exact approval had already been carried out. */
   repeated: boolean;
 };
@@ -209,10 +211,16 @@ export const applyDayReplan = createServerFn({ method: "POST" })
     });
     if (error)
       throw new Error(error.message || "Nothing was changed. Please check your day again.");
-    const payload = (result ?? {}) as { moved?: number; planRunId?: string; repeated?: boolean };
+    const payload = (result ?? {}) as {
+      moved?: number;
+      planRunId?: string;
+      repeated?: boolean;
+      changes?: unknown;
+    };
     return {
       moved: typeof payload.moved === "number" ? payload.moved : 0,
       planRunId: payload.planRunId ?? null,
+      changes: parsePlanChanges((payload.changes ?? []) as never),
       repeated: payload.repeated === true,
     };
   });
@@ -291,6 +299,11 @@ export const previewPlanUndo = createServerFn({ method: "POST" })
     };
   });
 
+export type UndoOutcomeLine = {
+  appointmentId: string;
+  outcome: "restored" | "already-restored" | "changed-since" | "missing";
+};
+
 export type UndoResult = {
   restored: number;
   skipped: number;
@@ -298,6 +311,8 @@ export type UndoResult = {
   /** True when this plan had already been undone. */
   repeated: boolean;
   note: string;
+  /** What happened to each block in the plan. */
+  lines: UndoOutcomeLine[];
 };
 
 export const undoPlanRun = createServerFn({ method: "POST" })
@@ -317,6 +332,7 @@ export const undoPlanRun = createServerFn({ method: "POST" })
       missing?: number;
       repeated?: boolean;
       note?: string | null;
+      lines?: UndoOutcomeLine[] | null;
     };
     const counts = {
       restore: payload.restored ?? 0,
@@ -330,6 +346,7 @@ export const undoPlanRun = createServerFn({ method: "POST" })
       counts,
       repeated: payload.repeated === true,
       note: payload.note ?? "",
+      lines: payload.lines ?? [],
     };
   });
 
