@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { createServerFn } from "@tanstack/react-start";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
@@ -8,15 +9,19 @@ import {
   intervalsOverlap,
   localTimeMs,
   type ReplanAppointment,
-  type ReplanMove,
   type ReplanPreview,
 } from "./replan-day";
+import {
+  PreviewExpiredError,
+  previewIsExpired,
+  selectApprovedMoves,
+  type SignedMove,
+} from "./plan-preview";
 import type { PlannerScheduleEvent, TaskRow } from "./tasks.server";
 import {
   classifyUndo,
   parsePlanChanges,
   retentionCutoffISO,
-  summarizePlan,
   summarizeUndo,
   type PlanChange,
   type PlanRunSummary,
