@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { createServerFn } from "@tanstack/react-start";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
@@ -6,7 +5,6 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Database, Json } from "@/integrations/supabase/types";
 import {
   buildDayReplan,
-  intervalsOverlap,
   localTimeMs,
   type ReplanAppointment,
   type ReplanPreview,
@@ -141,7 +139,7 @@ export const previewDayReplan = createServerFn({ method: "POST" })
     // Reading only: this step never writes to the schedule or to history.
     const preview = buildDayReplan({
       date: data.date,
-      previewId: randomUUID(),
+      previewId: crypto.randomUUID(),
       nowMs: Date.now(),
       timezoneOffsetMinutes: data.timezoneOffsetMinutes,
       prefs,
