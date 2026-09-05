@@ -37,7 +37,7 @@ const MAX_ATTEMPTS = 4;
 const MAX_PAGES = 25;
 const WINDOW_PAST_DAYS = 7;
 const WINDOW_FUTURE_DAYS = 60;
-const LOCK_PROVIDER = `${OUTLOOK_PROVIDER}:lock`;
+const LOCK_KEY = `${OUTLOOK_PROVIDER}:sync`;
 const LOCK_TTL_MS = 5 * 60 * 1000;
 /** Sources this engine owns; imported .ics files are never touched. */
 const OWNED_SOURCES = ["microsoft_outlook", "outlook_push"];
