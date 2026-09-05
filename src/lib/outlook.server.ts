@@ -27,6 +27,8 @@ import {
   normalizeGraphEvent,
   outlookEventKey,
   readDeltaPage,
+  pullStartUrl,
+  walkDeltaPages,
   rowToGraphEvent,
   type GraphEvent,
 } from "./outlook";
