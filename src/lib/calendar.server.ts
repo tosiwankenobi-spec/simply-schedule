@@ -480,6 +480,7 @@ async function applyRemoteEvent(
     .select("id, updated_at, last_synced_at, title, household_id, household_visibility")
     .eq("user_id", userId)
     .eq("calendar_event_id", ev.id)
+    .neq("provider", "microsoft_outlook")
     .maybeSingle();
 
   if (ev.status === "cancelled") {
@@ -562,27 +563,31 @@ async function applyRemoteEvent(
   }
 
   const nowIso = new Date().toISOString();
-  const { error } = await supabase.from("appointments").upsert(
-    {
-      user_id: userId,
-      calendar_event_id: ev.id,
-      calendar_id: calendarId,
-      calendar_etag: ev.etag ?? null,
-      source: "google_calendar",
-      last_synced_at: nowIso,
-      remote_updated_at: Number.isFinite(remoteUpdated)
-        ? new Date(remoteUpdated).toISOString()
-        : null,
-      ...(existing
-        ? {
-            household_id: existing.household_id,
-            household_visibility: existing.household_visibility,
-          }
-        : {}),
-      ...row,
-    },
-    { onConflict: "user_id,calendar_event_id" },
-  );
+  const payload = {
+    user_id: userId,
+    calendar_event_id: ev.id,
+    calendar_id: calendarId,
+    provider: "google_calendar",
+    provider_account_id: "primary",
+    calendar_etag: ev.etag ?? null,
+    source: "google_calendar",
+    last_synced_at: nowIso,
+    remote_updated_at: Number.isFinite(remoteUpdated)
+      ? new Date(remoteUpdated).toISOString()
+      : null,
+    ...(existing
+      ? {
+          household_id: existing.household_id,
+          household_visibility: existing.household_visibility,
+        }
+      : {}),
+    ...row,
+  };
+  // Identity is provider-scoped now, so match the known row explicitly instead
+  // of relying on a cross-provider unique constraint.
+  const { error } = existing
+    ? await supabase.from("appointments").update(payload).eq("id", existing.id)
+    : await supabase.from("appointments").insert(payload);
   if (error) throw new Error(error.message);
   result.updatedLocal++;
 }
