@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import type { Database } from "@/integrations/supabase/types";
+import type { Database, Json } from "@/integrations/supabase/types";
 import {
   buildDayReplan,
   intervalsOverlap,
@@ -12,6 +12,16 @@ import {
   type ReplanPreview,
 } from "./replan-day";
 import type { PlannerScheduleEvent, TaskRow } from "./tasks.server";
+import {
+  classifyUndo,
+  parsePlanChanges,
+  retentionCutoffISO,
+  summarizePlan,
+  summarizeUndo,
+  type PlanChange,
+  type PlanRunSummary,
+  type UndoLine,
+} from "./plan-history";
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const contextSchema = z.object({
@@ -149,7 +159,7 @@ const applySchema = contextSchema.extend({ moves: z.array(moveSchema).min(1).max
 export const applyDayReplan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => applySchema.parse(input))
-  .handler(async ({ data, context }): Promise<{ moved: number }> => {
+  .handler(async ({ data, context }): Promise<{ moved: number; planRunId: string | null }> => {
     const { prefsForDate } = await import("./tasks.server");
     const ids = data.moves.map((move) => move.appointmentId);
     if (new Set(ids).size !== ids.length) throw new Error("Duplicate task blocks are not allowed.");
@@ -283,5 +293,165 @@ export const applyDayReplan = createServerFn({ method: "POST" })
         "One or more task blocks changed. No moves were saved; refresh and try again.",
       );
     }
-    return { moved: applied.length };
+    const changes: PlanChange[] = applied.map(({ move }) => ({
+      appointmentId: move.appointmentId,
+      taskId: move.taskId,
+      title: move.title,
+      fromStart: move.fromStart,
+      fromEnd: move.fromEnd,
+      toStart: move.toStart,
+      toEnd: move.toEnd,
+      reason: move.reason,
+    }));
+    let planRunId: string | null = null;
+    if (changes.length > 0) {
+      const runResult = await context.supabase
+        .from("plan_runs")
+        .insert({
+          user_id: context.userId,
+          plan_date: data.date,
+          kind: "day_replan",
+          summary: summarizePlan(changes),
+          changes: changes as unknown as Json,
+        })
+        .select("id")
+        .maybeSingle();
+      planRunId = runResult.data?.id ?? null;
+      await context.supabase
+        .from("plan_runs")
+        .delete()
+        .eq("user_id", context.userId)
+        .lt("applied_at", retentionCutoffISO(Date.now()));
+    }
+    return { moved: applied.length, planRunId };
+  });
+
+const HISTORY_LIMIT = 20;
+
+async function loadRun(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  planRunId: string,
+) {
+  const { data, error } = await supabase
+    .from("plan_runs")
+    .select("id,plan_date,applied_at,undone_at,summary,changes")
+    .eq("user_id", userId)
+    .eq("id", planRunId)
+    .maybeSingle();
+  if (error) throw new Error("That plan could not be loaded. Please try again.");
+  if (!data) throw new Error("That plan is no longer in your history.");
+  return data;
+}
+
+async function buildUndoLines(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  changes: PlanChange[],
+): Promise<UndoLine[]> {
+  if (changes.length === 0) return [];
+  const { data, error } = await supabase
+    .from("appointments")
+    .select("id,starts_at,ends_at")
+    .eq("user_id", userId)
+    .eq("source", "task")
+    .in(
+      "id",
+      changes.map((change) => change.appointmentId),
+    );
+  if (error) throw new Error("Your schedule could not be rechecked. Please try again.");
+  const byId = new Map((data ?? []).map((row) => [row.id, row]));
+  return changes.map((change) => classifyUndo(change, byId.get(change.appointmentId) ?? null));
+}
+
+export const listPlanRuns = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<PlanRunSummary[]> => {
+    const { data, error } = await context.supabase
+      .from("plan_runs")
+      .select("id,plan_date,applied_at,undone_at,summary,changes")
+      .eq("user_id", context.userId)
+      .gte("applied_at", retentionCutoffISO(Date.now()))
+      .order("applied_at", { ascending: false })
+      .limit(HISTORY_LIMIT);
+    if (error) throw new Error("Your plan history could not be loaded. Please try again.");
+    return (data ?? []).map((row) => ({
+      id: row.id,
+      planDate: row.plan_date,
+      appliedAt: row.applied_at,
+      undoneAt: row.undone_at,
+      summary: row.summary,
+      changes: parsePlanChanges(row.changes),
+    }));
+  });
+
+const planRunSchema = z.object({ planRunId: z.string().uuid() });
+
+export const previewPlanUndo = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => planRunSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const run = await loadRun(context.supabase, context.userId, data.planRunId);
+    const changes = parsePlanChanges(run.changes);
+    const lines = await buildUndoLines(context.supabase, context.userId, changes);
+    return {
+      planRunId: run.id,
+      planDate: run.plan_date,
+      appliedAt: run.applied_at,
+      undoneAt: run.undone_at,
+      lines,
+      counts: summarizeUndo(lines),
+    };
+  });
+
+export const undoPlanRun = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => planRunSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const run = await loadRun(context.supabase, context.userId, data.planRunId);
+    const changes = parsePlanChanges(run.changes);
+    const lines = await buildUndoLines(context.supabase, context.userId, changes);
+    let restored = 0;
+    for (const line of lines) {
+      if (line.outcome !== "restore") continue;
+      const { change } = line;
+      const result = await context.supabase
+        .from("appointments")
+        .update({ starts_at: change.fromStart, ends_at: change.fromEnd })
+        .eq("id", change.appointmentId)
+        .eq("user_id", context.userId)
+        .eq("source", "task")
+        .eq("starts_at", change.toStart)
+        .eq("ends_at", change.toEnd)
+        .select("id")
+        .maybeSingle();
+      if (result.data) restored += 1;
+    }
+    const counts = summarizeUndo(lines);
+    const skipped = counts.changedSince + counts.missing;
+    await context.supabase
+      .from("plan_runs")
+      .update({
+        undone_at: run.undone_at ?? new Date().toISOString(),
+        undo_note:
+          skipped > 0
+            ? `${restored} restored, ${skipped} left alone because they changed since.`
+            : `${restored} restored.`,
+      })
+      .eq("id", run.id)
+      .eq("user_id", context.userId);
+    return { restored, skipped, counts };
+  });
+
+export const deletePlanRun = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => planRunSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("plan_runs")
+      .delete()
+      .eq("user_id", context.userId)
+      .eq("id", data.planRunId);
+    if (error) throw new Error("That history entry could not be removed. Please try again.");
+    return { ok: true };
   });
