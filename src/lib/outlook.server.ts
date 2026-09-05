@@ -27,6 +27,8 @@ import {
   normalizeGraphEvent,
   outlookEventKey,
   readDeltaPage,
+  pullStartUrl,
+  walkDeltaPages,
   rowToGraphEvent,
   type GraphEvent,
 } from "./outlook";
@@ -37,7 +39,7 @@ const MAX_ATTEMPTS = 4;
 const MAX_PAGES = 25;
 const WINDOW_PAST_DAYS = 7;
 const WINDOW_FUTURE_DAYS = 60;
-const LOCK_PROVIDER = `${OUTLOOK_PROVIDER}:lock`;
+const LOCK_KEY = `${OUTLOOK_PROVIDER}:sync`;
 const LOCK_TTL_MS = 5 * 60 * 1000;
 /** Sources this engine owns; imported .ics files are never touched. */
 const OWNED_SOURCES = ["microsoft_outlook", "outlook_push"];
@@ -210,13 +212,14 @@ function providerKey(calendarId: string) {
 async function readDeltaLink(supabase: SupabaseClient, userId: string, calendarId: string) {
   const { data, error } = await supabase
     .from("sync_state")
-    .select("sync_token, last_success_at, last_error")
+    .select("sync_token, cursor, last_success_at, last_error")
     .eq("user_id", userId)
     .eq("provider", providerKey(calendarId))
     .maybeSingle();
   if (error) throw new Error("Your Outlook sync history could not be read.");
   return (data ?? null) as {
     sync_token: string | null;
+    cursor: string | null;
     last_success_at: string | null;
     last_error: string | null;
   } | null;
@@ -224,6 +227,8 @@ async function readDeltaLink(supabase: SupabaseClient, userId: string, calendarI
 
 type DeltaPatch = {
   sync_token?: string | null;
+  /** Continuation link for a chain that has not finished yet. */
+  cursor?: string | null;
   pages_synced?: number;
   events_seen?: number;
   last_error?: string | null;
@@ -254,41 +259,25 @@ async function writeDeltaState(
   assertWrite(error, "Your Outlook sync progress");
 }
 
-/** Best-effort mutual exclusion so two syncs never fight over the same calendars. */
-async function claimSyncLock(supabase: SupabaseClient, userId: string): Promise<void> {
-  const { data, error } = await supabase
-    .from("sync_state")
-    .select("last_attempt_at, cursor")
-    .eq("user_id", userId)
-    .eq("provider", LOCK_PROVIDER)
-    .maybeSingle();
+/**
+ * Atomic, user-scoped mutual exclusion. The database claims the lock in a
+ * single statement (stale locks older than the TTL are taken over), so two
+ * concurrent runs can never both proceed. The token proves ownership on
+ * release; the caller is always the session user — never an id from input.
+ */
+async function claimSyncLock(supabase: SupabaseClient, userId: string): Promise<string> {
+  const { data, error } = await supabase.rpc("claim_sync_lock", {
+    p_lock_key: LOCK_KEY,
+    p_ttl_seconds: Math.round(LOCK_TTL_MS / 1000),
+  });
   if (error) throw new Error("Your Outlook sync status could not be read.");
-  const startedAt = Date.parse(data?.last_attempt_at ?? "");
-  if (
-    data?.cursor === "running" &&
-    Number.isFinite(startedAt) &&
-    Date.now() - startedAt < LOCK_TTL_MS
-  ) {
-    throw new OutlookBusyError();
-  }
-  const { error: writeError } = await supabase.from("sync_state").upsert(
-    {
-      user_id: userId,
-      provider: LOCK_PROVIDER,
-      cursor: "running",
-      last_attempt_at: new Date().toISOString(),
-    },
-    { onConflict: "user_id,provider" },
-  );
-  assertWrite(writeError, "Your Outlook sync status");
+  const token = typeof data === "string" ? data : null;
+  if (!token) throw new OutlookBusyError();
+  return token;
 }
 
-async function releaseSyncLock(supabase: SupabaseClient, userId: string) {
-  await supabase
-    .from("sync_state")
-    .update({ cursor: "idle" })
-    .eq("user_id", userId)
-    .eq("provider", LOCK_PROVIDER);
+async function releaseSyncLock(supabase: SupabaseClient, userId: string, token: string) {
+  await supabase.rpc("release_sync_lock", { p_lock_key: LOCK_KEY, p_token: token });
 }
 
 /* ------------------------------------------------------------------ */
@@ -420,72 +409,81 @@ async function pullCalendar(
   result: OutlookSyncResult,
 ) {
   const state = await readDeltaLink(supabase, userId, calendarId);
-  let url = state?.sync_token || deltaStartUrl(calendarId);
-  let pages = 0;
-  let seen = 0;
-  let deltaLink: string | null = null;
-  let pendingNextLink: string | null = null;
-  let usedFallback = false;
+  const freshUrl = deltaStartUrl(calendarId);
+  const startUrl = pullStartUrl(
+    { syncToken: state?.sync_token ?? null, pendingNextLink: state?.cursor ?? null },
+    freshUrl,
+  );
 
-  while (pages < MAX_PAGES) {
-    const { status, json, text, summary } = await graphFetch(
-      key,
-      url,
-      undefined,
-      (attempt, reason) => {
-        result.retries++;
-        void logEvent(supabase, userId, "warn", "outlook_retry", `Retry ${attempt}: ${reason}`, {
-          calendarId,
-        });
-      },
-    );
-
-    if (!json) {
-      if (isDeltaResyncRequired(status, text) && !usedFallback) {
-        usedFallback = true;
-        result.fullResyncs++;
-        await writeDeltaState(supabase, userId, calendarId, { sync_token: null });
-        await logEvent(
-          supabase,
-          userId,
-          "warn",
-          "outlook_resync",
-          "Outlook asked for a fresh sync; re-importing this calendar's window.",
-          { calendarId },
-        );
-        url = deltaStartUrl(calendarId);
-        continue;
+  const walk = await walkDeltaPages({
+    startUrl,
+    freshUrl,
+    maxPages: MAX_PAGES,
+    fetchPage: async (url) => {
+      const { status, json, text, summary } = await graphFetch(
+        key,
+        url,
+        undefined,
+        (attempt, reason) => {
+          result.retries++;
+          void logEvent(supabase, userId, "warn", "outlook_retry", `Retry ${attempt}: ${reason}`, {
+            calendarId,
+          });
+        },
+      );
+      if (!json) {
+        if (isDeltaResyncRequired(status, text)) {
+          result.fullResyncs++;
+          await writeDeltaState(supabase, userId, calendarId, { sync_token: null, cursor: null });
+          await logEvent(
+            supabase,
+            userId,
+            "warn",
+            "outlook_resync",
+            "Outlook asked for a fresh sync; re-importing this calendar's window.",
+            { calendarId },
+          );
+          return { kind: "resync" };
+        }
+        return { kind: "error", message: summary || `Outlook sync failed (${status}).` };
       }
-      throw new Error(summary || `Outlook sync failed (${status}).`);
-    }
+      const page = readDeltaPage(json);
+      return {
+        kind: "page",
+        items: page.items,
+        nextLink: page.nextLink,
+        deltaLink: page.deltaLink,
+      };
+    },
+    onItems: async (items) => {
+      for (const raw of items) {
+        await applyRemoteEvent(supabase, userId, calendarId, raw, conflictPolicy, result);
+      }
+    },
+  });
 
-    const page = readDeltaPage(json);
-    pages++;
-    for (const raw of page.items) {
-      seen++;
-      await applyRemoteEvent(supabase, userId, calendarId, raw, conflictPolicy, result);
+  result.pulled += walk.seen;
+
+  if (walk.error) {
+    // Keep the continuation point so the next run resumes instead of restarting.
+    if (walk.pendingNextLink) {
+      await writeDeltaState(supabase, userId, calendarId, { cursor: walk.pendingNextLink });
     }
-    if (page.deltaLink) {
-      deltaLink = page.deltaLink;
-      pendingNextLink = null;
-      break;
-    }
-    if (!page.nextLink) break;
-    pendingNextLink = page.nextLink;
-    url = page.nextLink;
+    throw new Error(walk.error);
   }
 
-  result.pulled += seen;
-
   // Hit the page ceiling with more waiting: this run is NOT a complete sync,
-  // so the delta position and success timestamp must not move forward.
-  if (pages >= MAX_PAGES && pendingNextLink) {
+  // so the delta position and success timestamp must not move forward — but the
+  // continuation link is stored so the next run picks up exactly where this one
+  // stopped instead of replaying the same pages forever.
+  if (walk.pendingNextLink) {
     result.complete = false;
     const message = "Outlook had more changes than one run can fetch; sync will continue shortly.";
     result.errors.push(message);
     await writeDeltaState(supabase, userId, calendarId, {
-      pages_synced: pages,
-      events_seen: seen,
+      cursor: walk.pendingNextLink,
+      pages_synced: walk.pages,
+      events_seen: walk.seen,
       incomplete: true,
       last_error: message,
     });
@@ -494,9 +492,10 @@ async function pullCalendar(
   }
 
   await writeDeltaState(supabase, userId, calendarId, {
-    sync_token: deltaLink,
-    pages_synced: pages,
-    events_seen: seen,
+    sync_token: walk.deltaLink,
+    cursor: null,
+    pages_synced: walk.pages,
+    events_seen: walk.seen,
     incomplete: false,
     last_error: null,
     success: true,
@@ -771,7 +770,7 @@ export async function runOutlookSync(
 ): Promise<OutlookSyncResult> {
   const result = emptyResult();
   const key = await requireKey(userId);
-  await claimSyncLock(supabase, userId);
+  const lockToken = await claimSyncLock(supabase, userId);
 
   try {
     const { data: settings, error: settingsError } = await supabase
@@ -841,7 +840,7 @@ export async function runOutlookSync(
     );
     return result;
   } finally {
-    await releaseSyncLock(supabase, userId);
+    await releaseSyncLock(supabase, userId, lockToken);
   }
 }
 
@@ -882,7 +881,7 @@ export async function readOutlookStatus(
     .eq("provider", OUTLOOK_PROVIDER)
     .in("source", OWNED_SOURCES);
 
-  const calendarStates = (states ?? []).filter((s) => s.provider !== LOCK_PROVIDER);
+  const calendarStates = (states ?? []).filter((s) => s.provider !== LOCK_KEY);
   const pick = (field: "last_attempt_at" | "last_success_at") =>
     calendarStates
       .map((s) => s[field] as string | null)

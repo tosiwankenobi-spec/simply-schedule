@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { summarizeWelcomeProgress } from "../src/lib/welcome-progress";
 
 describe("welcome progress", () => {

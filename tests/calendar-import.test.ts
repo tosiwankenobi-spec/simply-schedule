@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { parseCalendarFile } from "../src/lib/calendar-import";
 
 const NOW = new Date("2026-09-03T12:00:00Z");

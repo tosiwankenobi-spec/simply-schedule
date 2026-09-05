@@ -312,3 +312,114 @@ export function graphErrorSummary(status: number, body: string, requestId?: stri
   if (requestId) parts.push(`request ${requestId}`);
   return parts.join(" · ");
 }
+
+/* ------------------------------------------------------------------ */
+/* Resumable delta walking                                             */
+/* ------------------------------------------------------------------ */
+
+/** Persisted position for one calendar's delta chain. */
+export type DeltaPosition = {
+  /** Durable delta link from a completed chain. */
+  syncToken: string | null;
+  /** Continuation link saved when a run hit the page ceiling mid-chain. */
+  pendingNextLink: string | null;
+};
+
+/**
+ * Where the next run must start: an unfinished chain resumes exactly where it
+ * stopped, otherwise the stored delta link, otherwise a fresh window.
+ */
+export function pullStartUrl(position: DeltaPosition | null, freshUrl: string): string {
+  return position?.pendingNextLink || position?.syncToken || freshUrl;
+}
+
+export type DeltaFetchOutcome =
+  | { kind: "page"; items: GraphEvent[]; nextLink: string | null; deltaLink: string | null }
+  | { kind: "resync" }
+  | { kind: "error"; message: string };
+
+export type DeltaWalkResult = {
+  pages: number;
+  seen: number;
+  deltaLink: string | null;
+  pendingNextLink: string | null;
+  usedFallback: boolean;
+  error: string | null;
+};
+
+/**
+ * Walks a delta chain page by page, bounded by maxPages. When the ceiling is
+ * reached mid-chain the continuation link is returned so the caller can store
+ * it; the delta link and success are only produced by a completed chain.
+ */
+export async function walkDeltaPages(opts: {
+  startUrl: string;
+  freshUrl: string;
+  maxPages: number;
+  fetchPage: (url: string) => Promise<DeltaFetchOutcome>;
+  onItems: (items: GraphEvent[]) => Promise<void>;
+}): Promise<DeltaWalkResult> {
+  let url = opts.startUrl;
+  let pages = 0;
+  let seen = 0;
+  let deltaLink: string | null = null;
+  let pendingNextLink: string | null = null;
+  let usedFallback = false;
+
+  while (pages < opts.maxPages) {
+    const outcome = await opts.fetchPage(url);
+    if (outcome.kind === "resync") {
+      if (usedFallback) {
+        return {
+          pages,
+          seen,
+          deltaLink: null,
+          pendingNextLink: null,
+          usedFallback,
+          error: "Outlook could not restart this calendar's sync.",
+        };
+      }
+      usedFallback = true;
+      pendingNextLink = null;
+      url = opts.freshUrl;
+      continue;
+    }
+    if (outcome.kind === "error") {
+      return {
+        pages,
+        seen,
+        deltaLink: null,
+        pendingNextLink,
+        usedFallback,
+        error: outcome.message,
+      };
+    }
+
+    pages++;
+    seen += outcome.items.length;
+    await opts.onItems(outcome.items);
+
+    if (outcome.deltaLink) {
+      deltaLink = outcome.deltaLink;
+      pendingNextLink = null;
+      break;
+    }
+    if (!outcome.nextLink) break;
+    pendingNextLink = outcome.nextLink;
+    url = outcome.nextLink;
+  }
+
+  return { pages, seen, deltaLink, pendingNextLink, usedFallback, error: null };
+}
+
+/* ------------------------------------------------------------------ */
+/* Sync lock semantics (mirrors public.claim_sync_lock)                */
+/* ------------------------------------------------------------------ */
+
+export type LockRow = { userId: string; lockKey: string; token: string; claimedAtMs: number };
+
+/** True when an existing lock row may be taken over because it went stale. */
+export function lockIsStale(row: LockRow | null, nowMs: number, ttlMs: number): boolean {
+  if (!row) return true;
+  return row.claimedAtMs < nowMs - ttlMs;
+}
