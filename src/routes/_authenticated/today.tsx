@@ -16,6 +16,7 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { TaskNudge } from "@/components/TaskNudge";
 import { NowRecommendation } from "@/components/NowRecommendation";
 import { DayReplanner } from "@/components/DayReplanner";
+import { PlanHistory } from "@/components/PlanHistory";
 import { TravelGuidanceCard } from "@/components/TravelGuidance";
 import { MorningPlanner } from "@/components/MorningPlanner";
 import { QuickCapture } from "@/components/QuickCapture";
@@ -276,6 +277,7 @@ function TodayPage() {
             </div>
             <div className="[&>section]:mt-4">
               <DayReplanner />
+              <PlanHistory />
             </div>
             <div className="mt-4">
               <TaskNudge />
