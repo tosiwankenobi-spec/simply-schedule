@@ -408,72 +408,81 @@ async function pullCalendar(
   result: OutlookSyncResult,
 ) {
   const state = await readDeltaLink(supabase, userId, calendarId);
-  let url = state?.sync_token || deltaStartUrl(calendarId);
-  let pages = 0;
-  let seen = 0;
-  let deltaLink: string | null = null;
-  let pendingNextLink: string | null = null;
-  let usedFallback = false;
+  const freshUrl = deltaStartUrl(calendarId);
+  const startUrl = pullStartUrl(
+    { syncToken: state?.sync_token ?? null, pendingNextLink: state?.cursor ?? null },
+    freshUrl,
+  );
 
-  while (pages < MAX_PAGES) {
-    const { status, json, text, summary } = await graphFetch(
-      key,
-      url,
-      undefined,
-      (attempt, reason) => {
-        result.retries++;
-        void logEvent(supabase, userId, "warn", "outlook_retry", `Retry ${attempt}: ${reason}`, {
-          calendarId,
-        });
-      },
-    );
-
-    if (!json) {
-      if (isDeltaResyncRequired(status, text) && !usedFallback) {
-        usedFallback = true;
-        result.fullResyncs++;
-        await writeDeltaState(supabase, userId, calendarId, { sync_token: null });
-        await logEvent(
-          supabase,
-          userId,
-          "warn",
-          "outlook_resync",
-          "Outlook asked for a fresh sync; re-importing this calendar's window.",
-          { calendarId },
-        );
-        url = deltaStartUrl(calendarId);
-        continue;
+  const walk = await walkDeltaPages({
+    startUrl,
+    freshUrl,
+    maxPages: MAX_PAGES,
+    fetchPage: async (url) => {
+      const { status, json, text, summary } = await graphFetch(
+        key,
+        url,
+        undefined,
+        (attempt, reason) => {
+          result.retries++;
+          void logEvent(supabase, userId, "warn", "outlook_retry", `Retry ${attempt}: ${reason}`, {
+            calendarId,
+          });
+        },
+      );
+      if (!json) {
+        if (isDeltaResyncRequired(status, text)) {
+          result.fullResyncs++;
+          await writeDeltaState(supabase, userId, calendarId, { sync_token: null, cursor: null });
+          await logEvent(
+            supabase,
+            userId,
+            "warn",
+            "outlook_resync",
+            "Outlook asked for a fresh sync; re-importing this calendar's window.",
+            { calendarId },
+          );
+          return { kind: "resync" };
+        }
+        return { kind: "error", message: summary || `Outlook sync failed (${status}).` };
       }
-      throw new Error(summary || `Outlook sync failed (${status}).`);
-    }
+      const page = readDeltaPage(json);
+      return {
+        kind: "page",
+        items: page.items,
+        nextLink: page.nextLink,
+        deltaLink: page.deltaLink,
+      };
+    },
+    onItems: async (items) => {
+      for (const raw of items) {
+        await applyRemoteEvent(supabase, userId, calendarId, raw, conflictPolicy, result);
+      }
+    },
+  });
 
-    const page = readDeltaPage(json);
-    pages++;
-    for (const raw of page.items) {
-      seen++;
-      await applyRemoteEvent(supabase, userId, calendarId, raw, conflictPolicy, result);
+  result.pulled += walk.seen;
+
+  if (walk.error) {
+    // Keep the continuation point so the next run resumes instead of restarting.
+    if (walk.pendingNextLink) {
+      await writeDeltaState(supabase, userId, calendarId, { cursor: walk.pendingNextLink });
     }
-    if (page.deltaLink) {
-      deltaLink = page.deltaLink;
-      pendingNextLink = null;
-      break;
-    }
-    if (!page.nextLink) break;
-    pendingNextLink = page.nextLink;
-    url = page.nextLink;
+    throw new Error(walk.error);
   }
 
-  result.pulled += seen;
-
   // Hit the page ceiling with more waiting: this run is NOT a complete sync,
-  // so the delta position and success timestamp must not move forward.
-  if (pages >= MAX_PAGES && pendingNextLink) {
+  // so the delta position and success timestamp must not move forward — but the
+  // continuation link is stored so the next run picks up exactly where this one
+  // stopped instead of replaying the same pages forever.
+  if (walk.pendingNextLink) {
     result.complete = false;
     const message = "Outlook had more changes than one run can fetch; sync will continue shortly.";
     result.errors.push(message);
     await writeDeltaState(supabase, userId, calendarId, {
-      pages_synced: pages,
-      events_seen: seen,
+      cursor: walk.pendingNextLink,
+      pages_synced: walk.pages,
+      events_seen: walk.seen,
       incomplete: true,
       last_error: message,
     });
@@ -482,14 +491,16 @@ async function pullCalendar(
   }
 
   await writeDeltaState(supabase, userId, calendarId, {
-    sync_token: deltaLink,
-    pages_synced: pages,
-    events_seen: seen,
+    sync_token: walk.deltaLink,
+    cursor: null,
+    pages_synced: walk.pages,
+    events_seen: walk.seen,
     incomplete: false,
     last_error: null,
     success: true,
   });
 }
+
 
 const LOCAL_EDIT_GRACE_MS = 5000;
 function hasLocalEdits(updatedAt: string | null, lastSyncedAt: string | null) {
