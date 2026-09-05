@@ -107,8 +107,8 @@ export function DayReplanner() {
         repeated
           ? "That plan had already been undone."
           : skipped > 0
-          ? `Put back ${restored} block${restored === 1 ? "" : "s"} · ${skipped} left alone`
-          : `Put back ${restored} block${restored === 1 ? "" : "s"}`,
+            ? `Put back ${restored} block${restored === 1 ? "" : "s"} · ${skipped} left alone`
+            : `Put back ${restored} block${restored === 1 ? "" : "s"}`,
       );
       await refreshSchedule();
     },
@@ -179,10 +179,21 @@ export function DayReplanner() {
           </div>
 
           {isStale && (
-            <p className="mt-3 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-700">
-              <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              This proposal was worked out a few minutes ago. Check again for up-to-date times.
-            </p>
+            <div className="mt-3 flex flex-col gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-700 sm:flex-row sm:items-center sm:justify-between">
+              <p className="flex items-start gap-2">
+                <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                This proposal was worked out a few minutes ago. Check again for up-to-date times.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full shrink-0 sm:w-auto"
+                disabled={busy}
+                onClick={() => preview.refetch()}
+              >
+                Check again
+              </Button>
+            </div>
           )}
 
           {result.moves.length > 0 && (
@@ -245,14 +256,16 @@ export function DayReplanner() {
             <div className="mt-4 flex flex-col gap-2 sm:flex-row">
               <Button
                 className="w-full bg-foreground text-background hover:bg-foreground/90 sm:w-auto"
-                disabled={busy || selectedMoves.length === 0}
+                disabled={busy || isStale || selectedMoves.length === 0}
                 onClick={() => apply.mutate()}
               >
                 {apply.isPending
                   ? "Applying…"
-                  : selectedMoves.length === 0
-                    ? "Select a block to move"
-                    : `Approve ${selectedMoves.length} of ${result.moves.length}`}
+                  : isStale
+                    ? "Check again first"
+                    : selectedMoves.length === 0
+                      ? "Select a block to move"
+                      : `Approve ${selectedMoves.length} of ${result.moves.length}`}
               </Button>
               <Button
                 variant="ghost"
