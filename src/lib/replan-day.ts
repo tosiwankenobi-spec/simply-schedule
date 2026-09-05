@@ -31,6 +31,8 @@ export type ReplanMove = {
 
 export type ReplanPreview = {
   date: string;
+  /** When this proposal was computed, so the UI can flag a stale preview. */
+  generatedAt: string;
   profile: string;
   affectedCount: number;
   unchangedCount: number;
@@ -180,6 +182,7 @@ export function buildDayReplan({
 
   return {
     date,
+    generatedAt: new Date(nowMs).toISOString(),
     profile: prefs.name,
     affectedCount: affected.length,
     unchangedCount: unchanged.length,
