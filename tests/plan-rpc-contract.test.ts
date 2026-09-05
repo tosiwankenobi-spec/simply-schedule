@@ -69,7 +69,9 @@ describe("the routines in force are the corrective ones", () => {
     expect(sql).toMatch(/REVOKE ALL ON FUNCTION public\.apply_day_replan[\s\S]*?FROM anon/);
     expect(sql).toMatch(/REVOKE ALL ON FUNCTION public\.undo_plan_run[\s\S]*?FROM PUBLIC/);
     expect(sql).toMatch(/REVOKE ALL ON FUNCTION public\.undo_plan_run[\s\S]*?FROM anon/);
-    expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION public\.apply_day_replan[\s\S]*?TO authenticated/);
+    expect(sql).toMatch(
+      /GRANT EXECUTE ON FUNCTION public\.apply_day_replan[\s\S]*?TO authenticated/,
+    );
     expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION public\.undo_plan_run[\s\S]*?TO authenticated/);
   });
 });
@@ -85,7 +87,9 @@ describe("applying a plan cannot be steered by the browser", () => {
   });
 
   it("normalises the reason to a known value", () => {
-    expect(apply).toMatch(/CASE WHEN v_move->>'reason' = 'missed' THEN 'missed' ELSE 'conflict' END/);
+    expect(apply).toMatch(
+      /CASE WHEN v_move->>'reason' = 'missed' THEN 'missed' ELSE 'conflict' END/,
+    );
     expect(weakApply).toMatch(/'reason',\s*mv->>'reason'/);
   });
 
@@ -129,7 +133,9 @@ describe("applying a plan cannot be steered by the browser", () => {
   });
 
   it("verifies every write and keeps the whole plan all-or-nothing", () => {
-    expect(apply.match(/GET DIAGNOSTICS v_updated = ROW_COUNT/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
+    expect(
+      apply.match(/GET DIAGNOSTICS v_updated = ROW_COUNT/g)?.length ?? 0,
+    ).toBeGreaterThanOrEqual(2);
     expect(apply).toMatch(/RAISE EXCEPTION/);
   });
 
@@ -139,7 +145,11 @@ describe("applying a plan cannot be steered by the browser", () => {
   });
 
   it("keeps the 60-day history limit scoped to the caller", () => {
-    stronger(apply, weakApply, /DELETE FROM public\.plan_runs[\s\S]*?user_id = v_user[\s\S]*?60 days/);
+    stronger(
+      apply,
+      weakApply,
+      /DELETE FROM public\.plan_runs[\s\S]*?user_id = v_user[\s\S]*?60 days/,
+    );
   });
 });
 
