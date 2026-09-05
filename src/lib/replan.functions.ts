@@ -5,18 +5,21 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Database, Json } from "@/integrations/supabase/types";
 import {
   buildDayReplan,
-  intervalsOverlap,
   localTimeMs,
   type ReplanAppointment,
-  type ReplanMove,
   type ReplanPreview,
 } from "./replan-day";
+import {
+  PreviewExpiredError,
+  previewIsExpired,
+  selectApprovedMoves,
+  type SignedMove,
+} from "./plan-preview";
 import type { PlannerScheduleEvent, TaskRow } from "./tasks.server";
 import {
   classifyUndo,
   parsePlanChanges,
   retentionCutoffISO,
-  summarizePlan,
   summarizeUndo,
   type PlanChange,
   type PlanRunSummary,
@@ -101,12 +104,13 @@ export const previewDayReplan = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => contextSchema.parse(input))
   .handler(async ({ data, context }): Promise<ReplanPreview> => {
     const { prefsForDate } = await import("./tasks.server");
+    const { signPreview } = await import("./plan-preview.server");
     const bounds = dayBounds(data.date, data.timezoneOffsetMinutes);
     const [prefs, appointmentsResult, tasksResult] = await Promise.all([
       prefsForDate(context.supabase, context.userId, data.date),
       context.supabase
         .from("appointments")
-        .select("id,title,starts_at,ends_at,source")
+        .select("id,title,starts_at,ends_at,source,updated_at")
         .eq("user_id", context.userId)
         .eq("is_all_day", false)
         .gte("starts_at", new Date(bounds.start).toISOString())
@@ -132,8 +136,10 @@ export const previewDayReplan = createServerFn({ method: "POST" })
       prefs.default_meeting_min,
     );
 
-    return buildDayReplan({
+    // Reading only: this step never writes to the schedule or to history.
+    const preview = buildDayReplan({
       date: data.date,
+      previewId: crypto.randomUUID(),
       nowMs: Date.now(),
       timezoneOffsetMinutes: data.timezoneOffsetMinutes,
       prefs,
@@ -141,198 +147,79 @@ export const previewDayReplan = createServerFn({ method: "POST" })
       appointments: (appointmentsResult.data ?? []) as ReplanAppointment[],
       protectedBusy,
     });
+    preview.signature = signPreview(
+      preview.previewId,
+      preview.date,
+      preview.generatedAt,
+      preview.moves as SignedMove[],
+    );
+    return preview;
   });
 
 const moveSchema = z.object({
   appointmentId: z.string().uuid(),
   taskId: z.string().uuid(),
   title: z.string().min(1).max(200),
-  fromStart: z.string().datetime(),
-  fromEnd: z.string().datetime(),
-  toStart: z.string().datetime(),
-  toEnd: z.string().datetime(),
+  version: z.string().datetime({ offset: true }),
+  fromStart: z.string().datetime({ offset: true }),
+  fromEnd: z.string().datetime({ offset: true }),
+  toStart: z.string().datetime({ offset: true }),
+  toEnd: z.string().datetime({ offset: true }),
   reason: z.enum(["missed", "conflict"]),
   conflictsWith: z.string().max(200).nullable(),
 });
-const applySchema = contextSchema.extend({ moves: z.array(moveSchema).min(1).max(20) });
+
+/**
+ * The approval carries back the whole signed proposal plus the blocks the
+ * person ticked. Nothing here is trusted on its own: the signature proves the
+ * proposal is ours and unaltered, and the database revalidates every row again
+ * inside the transaction that moves it.
+ */
+const applySchema = contextSchema.extend({
+  previewId: z.string().uuid(),
+  signature: z.string().min(1).max(200),
+  generatedAt: z.string().datetime({ offset: true }),
+  moves: z.array(moveSchema).min(1).max(20),
+  approvedIds: z.array(z.string().uuid()).min(1).max(20),
+});
+
+export type ApplyReplanResult = {
+  moved: number;
+  planRunId: string | null;
+  /** True when this exact approval had already been carried out. */
+  repeated: boolean;
+};
 
 export const applyDayReplan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => applySchema.parse(input))
-  .handler(async ({ data, context }): Promise<{ moved: number; planRunId: string | null }> => {
-    const { prefsForDate } = await import("./tasks.server");
-    const ids = data.moves.map((move) => move.appointmentId);
-    if (new Set(ids).size !== ids.length) throw new Error("Duplicate task blocks are not allowed.");
-
-    const [prefs, targetsResult, tasksResult] = await Promise.all([
-      prefsForDate(context.supabase, context.userId, data.date),
-      context.supabase
-        .from("appointments")
-        .select("id,title,starts_at,ends_at,source,commitment_type")
-        .eq("user_id", context.userId)
-        .in("id", ids),
-      context.supabase
-        .from("tasks")
-        .select("id,scheduled_appointment_id")
-        .eq("user_id", context.userId)
-        .in("scheduled_appointment_id", ids),
-    ]);
-
-    if (targetsResult.error || tasksResult.error) {
-      throw new Error("Your schedule could not be rechecked. Please try again.");
+  .handler(async ({ data, context }): Promise<ApplyReplanResult> => {
+    const { verifyPreview } = await import("./plan-preview.server");
+    const moves = data.moves as SignedMove[];
+    if (previewIsExpired(data.generatedAt, Date.now())) throw new PreviewExpiredError();
+    if (!verifyPreview(data.previewId, data.date, data.generatedAt, moves, data.signature)) {
+      throw new Error("That proposal could not be verified. Check your day again.");
     }
-    const protectedSchedule = await loadProtectedSchedule(
-      context.supabase,
-      context.userId,
-      data.date,
-      data.timezoneOffsetMinutes,
-      prefs.default_meeting_min,
-    );
-    const targetById = new Map((targetsResult.data ?? []).map((row) => [row.id, row]));
-    const linkedTaskByAppointment = new Map(
-      (tasksResult.data ?? []).map((task) => [task.scheduled_appointment_id, task.id]),
-    );
-    const workStart = localTimeMs(data.date, prefs.work_start, data.timezoneOffsetMinutes);
-    const workEnd = localTimeMs(data.date, prefs.work_end, data.timezoneOffsetMinutes);
-    const lunchStart = localTimeMs(data.date, prefs.lunch_at, data.timezoneOffsetMinutes);
-    const lunchEnd = lunchStart + prefs.lunch_length_min * 60_000;
-    const movingIds = new Set(ids);
-    const occupied = protectedSchedule.filter((row) => !movingIds.has(row.id));
-    const proposals: { move: ReplanMove; start: number; end: number }[] = [];
+    const approved = selectApprovedMoves(moves, data.approvedIds);
 
-    for (const move of data.moves) {
-      const target = targetById.get(move.appointmentId);
-      if (
-        !target ||
-        target.source !== "task" ||
-        linkedTaskByAppointment.get(move.appointmentId) !== move.taskId ||
-        Date.parse(target.starts_at) !== Date.parse(move.fromStart) ||
-        !target.ends_at ||
-        Date.parse(target.ends_at) !== Date.parse(move.fromEnd)
-      ) {
-        throw new Error("Your schedule changed. Refresh the proposal before applying it.");
-      }
-      const fromDuration = Date.parse(move.fromEnd) - Date.parse(move.fromStart);
-      const start = Date.parse(move.toStart);
-      const end = Date.parse(move.toEnd);
-      if (
-        !Number.isFinite(start) ||
-        !Number.isFinite(end) ||
-        end <= start ||
-        end - start !== fromDuration ||
-        start < Math.max(Date.now() - 60_000, workStart) ||
-        end > workEnd ||
-        (prefs.lunch_length_min > 0 &&
-          intervalsOverlap({ start, end }, { start: lunchStart, end: lunchEnd }))
-      ) {
-        throw new Error("That proposal is no longer a safe fit for today.");
-      }
-      const proposal = { move: move as ReplanMove, start, end };
-      if (
-        occupied.some((block) => intervalsOverlap(proposal, block)) ||
-        proposals.some((block) =>
-          intervalsOverlap(proposal, {
-            start: block.start,
-            end: block.end + prefs.break_length_min * 60_000,
-          }),
-        )
-      ) {
-        throw new Error("A new conflict appeared. Refresh the proposal before applying it.");
-      }
-      proposals.push(proposal);
-    }
-
-    const applied: typeof proposals = [];
-    for (const proposal of proposals) {
-      const { move } = proposal;
-      const updateResult = await context.supabase
-        .from("appointments")
-        .update({ starts_at: move.toStart, ends_at: move.toEnd, commitment_type: "flexible" })
-        .eq("id", move.appointmentId)
-        .eq("user_id", context.userId)
-        .eq("source", "task")
-        .eq("starts_at", move.fromStart)
-        .eq("ends_at", move.fromEnd)
-        .select("id")
-        .maybeSingle();
-      if (!updateResult.error && updateResult.data) {
-        applied.push(proposal);
-        continue;
-      }
-
-      let rollbackFailed = false;
-      const rollbackCandidates = [proposal, ...[...applied].reverse()];
-      for (const completed of rollbackCandidates) {
-        const original = targetById.get(completed.move.appointmentId);
-        const rollbackResult = await context.supabase
-          .from("appointments")
-          .update({
-            starts_at: completed.move.fromStart,
-            ends_at: completed.move.fromEnd,
-            commitment_type: original ? original.commitment_type : "flexible",
-          })
-          .eq("id", completed.move.appointmentId)
-          .eq("user_id", context.userId)
-          .eq("source", "task")
-          .eq("starts_at", completed.move.toStart)
-          .eq("ends_at", completed.move.toEnd)
-          .select("id")
-          .maybeSingle();
-        const wasConfirmedApplied = applied.some(
-          ({ move: appliedMove }) => appliedMove.appointmentId === completed.move.appointmentId,
-        );
-        rollbackFailed ||=
-          Boolean(rollbackResult.error) || (wasConfirmedApplied && !rollbackResult.data);
-      }
-      if (rollbackFailed) {
-        throw new Error(
-          "Replanning stopped, but an earlier move could not be restored. Review today's task blocks before trying again.",
-        );
-      }
-      throw new Error(
-        "One or more task blocks changed. No moves were saved; refresh and try again.",
-      );
-    }
-    const changes: PlanChange[] = applied.map(({ move }) => ({
-      appointmentId: move.appointmentId,
-      taskId: move.taskId,
-      title: move.title,
-      fromStart: move.fromStart,
-      fromEnd: move.fromEnd,
-      toStart: move.toStart,
-      toEnd: move.toEnd,
-      reason: move.reason,
-    }));
-    let planRunId: string | null = null;
-    if (changes.length > 0) {
-      const runResult = await context.supabase
-        .from("plan_runs")
-        .insert({
-          user_id: context.userId,
-          plan_date: data.date,
-          kind: "day_replan",
-          summary: summarizePlan(changes),
-          changes: changes as unknown as Json,
-        })
-        .select("id")
-        .maybeSingle();
-      planRunId = runResult.data?.id ?? null;
-      await context.supabase
-        .from("plan_runs")
-        .delete()
-        .eq("user_id", context.userId)
-        .lt("applied_at", retentionCutoffISO(Date.now()));
-    }
-    return { moved: applied.length, planRunId };
+    const { data: result, error } = await context.supabase.rpc("apply_day_replan", {
+      p_preview_id: data.previewId,
+      p_plan_date: data.date,
+      p_moves: approved as unknown as Json,
+    });
+    if (error)
+      throw new Error(error.message || "Nothing was changed. Please check your day again.");
+    const payload = (result ?? {}) as { moved?: number; planRunId?: string; repeated?: boolean };
+    return {
+      moved: typeof payload.moved === "number" ? payload.moved : 0,
+      planRunId: payload.planRunId ?? null,
+      repeated: payload.repeated === true,
+    };
   });
 
 const HISTORY_LIMIT = 20;
 
-async function loadRun(
-  supabase: SupabaseClient<Database>,
-  userId: string,
-  planRunId: string,
-) {
+async function loadRun(supabase: SupabaseClient<Database>, userId: string, planRunId: string) {
   const { data, error } = await supabase
     .from("plan_runs")
     .select("id,plan_date,applied_at,undone_at,summary,changes")
@@ -404,43 +291,46 @@ export const previewPlanUndo = createServerFn({ method: "POST" })
     };
   });
 
+export type UndoResult = {
+  restored: number;
+  skipped: number;
+  counts: { restore: number; alreadyRestored: number; changedSince: number; missing: number };
+  /** True when this plan had already been undone. */
+  repeated: boolean;
+  note: string;
+};
+
 export const undoPlanRun = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => planRunSchema.parse(input))
-  .handler(async ({ data, context }) => {
-    const run = await loadRun(context.supabase, context.userId, data.planRunId);
-    const changes = parsePlanChanges(run.changes);
-    const lines = await buildUndoLines(context.supabase, context.userId, changes);
-    let restored = 0;
-    for (const line of lines) {
-      if (line.outcome !== "restore") continue;
-      const { change } = line;
-      const result = await context.supabase
-        .from("appointments")
-        .update({ starts_at: change.fromStart, ends_at: change.fromEnd })
-        .eq("id", change.appointmentId)
-        .eq("user_id", context.userId)
-        .eq("source", "task")
-        .eq("starts_at", change.toStart)
-        .eq("ends_at", change.toEnd)
-        .select("id")
-        .maybeSingle();
-      if (result.data) restored += 1;
-    }
-    const counts = summarizeUndo(lines);
-    const skipped = counts.changedSince + counts.missing;
-    await context.supabase
-      .from("plan_runs")
-      .update({
-        undone_at: run.undone_at ?? new Date().toISOString(),
-        undo_note:
-          skipped > 0
-            ? `${restored} restored, ${skipped} left alone because they changed since.`
-            : `${restored} restored.`,
-      })
-      .eq("id", run.id)
-      .eq("user_id", context.userId);
-    return { restored, skipped, counts };
+  .handler(async ({ data, context }): Promise<UndoResult> => {
+    // Restoring every block and closing the history entry happens in one
+    // database step, so an undo can never be left half done.
+    const { data: result, error } = await context.supabase.rpc("undo_plan_run", {
+      p_run_id: data.planRunId,
+    });
+    if (error) throw new Error(error.message || "That plan could not be undone. Please try again.");
+    const payload = (result ?? {}) as {
+      restored?: number;
+      alreadyRestored?: number;
+      changedSince?: number;
+      missing?: number;
+      repeated?: boolean;
+      note?: string | null;
+    };
+    const counts = {
+      restore: payload.restored ?? 0,
+      alreadyRestored: payload.alreadyRestored ?? 0,
+      changedSince: payload.changedSince ?? 0,
+      missing: payload.missing ?? 0,
+    };
+    return {
+      restored: counts.restore,
+      skipped: counts.changedSince + counts.missing,
+      counts,
+      repeated: payload.repeated === true,
+      note: payload.note ?? "",
+    };
   });
 
 export const deletePlanRun = createServerFn({ method: "POST" })

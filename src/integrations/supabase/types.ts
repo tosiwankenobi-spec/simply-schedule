@@ -591,6 +591,7 @@ export type Database = {
           id: string
           kind: string
           plan_date: string
+          preview_id: string | null
           summary: string
           undo_note: string | null
           undone_at: string | null
@@ -604,6 +605,7 @@ export type Database = {
           id?: string
           kind?: string
           plan_date: string
+          preview_id?: string | null
           summary?: string
           undo_note?: string | null
           undone_at?: string | null
@@ -617,6 +619,7 @@ export type Database = {
           id?: string
           kind?: string
           plan_date?: string
+          preview_id?: string | null
           summary?: string
           undo_note?: string | null
           undone_at?: string | null
@@ -1018,6 +1021,10 @@ export type Database = {
       }
     }
     Functions: {
+      apply_day_replan: {
+        Args: { p_moves: Json; p_plan_date: string; p_preview_id: string }
+        Returns: Json
+      }
       claim_sync_lock: {
         Args: { p_lock_key: string; p_ttl_seconds: number }
         Returns: string
@@ -1038,6 +1045,7 @@ export type Database = {
         Args: { p_lock_key: string; p_token: string }
         Returns: boolean
       }
+      undo_plan_run: { Args: { p_run_id: string }; Returns: Json }
     }
     Enums: {
       [_ in never]: never

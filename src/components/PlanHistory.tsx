@@ -4,12 +4,7 @@ import { format } from "date-fns";
 import { History, RotateCcw, Trash2, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import {
-  deletePlanRun,
-  listPlanRuns,
-  previewPlanUndo,
-  undoPlanRun,
-} from "@/lib/replan.functions";
+import { deletePlanRun, listPlanRuns, previewPlanUndo, undoPlanRun } from "@/lib/replan.functions";
 import { PLAN_HISTORY_RETENTION_DAYS } from "@/lib/plan-history";
 
 const timeLabel = (value: string) => format(new Date(value), "h:mm a");
@@ -43,11 +38,13 @@ export function PlanHistory() {
 
   const undo = useMutation({
     mutationFn: (planRunId: string) => undoPlanRun({ data: { planRunId } }),
-    onSuccess: async ({ restored, skipped }) => {
+    onSuccess: async ({ restored, skipped, repeated }) => {
       toast.success(
-        skipped > 0
-          ? `Put back ${restored} block${restored === 1 ? "" : "s"} · ${skipped} left alone`
-          : `Put back ${restored} block${restored === 1 ? "" : "s"}`,
+        repeated
+          ? "That plan had already been undone."
+          : skipped > 0
+            ? `Put back ${restored} block${restored === 1 ? "" : "s"} · ${skipped} left alone`
+            : `Put back ${restored} block${restored === 1 ? "" : "s"}`,
       );
       setOpenId(null);
       await refreshSchedule();
@@ -81,7 +78,9 @@ export function PlanHistory() {
         </p>
       </div>
 
-      {runs.isLoading && <div className="h-16 animate-pulse border-t border-border bg-secondary/30" />}
+      {runs.isLoading && (
+        <div className="h-16 animate-pulse border-t border-border bg-secondary/30" />
+      )}
       {runs.isError && (
         <p className="border-t border-border px-5 py-4 text-sm text-destructive">
           Your plan history couldn't be loaded. Please try again.
@@ -134,9 +133,14 @@ export function PlanHistory() {
                 </div>
 
                 {open && (
-                  <div className="mt-3 rounded-xl border border-border bg-secondary/20 p-3" aria-live="polite">
+                  <div
+                    className="mt-3 rounded-xl border border-border bg-secondary/20 p-3"
+                    aria-live="polite"
+                  >
                     {undoPreview.isLoading && (
-                      <p className="text-xs text-muted-foreground">Checking what can be put back…</p>
+                      <p className="text-xs text-muted-foreground">
+                        Checking what can be put back…
+                      </p>
                     )}
                     {undoPreview.isError && (
                       <p className="text-xs text-destructive">
@@ -152,8 +156,8 @@ export function PlanHistory() {
                                 {line.change.title}
                               </p>
                               <p className="text-muted-foreground">
-                                {timeLabel(line.change.toStart)} → {timeLabel(line.change.fromStart)}{" "}
-                                · {line.explanation}
+                                {timeLabel(line.change.toStart)} →{" "}
+                                {timeLabel(line.change.fromStart)} · {line.explanation}
                               </p>
                             </li>
                           ))}
@@ -162,8 +166,8 @@ export function PlanHistory() {
                           0 && (
                           <p className="mt-3 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-2 text-xs text-amber-700">
                             <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                            Some blocks changed after this plan, so they will be left exactly as they
-                            are.
+                            Some blocks changed after this plan, so they will be left exactly as
+                            they are.
                           </p>
                         )}
                         <Button

@@ -8,6 +8,8 @@ export type ReplanAppointment = {
   starts_at: string;
   ends_at: string | null;
   source: string;
+  /** Last-changed stamp, carried into the proposal so apply can revalidate it. */
+  updated_at?: string | null;
 };
 
 export type ReplanBusyInterval = {
@@ -27,10 +29,16 @@ export type ReplanMove = {
   toEnd: string;
   reason: "missed" | "conflict";
   conflictsWith: string | null;
+  /** The block's last-changed stamp when this proposal was worked out. */
+  version: string;
 };
 
 export type ReplanPreview = {
   date: string;
+  /** Server-generated identifier the approval step is bound to. */
+  previewId: string;
+  /** Proof this proposal came from the server, unchanged. */
+  signature: string;
   /** When this proposal was computed, so the UI can flag a stale preview. */
   generatedAt: string;
   profile: string;
@@ -66,6 +74,7 @@ function overlaps(start: number, end: number, otherStart: number, otherEnd: numb
 
 export function buildDayReplan({
   date,
+  previewId,
   nowMs,
   timezoneOffsetMinutes,
   prefs,
@@ -74,6 +83,7 @@ export function buildDayReplan({
   protectedBusy,
 }: {
   date: string;
+  previewId: string;
   nowMs: number;
   timezoneOffsetMinutes: number;
   prefs: Prefs;
@@ -166,6 +176,7 @@ export function buildDayReplan({
         toEnd: new Date(toEnd).toISOString(),
         reason: item.reason,
         conflictsWith: item.conflict?.title ?? null,
+        version: item.appointment.updated_at ?? item.appointment.starts_at,
       });
       occupied.push({ start: toStart, end: toEnd + prefs.break_length_min * MINUTE });
     } else {
@@ -182,6 +193,8 @@ export function buildDayReplan({
 
   return {
     date,
+    previewId,
+    signature: "",
     generatedAt: new Date(nowMs).toISOString(),
     profile: prefs.name,
     affectedCount: affected.length,

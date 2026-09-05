@@ -37,6 +37,7 @@ import {
   CalendarArrowUp,
 } from "lucide-react";
 import { DailyBriefing } from "@/components/DailyBriefing";
+import { DayReplanner } from "@/components/DayReplanner";
 import { WeekGrid } from "@/components/WeekGrid";
 import { useScheduleEvents } from "@/lib/schedule-hub";
 import { SyncAlert } from "@/components/SyncAlert";
@@ -199,6 +200,10 @@ function AppPage() {
         </div>
 
         <DailyBriefing />
+
+        {/* Same proposal-and-approve flow as Today, so a surprise appointment can
+            be smoothed over right where it was added. */}
+        <DayReplanner />
 
         <p className="mt-2 text-xs text-muted-foreground">
           Two-way sync keeps Google Calendar and this schedule in step. Outlook and device calendar
