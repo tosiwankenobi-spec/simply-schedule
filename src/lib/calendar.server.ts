@@ -480,7 +480,7 @@ async function applyRemoteEvent(
     .select("id, updated_at, last_synced_at, title, household_id, household_visibility")
     .eq("user_id", userId)
     .eq("calendar_event_id", ev.id)
-    .neq("provider", "microsoft_outlook")
+    .or("provider.is.null,provider.eq.google_calendar")
     .maybeSingle();
 
   if (ev.status === "cancelled") {
@@ -568,7 +568,6 @@ async function applyRemoteEvent(
     calendar_event_id: ev.id,
     calendar_id: calendarId,
     provider: "google_calendar",
-    provider_account_id: "primary",
     calendar_etag: ev.etag ?? null,
     source: "google_calendar",
     last_synced_at: nowIso,
