@@ -292,44 +292,48 @@ export const previewPlanUndo = createServerFn({ method: "POST" })
     };
   });
 
+export type UndoResult = {
+  restored: number;
+  skipped: number;
+  counts: { restore: number; alreadyRestored: number; changedSince: number; missing: number };
+  /** True when this plan had already been undone. */
+  repeated: boolean;
+  note: string;
+};
+
 export const undoPlanRun = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => planRunSchema.parse(input))
-  .handler(async ({ data, context }) => {
-    const run = await loadRun(context.supabase, context.userId, data.planRunId);
-    const changes = parsePlanChanges(run.changes);
-    const lines = await buildUndoLines(context.supabase, context.userId, changes);
-    let restored = 0;
-    for (const line of lines) {
-      if (line.outcome !== "restore") continue;
-      const { change } = line;
-      const result = await context.supabase
-        .from("appointments")
-        .update({ starts_at: change.fromStart, ends_at: change.fromEnd })
-        .eq("id", change.appointmentId)
-        .eq("user_id", context.userId)
-        .eq("source", "task")
-        .eq("starts_at", change.toStart)
-        .eq("ends_at", change.toEnd)
-        .select("id")
-        .maybeSingle();
-      if (result.data) restored += 1;
-    }
-    const counts = summarizeUndo(lines);
-    const skipped = counts.changedSince + counts.missing;
-    await context.supabase
-      .from("plan_runs")
-      .update({
-        undone_at: run.undone_at ?? new Date().toISOString(),
-        undo_note:
-          skipped > 0
-            ? `${restored} restored, ${skipped} left alone because they changed since.`
-            : `${restored} restored.`,
-      })
-      .eq("id", run.id)
-      .eq("user_id", context.userId);
-    return { restored, skipped, counts };
+  .handler(async ({ data, context }): Promise<UndoResult> => {
+    // Restoring every block and closing the history entry happens in one
+    // database step, so an undo can never be left half done.
+    const { data: result, error } = await context.supabase.rpc("undo_plan_run", {
+      p_run_id: data.planRunId,
+    });
+    if (error) throw new Error(error.message || "That plan could not be undone. Please try again.");
+    const payload = (result ?? {}) as {
+      restored?: number;
+      alreadyRestored?: number;
+      changedSince?: number;
+      missing?: number;
+      repeated?: boolean;
+      note?: string | null;
+    };
+    const counts = {
+      restore: payload.restored ?? 0,
+      alreadyRestored: payload.alreadyRestored ?? 0,
+      changedSince: payload.changedSince ?? 0,
+      missing: payload.missing ?? 0,
+    };
+    return {
+      restored: counts.restore,
+      skipped: counts.changedSince + counts.missing,
+      counts,
+      repeated: payload.repeated === true,
+      note: payload.note ?? "",
+    };
   });
+
 
 export const deletePlanRun = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
