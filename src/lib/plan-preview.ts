@@ -48,7 +48,11 @@ export class PreviewExpiredError extends Error {
 }
 
 /** A proposal older than the time-to-live can no longer be approved. */
-export function previewIsExpired(generatedAt: string, nowMs: number, ttlMinutes = PREVIEW_TTL_MINUTES) {
+export function previewIsExpired(
+  generatedAt: string,
+  nowMs: number,
+  ttlMinutes = PREVIEW_TTL_MINUTES,
+) {
   const generated = Date.parse(generatedAt);
   if (!Number.isFinite(generated)) return true;
   return nowMs - generated > ttlMinutes * 60_000 || generated - nowMs > 60_000;

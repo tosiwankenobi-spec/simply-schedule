@@ -43,9 +43,11 @@ export function PlanHistory() {
 
   const undo = useMutation({
     mutationFn: (planRunId: string) => undoPlanRun({ data: { planRunId } }),
-    onSuccess: async ({ restored, skipped }) => {
+    onSuccess: async ({ restored, skipped, repeated }) => {
       toast.success(
-        skipped > 0
+        repeated
+          ? "That plan had already been undone."
+          : skipped > 0
           ? `Put back ${restored} block${restored === 1 ? "" : "s"} · ${skipped} left alone`
           : `Put back ${restored} block${restored === 1 ? "" : "s"}`,
       );

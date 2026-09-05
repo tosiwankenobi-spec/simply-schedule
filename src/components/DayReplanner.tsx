@@ -68,12 +68,30 @@ export function DayReplanner() {
 
   const apply = useMutation({
     mutationFn: () => {
+      if (!result) throw new Error("Check your day again before approving.");
       if (!selectedMoves.length) throw new Error("Select at least one block to move.");
-      return applyDayReplan({ data: { date, timezoneOffsetMinutes, moves: selectedMoves } });
+      // The whole signed proposal goes back with the blocks that were ticked,
+      // so the server can prove it is unchanged before anything moves.
+      return applyDayReplan({
+        data: {
+          date,
+          timezoneOffsetMinutes,
+          previewId: result.previewId,
+          signature: result.signature,
+          generatedAt: result.generatedAt,
+          moves: result.moves,
+          approvedIds: selectedMoves.map((move) => move.appointmentId),
+        },
+      });
     },
-    onSuccess: async ({ moved, planRunId }) => {
+    onSuccess: async ({ moved, planRunId, repeated }) => {
       setLastRunId(planRunId);
-      toast.success(`Replanned ${moved} task block${moved === 1 ? "" : "s"}`);
+      toast.success(
+        repeated
+          ? "That plan was already applied — nothing moved twice."
+          : `Replanned ${moved} task block${moved === 1 ? "" : "s"}`,
+      );
+      await preview.refetch();
       await refreshSchedule();
     },
     onError: (error) => {
@@ -83,10 +101,12 @@ export function DayReplanner() {
 
   const undo = useMutation({
     mutationFn: (planRunId: string) => undoPlanRun({ data: { planRunId } }),
-    onSuccess: async ({ restored, skipped }) => {
+    onSuccess: async ({ restored, skipped, repeated }) => {
       setLastRunId(null);
       toast.success(
-        skipped > 0
+        repeated
+          ? "That plan had already been undone."
+          : skipped > 0
           ? `Put back ${restored} block${restored === 1 ? "" : "s"} · ${skipped} left alone`
           : `Put back ${restored} block${restored === 1 ? "" : "s"}`,
       );

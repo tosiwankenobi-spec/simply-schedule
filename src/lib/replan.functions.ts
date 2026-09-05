@@ -207,7 +207,8 @@ export const applyDayReplan = createServerFn({ method: "POST" })
       p_plan_date: data.date,
       p_moves: approved as unknown as Json,
     });
-    if (error) throw new Error(error.message || "Nothing was changed. Please check your day again.");
+    if (error)
+      throw new Error(error.message || "Nothing was changed. Please check your day again.");
     const payload = (result ?? {}) as { moved?: number; planRunId?: string; repeated?: boolean };
     return {
       moved: typeof payload.moved === "number" ? payload.moved : 0,
@@ -216,14 +217,9 @@ export const applyDayReplan = createServerFn({ method: "POST" })
     };
   });
 
-
 const HISTORY_LIMIT = 20;
 
-async function loadRun(
-  supabase: SupabaseClient<Database>,
-  userId: string,
-  planRunId: string,
-) {
+async function loadRun(supabase: SupabaseClient<Database>, userId: string, planRunId: string) {
   const { data, error } = await supabase
     .from("plan_runs")
     .select("id,plan_date,applied_at,undone_at,summary,changes")
@@ -336,7 +332,6 @@ export const undoPlanRun = createServerFn({ method: "POST" })
       note: payload.note ?? "",
     };
   });
-
 
 export const deletePlanRun = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
