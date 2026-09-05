@@ -28,6 +28,7 @@ import { Route as AuthenticatedHouseholdRouteImport } from './routes/_authentica
 import { Route as AuthenticatedCalendarImportRouteImport } from './routes/_authenticated/calendar-import'
 import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/app'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
+import { Route as OauthMicrosoftReturnRouteImport } from './routes/oauth/microsoft/return'
 import { Route as AuthenticatedSetupSyncRouteImport } from './routes/_authenticated/setup.sync'
 import { Route as AuthenticatedSetupOutlookRouteImport } from './routes/_authenticated/setup.outlook'
 import { Route as AuthenticatedSetupNotificationsRouteImport } from './routes/_authenticated/setup.notifications'
@@ -133,6 +134,11 @@ const Char91DotwellKnownChar93OauthProtectedResourceRoute =
     path: '/.well-known/oauth-protected-resource',
     getParentRoute: () => rootRouteImport,
   } as any)
+const OauthMicrosoftReturnRoute = OauthMicrosoftReturnRouteImport.update({
+  id: '/oauth/microsoft/return',
+  path: '/oauth/microsoft/return',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedSetupSyncRoute = AuthenticatedSetupSyncRouteImport.update({
   id: '/setup/sync',
   path: '/setup/sync',
@@ -199,6 +205,7 @@ export interface FileRoutesByFullPath {
   '/setup/notifications': typeof AuthenticatedSetupNotificationsRoute
   '/setup/outlook': typeof AuthenticatedSetupOutlookRoute
   '/setup/sync': typeof AuthenticatedSetupSyncRoute
+  '/oauth/microsoft/return': typeof OauthMicrosoftReturnRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -226,6 +233,7 @@ export interface FileRoutesByTo {
   '/setup/notifications': typeof AuthenticatedSetupNotificationsRoute
   '/setup/outlook': typeof AuthenticatedSetupOutlookRoute
   '/setup/sync': typeof AuthenticatedSetupSyncRoute
+  '/oauth/microsoft/return': typeof OauthMicrosoftReturnRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -255,6 +263,7 @@ export interface FileRoutesById {
   '/_authenticated/setup/notifications': typeof AuthenticatedSetupNotificationsRoute
   '/_authenticated/setup/outlook': typeof AuthenticatedSetupOutlookRoute
   '/_authenticated/setup/sync': typeof AuthenticatedSetupSyncRoute
+  '/oauth/microsoft/return': typeof OauthMicrosoftReturnRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -284,6 +293,7 @@ export interface FileRouteTypes {
     | '/setup/notifications'
     | '/setup/outlook'
     | '/setup/sync'
+    | '/oauth/microsoft/return'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -311,6 +321,7 @@ export interface FileRouteTypes {
     | '/setup/notifications'
     | '/setup/outlook'
     | '/setup/sync'
+    | '/oauth/microsoft/return'
   id:
     | '__root__'
     | '/'
@@ -339,6 +350,7 @@ export interface FileRouteTypes {
     | '/_authenticated/setup/notifications'
     | '/_authenticated/setup/outlook'
     | '/_authenticated/setup/sync'
+    | '/oauth/microsoft/return'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -349,6 +361,7 @@ export interface RootRouteChildren {
   McpRoute: typeof McpRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
+  OauthMicrosoftReturnRoute: typeof OauthMicrosoftReturnRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -486,6 +499,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/oauth/microsoft/return': {
+      id: '/oauth/microsoft/return'
+      path: '/oauth/microsoft/return'
+      fullPath: '/oauth/microsoft/return'
+      preLoaderRoute: typeof OauthMicrosoftReturnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/setup/sync': {
       id: '/_authenticated/setup/sync'
       path: '/setup/sync'
@@ -603,6 +623,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
+  OauthMicrosoftReturnRoute: OauthMicrosoftReturnRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
