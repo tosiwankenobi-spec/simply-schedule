@@ -385,7 +385,14 @@ export async function walkDeltaPages(opts: {
       continue;
     }
     if (outcome.kind === "error") {
-      return { pages, seen, deltaLink: null, pendingNextLink, usedFallback, error: outcome.message };
+      return {
+        pages,
+        seen,
+        deltaLink: null,
+        pendingNextLink,
+        usedFallback,
+        error: outcome.message,
+      };
     }
 
     pages++;

@@ -280,7 +280,6 @@ async function releaseSyncLock(supabase: SupabaseClient, userId: string, token: 
   await supabase.rpc("release_sync_lock", { p_lock_key: LOCK_KEY, p_token: token });
 }
 
-
 /* ------------------------------------------------------------------ */
 /* Calendars                                                           */
 /* ------------------------------------------------------------------ */
@@ -502,7 +501,6 @@ async function pullCalendar(
     success: true,
   });
 }
-
 
 const LOCAL_EDIT_GRACE_MS = 5000;
 function hasLocalEdits(updatedAt: string | null, lastSyncedAt: string | null) {
