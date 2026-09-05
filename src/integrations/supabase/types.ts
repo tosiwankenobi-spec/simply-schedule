@@ -61,7 +61,6 @@ export type Database = {
           calendar_etag: string | null
           calendar_event_id: string | null
           calendar_id: string | null
-          commitment_type: string
           created_at: string
           ends_at: string | null
           external_id: string | null
@@ -71,28 +70,14 @@ export type Database = {
           gmail_reply_state: string | null
           gmail_subject: string | null
           gmail_thread_id: string | null
-          household_id: string | null
-          household_visibility: string
           id: string
-          is_all_day: boolean
           last_synced_at: string | null
           location: string | null
           notes: string | null
-          preparation_minutes: number | null
-          privacy_level: string
-          provider: string | null
-          provider_account_id: string | null
-          recurrence_rule: string | null
           remote_updated_at: string | null
-          routine_id: string | null
-          routine_occurrence_date: string | null
           source: string
-          source_metadata: Json
           starts_at: string
-          sync_status: string
-          timezone: string | null
           title: string
-          travel_minutes: number | null
           updated_at: string
           user_id: string
         }
@@ -100,7 +85,6 @@ export type Database = {
           calendar_etag?: string | null
           calendar_event_id?: string | null
           calendar_id?: string | null
-          commitment_type?: string
           created_at?: string
           ends_at?: string | null
           external_id?: string | null
@@ -110,28 +94,14 @@ export type Database = {
           gmail_reply_state?: string | null
           gmail_subject?: string | null
           gmail_thread_id?: string | null
-          household_id?: string | null
-          household_visibility?: string
           id?: string
-          is_all_day?: boolean
           last_synced_at?: string | null
           location?: string | null
           notes?: string | null
-          preparation_minutes?: number | null
-          privacy_level?: string
-          provider?: string | null
-          provider_account_id?: string | null
-          recurrence_rule?: string | null
           remote_updated_at?: string | null
-          routine_id?: string | null
-          routine_occurrence_date?: string | null
           source?: string
-          source_metadata?: Json
           starts_at: string
-          sync_status?: string
-          timezone?: string | null
           title: string
-          travel_minutes?: number | null
           updated_at?: string
           user_id: string
         }
@@ -139,7 +109,6 @@ export type Database = {
           calendar_etag?: string | null
           calendar_event_id?: string | null
           calendar_id?: string | null
-          commitment_type?: string
           created_at?: string
           ends_at?: string | null
           external_id?: string | null
@@ -149,218 +118,16 @@ export type Database = {
           gmail_reply_state?: string | null
           gmail_subject?: string | null
           gmail_thread_id?: string | null
-          household_id?: string | null
-          household_visibility?: string
           id?: string
-          is_all_day?: boolean
           last_synced_at?: string | null
           location?: string | null
           notes?: string | null
-          preparation_minutes?: number | null
-          privacy_level?: string
-          provider?: string | null
-          provider_account_id?: string | null
-          recurrence_rule?: string | null
           remote_updated_at?: string | null
-          routine_id?: string | null
-          routine_occurrence_date?: string | null
           source?: string
-          source_metadata?: Json
           starts_at?: string
-          sync_status?: string
-          timezone?: string | null
-          title?: string
-          travel_minutes?: number | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "appointments_household_id_fkey"
-            columns: ["household_id"]
-            isOneToOne: false
-            referencedRelation: "households"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "appointments_routine_id_fkey"
-            columns: ["routine_id"]
-            isOneToOne: false
-            referencedRelation: "routines"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      household_events: {
-        Row: {
-          appointment_id: string
-          commitment_type: string
-          ends_at: string | null
-          household_id: string
-          is_all_day: boolean
-          location: string | null
-          notes: string | null
-          owner_display_name: string
-          owner_user_id: string
-          recurrence_rule: string | null
-          starts_at: string
-          timezone: string
-          title: string
-          updated_at: string
-          visibility: string
-        }
-        Insert: {
-          appointment_id: string
-          commitment_type: string
-          ends_at?: string | null
-          household_id: string
-          is_all_day?: boolean
-          location?: string | null
-          notes?: string | null
-          owner_display_name: string
-          owner_user_id: string
-          recurrence_rule?: string | null
-          starts_at: string
-          timezone?: string
-          title: string
-          updated_at?: string
-          visibility: string
-        }
-        Update: {
-          appointment_id?: string
-          commitment_type?: string
-          ends_at?: string | null
-          household_id?: string
-          is_all_day?: boolean
-          location?: string | null
-          notes?: string | null
-          owner_display_name?: string
-          owner_user_id?: string
-          recurrence_rule?: string | null
-          starts_at?: string
-          timezone?: string
           title?: string
           updated_at?: string
-          visibility?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "household_events_appointment_id_fkey"
-            columns: ["appointment_id"]
-            isOneToOne: true
-            referencedRelation: "appointments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "household_events_household_id_fkey"
-            columns: ["household_id"]
-            isOneToOne: false
-            referencedRelation: "households"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      household_invites: {
-        Row: {
-          created_at: string
-          created_by: string
-          expires_at: string
-          household_id: string
-          id: string
-          max_uses: number
-          used_count: number
-        }
-        Insert: {
-          created_at?: string
-          created_by: string
-          expires_at?: string
-          household_id: string
-          id?: string
-          max_uses?: number
-          used_count?: number
-        }
-        Update: {
-          created_at?: string
-          created_by?: string
-          expires_at?: string
-          household_id?: string
-          id?: string
-          max_uses?: number
-          used_count?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "household_invites_household_id_fkey"
-            columns: ["household_id"]
-            isOneToOne: false
-            referencedRelation: "households"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      household_members: {
-        Row: {
-          created_at: string
-          display_name: string
-          household_id: string
-          invite_id: string | null
-          role: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          display_name: string
-          household_id: string
-          invite_id?: string | null
-          role?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          display_name?: string
-          household_id?: string
-          invite_id?: string | null
-          role?: string
           user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "household_members_household_id_fkey"
-            columns: ["household_id"]
-            isOneToOne: false
-            referencedRelation: "households"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "household_members_invite_id_fkey"
-            columns: ["invite_id"]
-            isOneToOne: false
-            referencedRelation: "household_invites"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      households: {
-        Row: {
-          created_at: string
-          id: string
-          name: string
-          owner_user_id: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          name: string
-          owner_user_id: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          name?: string
-          owner_user_id?: string
-          updated_at?: string
         }
         Relationships: []
       }
@@ -407,8 +174,6 @@ export type Database = {
         Row: {
           appointment_lead_min: number[]
           created_at: string
-          default_prep_min: number
-          default_travel_min: number
           email_enabled: boolean
           email_to: string | null
           id: string
@@ -419,17 +184,12 @@ export type Database = {
           push_enabled: boolean
           quiet_end: string
           quiet_start: string
-          travel_buffer_min: number
-          travel_mode: string
-          travel_reminders_enabled: boolean
           updated_at: string
           user_id: string
         }
         Insert: {
           appointment_lead_min?: number[]
           created_at?: string
-          default_prep_min?: number
-          default_travel_min?: number
           email_enabled?: boolean
           email_to?: string | null
           id?: string
@@ -440,17 +200,12 @@ export type Database = {
           push_enabled?: boolean
           quiet_end?: string
           quiet_start?: string
-          travel_buffer_min?: number
-          travel_mode?: string
-          travel_reminders_enabled?: boolean
           updated_at?: string
           user_id: string
         }
         Update: {
           appointment_lead_min?: number[]
           created_at?: string
-          default_prep_min?: number
-          default_travel_min?: number
           email_enabled?: boolean
           email_to?: string | null
           id?: string
@@ -461,9 +216,6 @@ export type Database = {
           push_enabled?: boolean
           quiet_end?: string
           quiet_start?: string
-          travel_buffer_min?: number
-          travel_mode?: string
-          travel_reminders_enabled?: boolean
           updated_at?: string
           user_id?: string
         }
@@ -576,75 +328,6 @@ export type Database = {
           user_id?: string
           work_end?: string
           work_start?: string
-        }
-        Relationships: []
-      }
-      routines: {
-        Row: {
-          active: boolean
-          annual_day: number | null
-          annual_month: number | null
-          category: string
-          commitment_type: string
-          created_at: string
-          days_of_week: number[]
-          duration_min: number
-          end_date: string | null
-          frequency: string
-          id: string
-          is_all_day: boolean
-          local_time: string
-          location: string | null
-          notes: string | null
-          start_date: string
-          timezone: string
-          title: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          active?: boolean
-          annual_day?: number | null
-          annual_month?: number | null
-          category?: string
-          commitment_type?: string
-          created_at?: string
-          days_of_week?: number[]
-          duration_min?: number
-          end_date?: string | null
-          frequency?: string
-          id?: string
-          is_all_day?: boolean
-          local_time: string
-          location?: string | null
-          notes?: string | null
-          start_date?: string
-          timezone?: string
-          title: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          active?: boolean
-          annual_day?: number | null
-          annual_month?: number | null
-          category?: string
-          commitment_type?: string
-          created_at?: string
-          days_of_week?: number[]
-          duration_min?: number
-          end_date?: string | null
-          frequency?: string
-          id?: string
-          is_all_day?: boolean
-          local_time?: string
-          location?: string | null
-          notes?: string | null
-          start_date?: string
-          timezone?: string
-          title?: string
-          updated_at?: string
-          user_id?: string
         }
         Relationships: []
       }
@@ -810,6 +493,13 @@ export type Database = {
             referencedRelation: "appointments"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "tasks_scheduled_appointment_id_fkey"
+            columns: ["scheduled_appointment_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_hub_events"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
@@ -822,18 +512,14 @@ export type Database = {
           created_at: string | null
           duration_min: number | null
           ends_at: string | null
-          household_id: string | null
-          household_visibility: string | null
           id: string | null
           is_all_day: boolean | null
-          is_household_shared: boolean | null
           location: string | null
           notes: string | null
           privacy_level: string | null
           provider: string | null
           provider_account_id: string | null
           recurrence_rule: string | null
-          shared_by_name: string | null
           source: string | null
           source_label: string | null
           starts_at: string | null
@@ -843,22 +529,59 @@ export type Database = {
           updated_at: string | null
           user_id: string | null
         }
+        Insert: {
+          calendar_event_id?: string | null
+          calendar_id?: string | null
+          commitment_type?: never
+          created_at?: string | null
+          duration_min?: never
+          ends_at?: string | null
+          id?: string | null
+          is_all_day?: never
+          location?: string | null
+          notes?: string | null
+          privacy_level?: never
+          provider?: never
+          provider_account_id?: never
+          recurrence_rule?: never
+          source?: string | null
+          source_label?: never
+          starts_at?: string | null
+          sync_status?: never
+          timezone?: never
+          title?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          calendar_event_id?: string | null
+          calendar_id?: string | null
+          commitment_type?: never
+          created_at?: string | null
+          duration_min?: never
+          ends_at?: string | null
+          id?: string | null
+          is_all_day?: never
+          location?: string | null
+          notes?: string | null
+          privacy_level?: never
+          provider?: never
+          provider_account_id?: never
+          recurrence_rule?: never
+          source?: string | null
+          source_label?: never
+          starts_at?: string | null
+          sync_status?: never
+          timezone?: never
+          title?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
         Relationships: []
       }
     }
     Functions: {
-      create_household: {
-        Args: { p_display_name: string; p_name: string }
-        Returns: string
-      }
-      create_household_invite: {
-        Args: { p_household_id: string }
-        Returns: string
-      }
-      join_household: {
-        Args: { p_display_name: string; p_invite_id: string }
-        Returns: string
-      }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never
