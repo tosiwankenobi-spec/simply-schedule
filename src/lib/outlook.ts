@@ -127,7 +127,7 @@ export function isRetryable(status: number): boolean {
 /** Bounded exponential backoff with jitter, capped at 8 seconds. */
 export function backoffDelayMs(attempt: number, jitter = 0.5): number {
   const base = Math.min(8000, 500 * 2 ** Math.max(0, attempt - 1));
-  return Math.round(base * (0.75 + jitter * 0.5));
+  return Math.min(8000, Math.round(base * (0.75 + jitter * 0.5)));
 }
 
 export function appointmentRowsAreEqual(
