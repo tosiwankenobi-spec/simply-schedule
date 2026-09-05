@@ -783,6 +783,27 @@ export type Database = {
         }
         Relationships: []
       }
+      sync_locks: {
+        Row: {
+          claimed_at: string
+          lock_key: string
+          token: string
+          user_id: string
+        }
+        Insert: {
+          claimed_at?: string
+          lock_key: string
+          token: string
+          user_id: string
+        }
+        Update: {
+          claimed_at?: string
+          lock_key?: string
+          token?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       sync_log: {
         Row: {
           calendar_id: string | null
@@ -997,6 +1018,10 @@ export type Database = {
       }
     }
     Functions: {
+      claim_sync_lock: {
+        Args: { p_lock_key: string; p_ttl_seconds: number }
+        Returns: string
+      }
       create_household: {
         Args: { p_display_name: string; p_name: string }
         Returns: string
@@ -1008,6 +1033,10 @@ export type Database = {
       join_household: {
         Args: { p_display_name: string; p_invite_id: string }
         Returns: string
+      }
+      release_sync_lock: {
+        Args: { p_lock_key: string; p_token: string }
+        Returns: boolean
       }
     }
     Enums: {
