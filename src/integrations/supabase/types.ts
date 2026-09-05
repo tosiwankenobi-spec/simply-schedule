@@ -56,6 +56,39 @@ export type Database = {
         }
         Relationships: []
       }
+      app_user_connections: {
+        Row: {
+          account_id: string | null
+          account_label: string | null
+          connection_key_ciphertext: string
+          connector_id: string
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          account_label?: string | null
+          connection_key_ciphertext: string
+          connector_id: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string | null
+          account_label?: string | null
+          connection_key_ciphertext?: string
+          connector_id?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       appointments: {
         Row: {
           calendar_etag: string | null
@@ -469,23 +502,71 @@ export type Database = {
         }
         Relationships: []
       }
+      outlook_calendars: {
+        Row: {
+          account_id: string
+          calendar_id: string
+          can_edit: boolean
+          color: string | null
+          created_at: string
+          id: string
+          is_default: boolean
+          name: string
+          selected: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_id?: string
+          calendar_id: string
+          can_edit?: boolean
+          color?: string | null
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name: string
+          selected?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          calendar_id?: string
+          can_edit?: boolean
+          color?: string | null
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          selected?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       pending_calendar_deletions: {
         Row: {
           calendar_event_id: string
+          calendar_id: string | null
           created_at: string
           id: string
+          provider: string
           user_id: string
         }
         Insert: {
           calendar_event_id: string
+          calendar_id?: string | null
           created_at?: string
           id?: string
+          provider?: string
           user_id: string
         }
         Update: {
           calendar_event_id?: string
+          calendar_id?: string | null
           created_at?: string
           id?: string
+          provider?: string
           user_id?: string
         }
         Relationships: []

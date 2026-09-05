@@ -609,6 +609,7 @@ async function push(
     .from("pending_calendar_deletions")
     .select("id, calendar_event_id")
     .eq("user_id", userId)
+    .eq("provider", "google_calendar")
     .limit(50);
 
   for (const p of pending ?? []) {
@@ -645,6 +646,8 @@ async function push(
     .eq("user_id", userId)
     .is("calendar_event_id", null)
     .neq("source", "calendar_import")
+    .neq("source", "microsoft_outlook")
+    .neq("source", "outlook_push")
     .gte("starts_at", horizon)
     .limit(50);
 

@@ -12,6 +12,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
+import { OutlookConnection } from "@/components/OutlookConnection";
 import { WorkspaceHeader } from "@/components/WorkspaceHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -81,7 +82,7 @@ function OutlookSetupPage() {
               Connect each account, <span className="text-accent italic">privately.</span>
             </>
           }
-          description="Prepare a per-user Outlook connection for live calendar and Smart Inbox access. This page does not connect an account or request any Microsoft permission."
+          description="Connect your own Microsoft account for live two-way calendar sync. Chronos-V never sees your Microsoft password or tokens."
           action={
             <Button asChild variant="outline" className="min-h-11 bg-card/80">
               <Link to="/calendar-import">
@@ -124,12 +125,14 @@ function OutlookSetupPage() {
           </div>
         </section>
 
+        <OutlookConnection />
+
         <div className="mt-8 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <Card className="rounded-2xl bg-card/90 shadow-[0_18px_45px_rgba(0,46,40,0.04)]">
             <CardHeader>
               <CardTitle>Connection checklist</CardTitle>
               <CardDescription>
-                Complete these builder steps before adding the user-facing Connect Outlook button.
+                Reference for the workspace setup behind the Connect Outlook button above.
               </CardDescription>
             </CardHeader>
             <CardContent>
