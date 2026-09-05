@@ -39,7 +39,7 @@ export type CalendarImportSummary = {
 };
 
 function providerFor(kind: CalendarImportKind) {
-  return kind === "outlook" ? "outlook_calendar" : "device_calendar";
+  return kind === "outlook" ? "microsoft_outlook" : "device_calendar";
 }
 
 function externalId(
@@ -113,7 +113,7 @@ export const getCalendarImports = createServerFn({ method: "GET" })
 
     const groups = new Map<string, CalendarImportSummary>();
     for (const row of data ?? []) {
-      const kind: CalendarImportKind = row.provider === "outlook_calendar" ? "outlook" : "device";
+      const kind: CalendarImportKind = row.provider === "microsoft_outlook" ? "outlook" : "device";
       const name = row.calendar_id ?? "Imported calendar";
       const key = `${kind}\0${name}`;
       const current = groups.get(key);

@@ -15,7 +15,7 @@ export type SyncStatus = "synced" | "pending" | "local";
 export type ScheduleProvider =
   | "google_calendar"
   | "google_mail"
-  | "outlook_calendar"
+  | "microsoft_outlook"
   | "device_calendar"
   | "chronos";
 
