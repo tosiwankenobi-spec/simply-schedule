@@ -14,7 +14,13 @@ import type {
   OutlookSyncResult,
 } from "./outlook.server";
 
-export type { DisconnectOutcome, ExportCandidate, OutlookCalendar, OutlookStatus, OutlookSyncResult };
+export type {
+  DisconnectOutcome,
+  ExportCandidate,
+  OutlookCalendar,
+  OutlookStatus,
+  OutlookSyncResult,
+};
 
 const GATEWAY_BASE_URL = "https://connector-gateway.lovable.dev";
 

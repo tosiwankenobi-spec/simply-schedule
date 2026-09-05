@@ -51,7 +51,7 @@ export function outlookEventKey(accountId: string, calendarId: string, eventId: 
  * commonly returns; anything already IANA-shaped passes through untouched.
  */
 const WINDOWS_TO_IANA: Record<string, string> = {
-  "UTC": "UTC",
+  UTC: "UTC",
   "GMT Standard Time": "Europe/London",
   "Greenwich Standard Time": "Atlantic/Reykjavik",
   "W. Europe Standard Time": "Europe/Berlin",
@@ -244,7 +244,6 @@ export function rowToGraphEvent(row: OutlookPushRow): Record<string, unknown> {
   };
 }
 
-
 export type DeltaPage = {
   items: GraphEvent[];
   nextLink: string | null;
@@ -296,11 +295,7 @@ export function appointmentRowsAreEqual(
  * Safe error text for logs and the UI: HTTP status, Microsoft's error code and
  * request id only. Response bodies, tokens and account data are never kept.
  */
-export function graphErrorSummary(
-  status: number,
-  body: string,
-  requestId?: string | null,
-): string {
+export function graphErrorSummary(status: number, body: string, requestId?: string | null): string {
   let code: string | null = null;
   try {
     const parsed = JSON.parse(body) as { error?: { code?: unknown } };

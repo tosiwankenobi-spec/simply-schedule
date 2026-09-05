@@ -212,7 +212,9 @@ describe("error reporting never leaks provider data", () => {
       error: { code: "InvalidAuthenticationToken", message: "Bearer lovack_secret_value" },
     });
     const summary = graphErrorSummary(401, body, "req-42");
-    expect(summary).toBe("Microsoft responded 401 · code InvalidAuthenticationToken · request req-42");
+    expect(summary).toBe(
+      "Microsoft responded 401 · code InvalidAuthenticationToken · request req-42",
+    );
     expect(summary).not.toContain("lovack");
     expect(summary).not.toContain("Bearer");
   });

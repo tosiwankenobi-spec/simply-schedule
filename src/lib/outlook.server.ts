@@ -165,8 +165,7 @@ async function graphFetch(
       },
     });
     const text = await res.text();
-    const requestId =
-      res.headers.get("request-id") ?? res.headers.get("client-request-id") ?? null;
+    const requestId = res.headers.get("request-id") ?? res.headers.get("client-request-id") ?? null;
 
     if (res.ok) {
       let json: Record<string, unknown> | null = null;
@@ -265,7 +264,11 @@ async function claimSyncLock(supabase: SupabaseClient, userId: string): Promise<
     .maybeSingle();
   if (error) throw new Error("Your Outlook sync status could not be read.");
   const startedAt = Date.parse(data?.last_attempt_at ?? "");
-  if (data?.cursor === "running" && Number.isFinite(startedAt) && Date.now() - startedAt < LOCK_TTL_MS) {
+  if (
+    data?.cursor === "running" &&
+    Number.isFinite(startedAt) &&
+    Date.now() - startedAt < LOCK_TTL_MS
+  ) {
     throw new OutlookBusyError();
   }
   const { error: writeError } = await supabase.from("sync_state").upsert(
@@ -1035,9 +1038,7 @@ export async function setOutlookExportSettings(
   if (patch.enabled !== undefined) update["outlook_export_enabled"] = patch.enabled;
   if (patch.targetCalendarId !== undefined)
     update["outlook_target_calendar_id"] = patch.targetCalendarId;
-  const { error } = await supabase
-    .from("sync_settings")
-    .upsert(update, { onConflict: "user_id" });
+  const { error } = await supabase.from("sync_settings").upsert(update, { onConflict: "user_id" });
   assertWrite(error, "Your Outlook sending preference");
 }
 
