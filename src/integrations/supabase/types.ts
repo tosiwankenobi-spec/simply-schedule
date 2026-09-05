@@ -64,6 +64,9 @@ export type Database = {
           connector_id: string
           created_at: string
           id: string
+          revocation_attempted_at: string | null
+          revocation_error: string | null
+          revocation_pending: boolean
           updated_at: string
           user_id: string
         }
@@ -74,6 +77,9 @@ export type Database = {
           connector_id: string
           created_at?: string
           id?: string
+          revocation_attempted_at?: string | null
+          revocation_error?: string | null
+          revocation_pending?: boolean
           updated_at?: string
           user_id: string
         }
@@ -84,6 +90,9 @@ export type Database = {
           connector_id?: string
           created_at?: string
           id?: string
+          revocation_attempted_at?: string | null
+          revocation_error?: string | null
+          revocation_pending?: boolean
           updated_at?: string
           user_id?: string
         }
@@ -97,6 +106,7 @@ export type Database = {
           commitment_type: string
           created_at: string
           ends_at: string | null
+          export_to_outlook: boolean
           external_id: string | null
           gmail_from: string | null
           gmail_message_id: string | null
@@ -136,6 +146,7 @@ export type Database = {
           commitment_type?: string
           created_at?: string
           ends_at?: string | null
+          export_to_outlook?: boolean
           external_id?: string | null
           gmail_from?: string | null
           gmail_message_id?: string | null
@@ -175,6 +186,7 @@ export type Database = {
           commitment_type?: string
           created_at?: string
           ends_at?: string | null
+          export_to_outlook?: boolean
           external_id?: string | null
           gmail_from?: string | null
           gmail_message_id?: string | null
@@ -811,6 +823,8 @@ export type Database = {
           created_at: string
           gmail_sync_enabled: boolean
           id: string
+          outlook_export_enabled: boolean
+          outlook_target_calendar_id: string | null
           selected_calendar_ids: string[]
           updated_at: string
           user_id: string
@@ -821,6 +835,8 @@ export type Database = {
           created_at?: string
           gmail_sync_enabled?: boolean
           id?: string
+          outlook_export_enabled?: boolean
+          outlook_target_calendar_id?: string | null
           selected_calendar_ids?: string[]
           updated_at?: string
           user_id: string
@@ -831,6 +847,8 @@ export type Database = {
           created_at?: string
           gmail_sync_enabled?: boolean
           id?: string
+          outlook_export_enabled?: boolean
+          outlook_target_calendar_id?: string | null
           selected_calendar_ids?: string[]
           updated_at?: string
           user_id?: string
@@ -844,7 +862,10 @@ export type Database = {
           cursor: string | null
           events_seen: number
           id: string
+          incomplete: boolean
+          last_attempt_at: string | null
           last_error: string | null
+          last_success_at: string | null
           last_synced_at: string | null
           pages_synced: number
           provider: string
@@ -858,7 +879,10 @@ export type Database = {
           cursor?: string | null
           events_seen?: number
           id?: string
+          incomplete?: boolean
+          last_attempt_at?: string | null
           last_error?: string | null
+          last_success_at?: string | null
           last_synced_at?: string | null
           pages_synced?: number
           provider: string
@@ -872,7 +896,10 @@ export type Database = {
           cursor?: string | null
           events_seen?: number
           id?: string
+          incomplete?: boolean
+          last_attempt_at?: string | null
           last_error?: string | null
+          last_success_at?: string | null
           last_synced_at?: string | null
           pages_synced?: number
           provider?: string
