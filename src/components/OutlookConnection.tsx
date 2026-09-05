@@ -32,10 +32,9 @@ const CONNECTOR_ID = "microsoft_outlook";
 
 function waitForOAuthCompletion(popup: Window) {
   return new Promise<string | null>((resolve, reject) => {
-    let poll: number | undefined;
     const cleanup = () => {
       window.removeEventListener("message", onMessage);
-      if (poll !== undefined) window.clearInterval(poll);
+      window.clearInterval(poll);
     };
     const onMessage = (event: MessageEvent) => {
       const type = (event.data as { type?: string } | null)?.type;
@@ -56,7 +55,7 @@ function waitForOAuthCompletion(popup: Window) {
       reject(new Error("The Microsoft connection was not completed."));
     };
     window.addEventListener("message", onMessage);
-    poll = window.setInterval(() => {
+    const poll = window.setInterval(() => {
       if (!popup.closed) return;
       cleanup();
       reject(new Error("The Microsoft window closed before finishing."));
