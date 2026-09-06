@@ -551,7 +551,7 @@ describe("capacity forecast — booked work is protected, not tight", () => {
           scheduledEnd: "2026-09-08T13:00:00.000Z",
         }),
       ],
-      [day("2026-09-07"), day("2026-09-08"), day("2026-09-09")],
+      [day("2026-09-07", 0, []), day("2026-09-08", 0, []), day("2026-09-09", 0, [])],
     );
     const entry = result.deadlines[0]!;
     expect(entry.status).toBe("on-track");
