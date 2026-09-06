@@ -17,7 +17,10 @@ export type PlanChange = {
   toStart: string;
   toEnd: string;
   reason: "missed" | "conflict";
+  /** The block's version stamp right after the plan moved it, when recorded. */
+  appliedVersion?: string;
 };
+
 
 export type PlanRunSummary = {
   id: string;
@@ -40,12 +43,20 @@ export type CurrentBlock = {
   id: string;
   starts_at: string;
   ends_at: string | null;
+  commitment_type?: string | null;
+  is_all_day?: boolean | null;
+  updated_at?: string | null;
 } | null;
 
 const sameInstant = (a: string | null | undefined, b: string | null | undefined) =>
   Boolean(a) && Boolean(b) && Date.parse(a as string) === Date.parse(b as string);
 
-/** Decide what undoing a single change would do, given the block's current state. */
+/**
+ * Decide what undoing a single change would do, given the block's current state.
+ * This mirrors the database rules exactly, so the confirmation never promises a
+ * move that undo would refuse: a block that is now fixed or all-day is left
+ * alone, and so is one edited in any way since the plan was applied.
+ */
 export function classifyUndo(change: PlanChange, current: CurrentBlock): UndoLine {
   if (!current) {
     return {
@@ -62,8 +73,30 @@ export function classifyUndo(change: PlanChange, current: CurrentBlock): UndoLin
     };
   }
   if (sameInstant(current.starts_at, change.toStart) && sameInstant(current.ends_at, change.toEnd)) {
+    if (current.commitment_type !== undefined && current.commitment_type !== "flexible") {
+      return {
+        change,
+        outcome: "changed-since",
+        explanation: "This block is now a fixed commitment, so it will be left alone.",
+      };
+    }
+    if (current.is_all_day === true) {
+      return {
+        change,
+        outcome: "changed-since",
+        explanation: "This block is now an all-day item, so it will be left alone.",
+      };
+    }
+    if (change.appliedVersion && !sameInstant(current.updated_at, change.appliedVersion)) {
+      return {
+        change,
+        outcome: "changed-since",
+        explanation: "You edited this block after the plan was applied, so it will be left alone.",
+      };
+    }
     return { change, outcome: "restore", explanation: "Will move back to its original time." };
   }
+
   return {
     change,
     outcome: "changed-since",
@@ -115,7 +148,11 @@ export function parsePlanChanges(value: unknown): PlanChange[] {
         toStart: row['toStart'] as string,
         toEnd: row['toEnd'] as string,
         reason,
+        ...(typeof row['appliedVersion'] === "string"
+          ? { appliedVersion: row['appliedVersion'] }
+          : {}),
       },
+
     ];
   });
 }
