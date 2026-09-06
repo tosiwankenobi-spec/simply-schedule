@@ -36,6 +36,7 @@ import {
   type PrivacyProvider,
   type PrivacyStatus,
 } from "@/lib/privacy.functions";
+import { LearningPanel } from "@/components/LearningPanel";
 
 export const Route = createFileRoute("/_authenticated/privacy")({
   component: PrivacyPage,
@@ -361,6 +362,8 @@ function PrivacyPage() {
                 </CardContent>
               </Card>
             </div>
+
+            <LearningPanel compact />
 
             <Card className="rounded-2xl border-dashed bg-card/60">
               <CardHeader>

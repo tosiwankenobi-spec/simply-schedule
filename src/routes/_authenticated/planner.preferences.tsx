@@ -18,6 +18,7 @@ import {
   deletePlannerAssignment,
   type PlannerProfile,
 } from "@/lib/planner.functions";
+import { LearningPanel } from "@/components/LearningPanel";
 
 export const Route = createFileRoute("/_authenticated/planner/preferences")({
   component: PlannerPreferencesPage,
@@ -250,6 +251,10 @@ function PlannerPreferencesPage() {
         </section>
 
         <Assignments profiles={profiles ?? []} assignments={assignments ?? []} />
+
+        <div className="mt-10">
+          <LearningPanel />
+        </div>
       </div>
     </div>
   );

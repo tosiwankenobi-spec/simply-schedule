@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { recordLearningSignal } from "./learning.server";
 import type { Database, Json } from "@/integrations/supabase/types";
 import {
   buildDayReplan,
@@ -217,8 +218,18 @@ export const applyDayReplan = createServerFn({ method: "POST" })
       repeated?: boolean;
       changes?: unknown;
     };
+    const moved = typeof payload.moved === "number" ? payload.moved : 0;
+    if (!payload.repeated) {
+      // Post-success only: counts, never item identities or content.
+      await recordLearningSignal(context.supabase, {
+        kind: "replan_applied",
+        offered: moves.length,
+        approved: approved.length,
+        moved,
+      });
+    }
     return {
-      moved: typeof payload.moved === "number" ? payload.moved : 0,
+      moved,
       planRunId: payload.planRunId ?? null,
       changes: parsePlanChanges((payload.changes ?? []) as never),
       repeated: payload.repeated === true,
@@ -340,6 +351,13 @@ export const undoPlanRun = createServerFn({ method: "POST" })
       changedSince: payload.changedSince ?? 0,
       missing: payload.missing ?? 0,
     };
+    if (!(payload.repeated === true)) {
+      await recordLearningSignal(context.supabase, {
+        kind: "undo_completed",
+        restored: counts.restore,
+        leftAlone: counts.alreadyRestored + counts.changedSince + counts.missing,
+      });
+    }
     return {
       restored: counts.restore,
       skipped: counts.changedSince + counts.missing,

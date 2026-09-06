@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { recordLearningSignal } from "./learning.server";
 import { z } from "zod";
 
 export type PlannerPrefs = {
@@ -619,6 +620,13 @@ export const applyWeekPlan = createServerFn({ method: "POST" })
     if (result.accepted.length > 0) {
       const { error } = await context.supabase.from("appointments").insert(result.accepted);
       if (error) throw error;
+      await recordLearningSignal(context.supabase, {
+        kind: "plan_applied",
+        conflictStrategy: data.resolution,
+        offered: result.accepted.length + result.skipped.length + result.shifted.length,
+        approved: result.accepted.length,
+        moved: result.shifted.length,
+      });
     }
     return {
       created: result.accepted.length,
@@ -804,6 +812,14 @@ export const applyDayPlan = createServerFn({ method: "POST" })
     if (result.accepted.length > 0) {
       const { error } = await context.supabase.from("appointments").insert(result.accepted);
       if (error) throw error;
+      // Post-success only, best-effort, counts and strategy only.
+      await recordLearningSignal(context.supabase, {
+        kind: "plan_applied",
+        conflictStrategy: data.resolution,
+        offered: result.accepted.length + result.skipped.length + result.shifted.length,
+        approved: result.accepted.length,
+        moved: result.shifted.length,
+      });
     }
     return {
       created: result.accepted.length,
