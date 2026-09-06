@@ -34,13 +34,19 @@ function task(id: string, appointmentId: string): TaskRow {
   };
 }
 
-function taskBlock(id: string, startsAt: string, endsAt: string): ReplanAppointment {
+function taskBlock(
+  id: string,
+  startsAt: string,
+  endsAt: string,
+  commitmentType = "flexible",
+): ReplanAppointment {
   return {
     id,
     title: "Prepare report",
     starts_at: startsAt,
     ends_at: endsAt,
     source: "task",
+    commitment_type: commitmentType,
   };
 }
 
@@ -142,6 +148,35 @@ describe("automatic day replanning", () => {
 
     expect(result.moves).toEqual([]);
     expect(result.affectedCount).toBe(0);
+    expect(result.fixedCount).toBe(1);
+  });
+
+  test("never proposes moving a task block that has been made fixed", () => {
+    const appointment = taskBlock(
+      "fixed-task-block",
+      "2026-09-04T11:00:00.000Z",
+      "2026-09-04T12:00:00.000Z",
+      "fixed",
+    );
+    const result = buildDayReplan({
+      date: "2026-09-04",
+      nowMs: Date.parse("2026-09-04T13:00:00.000Z"),
+      timezoneOffsetMinutes: 0,
+      prefs,
+      tasks: [task("task-1", appointment.id)],
+      appointments: [appointment],
+      protectedBusy: [
+        protectedBlock(
+          appointment.id,
+          "Prepare report",
+          appointment.starts_at,
+          appointment.ends_at as string,
+        ),
+      ],
+    });
+    expect(result.moves).toHaveLength(0);
+    expect(result.affectedCount).toBe(0);
+    expect(result.unresolved).toHaveLength(0);
     expect(result.fixedCount).toBe(1);
   });
 });

@@ -110,7 +110,7 @@ export const previewDayReplan = createServerFn({ method: "POST" })
       prefsForDate(context.supabase, context.userId, data.date),
       context.supabase
         .from("appointments")
-        .select("id,title,starts_at,ends_at,source,updated_at")
+        .select("id,title,starts_at,ends_at,source,commitment_type,updated_at")
         .eq("user_id", context.userId)
         .eq("is_all_day", false)
         .gte("starts_at", new Date(bounds.start).toISOString())

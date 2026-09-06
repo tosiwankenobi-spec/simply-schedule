@@ -8,6 +8,8 @@ export type ReplanAppointment = {
   starts_at: string;
   ends_at: string | null;
   source: string;
+  /** Only 'flexible' blocks may ever be proposed for a move. */
+  commitment_type?: string | null;
   /** Last-changed stamp, carried into the proposal so apply can revalidate it. */
   updated_at?: string | null;
 };
@@ -99,7 +101,10 @@ export function buildDayReplan({
   );
   const flexible = appointments.flatMap((appointment) => {
     const task = tasksByAppointment.get(appointment.id);
-    return task && appointment.source === "task" ? [{ appointment, task }] : [];
+    // A task block that has been protected (fixed) is never movable, so the
+    // proposal must not offer it — apply would refuse it anyway.
+    const movable = appointment.source === "task" && appointment.commitment_type === "flexible";
+    return task && movable ? [{ appointment, task }] : [];
   });
   const flexibleIds = new Set(flexible.map(({ appointment }) => appointment.id));
   const fixed = appointments.filter((appointment) => !flexibleIds.has(appointment.id));
