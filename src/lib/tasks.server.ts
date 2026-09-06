@@ -179,14 +179,22 @@ export function computeGaps(
   busy: Busy[],
   nowMs: number,
   tzOffsetMin = 0,
+  /**
+   * Optional exact resolver for a local wall-clock time on `date`. The forecast
+   * passes an IANA-zone resolver so a DST day uses the offset in force at each
+   * clock time rather than one offset for the whole day.
+   */
+  resolveLocal?: (date: string, hhmm: string) => number,
 ): Busy[] {
-  const dayStart = Math.max(atTime(date, prefs.work_start, tzOffsetMin), nowMs);
-  const dayEnd = atTime(date, prefs.work_end, tzOffsetMin);
+  const at = (hhmm: string) =>
+    resolveLocal ? resolveLocal(date, hhmm) : atTime(date, hhmm, tzOffsetMin);
+  const dayStart = Math.max(at(prefs.work_start), nowMs);
+  const dayEnd = at(prefs.work_end);
   if (dayEnd <= dayStart) return [];
 
   const blocks: Busy[] = [...busy];
   if (prefs.lunch_length_min > 0) {
-    const ls = atTime(date, prefs.lunch_at, tzOffsetMin);
+    const ls = at(prefs.lunch_at);
     blocks.push({ start: ls, end: ls + prefs.lunch_length_min * 60000 });
   }
 

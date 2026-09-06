@@ -60,6 +60,31 @@ describe("capacity forecast server contract", () => {
     }
   });
 
+  it("takes only the travel fields from notification settings", () => {
+    expect(source).not.toContain("NOTIF_COLS");
+    const code = source.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, "");
+    expect(code).not.toContain("email_to");
+    expect(source).toContain(
+      '"travel_reminders_enabled,travel_mode,default_travel_min,travel_buffer_min,default_prep_min"',
+    );
+  });
+
+  it("does not read planner profile notes", () => {
+    const profileCols = source.match(/const PROFILE_COLS =\s*\n?\s*"([^"]+)"/)![1]!;
+    expect(profileCols.split(",")).not.toContain("notes");
+  });
+
+  it("selects and filters the schedule by overlap, not by start instant only", () => {
+    expect(source).toContain("OVERLAP_LOOKBACK_MS");
+    expect(source).toContain("overlapsRange(");
+    expect(source).not.toContain('.gte("starts_at", rangeStart)');
+  });
+
+  it("uses exact zoned instants for local clock times", () => {
+    expect(source).toContain("zonedInstant(timeZone");
+    expect(source).not.toContain("localDayBounds(");
+  });
+
   it("validates its input narrowly and bounds the horizon", () => {
     expect(source).toContain("z.string().max(80)");
     expect(source).toContain("min(1).max(21)");

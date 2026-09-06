@@ -114,7 +114,7 @@ export function CapacityForecast() {
             </div>
             <div className="rounded-xl border border-border bg-background/60 px-3 py-2">
               <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                Work waiting
+                Still needs time
               </dt>
               <dd className="mt-0.5 font-medium text-foreground">
                 {formatMinutes(forecast.data.requiredMinutes)}
@@ -222,6 +222,7 @@ function DeadlineRow({ item }: { item: ForecastDeadline }) {
       </div>
       <p className="mt-1 text-xs text-muted-foreground">
         Due {dayLabel(item.deadline)} · needs {formatMinutes(item.estimatedMin)}
+        {item.alreadyBooked ? " · already booked in" : ""}
         {item.shortfallMinutes > 0
           ? ` · ${formatMinutes(item.shortfallMinutes)} short`
           : ` · ${formatMinutes(item.slackMinutes)} spare`}

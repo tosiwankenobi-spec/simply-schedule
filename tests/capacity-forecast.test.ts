@@ -4,10 +4,13 @@ import {
   forecastDates,
   formatMinutes,
   localDateString,
+  localDayRange,
   normalizeTimeZone,
+  overlapsRange,
   rankForecastTasks,
   resolveProfileIdForDate,
   zoneOffsetMinutes,
+  zonedInstant,
   type ForecastDayInput,
   type ForecastTask,
 } from "../src/lib/capacity-forecast";
@@ -341,5 +344,194 @@ describe("capacity forecast — timezones", () => {
     const lateUtc = Date.parse("2026-09-08T02:00:00Z");
     expect(localDateString("America/Regina", lateUtc)).toBe("2026-09-07");
     expect(localDateString("Asia/Tokyo", lateUtc)).toBe("2026-09-08");
+  });
+});
+
+describe("capacity forecast — horizon scope", () => {
+  test("a deadline beyond the horizon neither consumes capacity nor appears as a risk", () => {
+    const result = forecast([
+      task({ id: "far", estimatedMin: 300, deadline: "2026-12-01" }),
+      task({ id: "near", estimatedMin: 60, deadline: "2026-09-09" }),
+    ]);
+    expect(result.deadlines.map((d) => d.taskId)).toEqual(["near"]);
+    expect(result.backlog).toEqual([]);
+    expect(result.counts).toMatchObject({ critical: 0, backlog: 0 });
+    expect(result.deadlineRequiredMinutes).toBe(60);
+    expect(result.days[0]!.allocatedMinutes).toBe(60);
+    expect(result.firstOverloadedDate).toBeNull();
+    expect(result.headline).toContain("fits");
+  });
+
+  test("a deadline on the last horizon day is still included", () => {
+    const result = forecast([task({ id: "edge", estimatedMin: 60, deadline: "2026-09-09" })]);
+    expect(result.deadlines).toHaveLength(1);
+  });
+});
+
+describe("capacity forecast — already-booked work is not double-counted", () => {
+  const booked = (overrides: Partial<ForecastTask> = {}) =>
+    task({
+      id: "booked",
+      estimatedMin: 240,
+      status: "scheduled",
+      deadline: "2026-09-08",
+      scheduledStart: "2026-09-08T09:00:00.000Z",
+      scheduledEnd: "2026-09-08T13:00:00.000Z",
+      ...overrides,
+    });
+
+  test("an on-time booked block is satisfied, not outstanding demand", () => {
+    const result = forecast([booked()]);
+    const entry = result.deadlines[0]!;
+    expect(entry.alreadyBooked).toBe(true);
+    expect(entry.outstandingMinutes).toBe(0);
+    expect(entry.status).not.toBe("critical");
+    expect(result.deadlineRequiredMinutes).toBe(0);
+    expect(result.firstOverloadedDate).toBeNull();
+    expect(result.headline).not.toContain("won't be met");
+  });
+
+  test("a block after its deadline stays outstanding and critical", () => {
+    const result = forecast([
+      booked({
+        deadline: "2026-09-07",
+        scheduledStart: "2026-09-09T09:00:00.000Z",
+        scheduledEnd: "2026-09-09T13:00:00.000Z",
+      }),
+    ]);
+    const entry = result.deadlines[0]!;
+    expect(entry.alreadyBooked).toBe(false);
+    expect(entry.outstandingMinutes).toBe(240);
+    expect(entry.shortfallMinutes).toBe(240);
+    expect(entry.status).toBe("critical");
+    expect(result.firstOverloadedDate).toBe("2026-09-07");
+  });
+
+  test("a missed block stays outstanding and critical", () => {
+    const result = forecast([
+      booked({
+        deadline: "2026-09-09",
+        scheduledStart: "2026-09-07T06:00:00.000Z",
+        scheduledEnd: "2026-09-07T07:00:00.000Z",
+      }),
+    ]);
+    const entry = result.deadlines[0]!;
+    expect(entry.alreadyBooked).toBe(false);
+    expect(entry.outstandingMinutes).toBe(240);
+    expect(entry.status).toBe("critical");
+  });
+
+  test("mixed booked and unbooked demand counts only the unbooked part", () => {
+    const result = forecast([
+      booked(),
+      task({ id: "open", estimatedMin: 90, deadline: "2026-09-08" }),
+    ]);
+    expect(result.deadlineRequiredMinutes).toBe(90);
+    expect(result.counts.critical).toBe(0);
+    expect(result.firstOverloadedDate).toBeNull();
+  });
+});
+
+describe("capacity forecast — exact zoned instants", () => {
+  test("spring forward: the local day is 23 hours and work times stay correct", () => {
+    const { startMs, endMs } = localDayRange("America/New_York", "2026-03-08");
+    expect((endMs - startMs) / 3600000).toBe(23);
+    expect(new Date(zonedInstant("America/New_York", "2026-03-08", "09:00")).toISOString()).toBe(
+      "2026-03-08T13:00:00.000Z",
+    );
+    expect(new Date(zonedInstant("America/New_York", "2026-03-07", "09:00")).toISOString()).toBe(
+      "2026-03-07T14:00:00.000Z",
+    );
+  });
+
+  test("fall back: the local day is 25 hours and midnight is not reused for work times", () => {
+    const { startMs, endMs } = localDayRange("America/New_York", "2026-11-01");
+    expect((endMs - startMs) / 3600000).toBe(25);
+    expect(new Date(startMs).toISOString()).toBe("2026-11-01T04:00:00.000Z");
+    expect(new Date(zonedInstant("America/New_York", "2026-11-01", "09:00")).toISOString()).toBe(
+      "2026-11-01T14:00:00.000Z",
+    );
+  });
+
+  test("non-hour offsets resolve exactly", () => {
+    expect(new Date(zonedInstant("Asia/Kolkata", "2026-09-08", "09:00")).toISOString()).toBe(
+      "2026-09-08T03:30:00.000Z",
+    );
+    const kolkata = localDayRange("Asia/Kolkata", "2026-09-08");
+    expect(new Date(kolkata.startMs).toISOString()).toBe("2026-09-07T18:30:00.000Z");
+  });
+
+  test("horizon days carry exact bounds across a transition", () => {
+    const dates = forecastDates("America/New_York", Date.parse("2026-10-27T12:00:00Z"), 14);
+    const fallback = dates.find((d) => d.date === "2026-11-01")!;
+    expect((fallback.endMs - fallback.startMs) / 3600000).toBe(25);
+  });
+});
+
+describe("capacity forecast — overlap filtering", () => {
+  const overnight = { starts_at: "2026-09-07T22:00:00.000Z", ends_at: "2026-09-08T02:00:00.000Z" };
+
+  test("an event crossing midnight belongs to both local days", () => {
+    const first = localDayRange("UTC", "2026-09-07");
+    const second = localDayRange("UTC", "2026-09-08");
+    expect(overlapsRange(overnight, first.startMs, first.endMs)).toBe(true);
+    expect(overlapsRange(overnight, second.startMs, second.endMs)).toBe(true);
+  });
+
+  test("an event starting before the horizon but overlapping it is kept", () => {
+    const horizonStart = Date.parse("2026-09-07T00:00:00.000Z");
+    const horizonEnd = Date.parse("2026-09-21T00:00:00.000Z");
+    expect(
+      overlapsRange(
+        { starts_at: "2026-09-06T23:00:00.000Z", ends_at: "2026-09-07T01:00:00.000Z" },
+        horizonStart,
+        horizonEnd,
+      ),
+    ).toBe(true);
+    expect(
+      overlapsRange(
+        { starts_at: "2026-09-06T20:00:00.000Z", ends_at: "2026-09-06T21:00:00.000Z" },
+        horizonStart,
+        horizonEnd,
+      ),
+    ).toBe(false);
+  });
+
+  test("a null end uses the default duration for overlap", () => {
+    const day = localDayRange("UTC", "2026-09-08");
+    expect(
+      overlapsRange(
+        { starts_at: "2026-09-07T23:50:00.000Z", ends_at: null },
+        day.startMs,
+        day.endMs,
+      ),
+    ).toBe(true);
+    expect(
+      overlapsRange(
+        { starts_at: "2026-09-07T23:00:00.000Z", ends_at: null },
+        day.startMs,
+        day.endMs,
+      ),
+    ).toBe(false);
+  });
+
+  test("a busy interval clipped by computeGaps still removes only in-day time", () => {
+    const busy = buildPlannerBusyIntervals(
+      [
+        {
+          id: "overnight",
+          title: "Night shift",
+          starts_at: "2026-09-07T22:00:00.000Z",
+          ends_at: "2026-09-08T10:00:00.000Z",
+          location: null,
+        },
+      ],
+      travel,
+      30,
+    );
+    const gaps = computeGaps("2026-09-08", prefs, busy, Date.parse("2026-09-08T00:00:00Z"), 0);
+    const capacity = gaps.reduce((sum, g) => sum + (g.end - g.start) / 60000, 0);
+    // 09:00–17:00 minus the 09:00–10:00 spillover and the 45m lunch.
+    expect(capacity).toBe(480 - 60 - 45);
   });
 });

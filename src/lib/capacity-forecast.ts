@@ -72,6 +72,10 @@ export type ForecastDeadline = {
   status: ForecastStatus;
   /** Spare capacity left before the deadline once this task is fitted. */
   slackMinutes: number;
+  /** Minutes still needing free time — 0 when a live on-time block holds it. */
+  outstandingMinutes: number;
+  /** True when a live block on or before the deadline already holds this work. */
+  alreadyBooked: boolean;
   /** Minutes of this task that could not be fitted before the deadline. */
   shortfallMinutes: number;
   plannedDate: string | null;
@@ -164,23 +168,86 @@ function addDays(date: string, days: number): string {
 }
 
 /**
- * Local dates across the horizon with the offset that actually applies on each
- * day (sampled at local noon), so a DST change inside the horizon is honoured
- * instead of today's offset being smeared over every day.
+ * Exact UTC instant for a local wall-clock time in an IANA zone. Two passes so
+ * the offset used is the one actually in force at that instant, not at some
+ * other hour of the same day (which differs on DST transition days).
+ */
+export function zonedInstant(timeZone: string, date: string, hhmm: string): number {
+  const [h, m] = hhmm.split(":").map(Number);
+  const naive = Date.parse(
+    `${date}T${String(h ?? 0).padStart(2, "0")}:${String(m ?? 0).padStart(2, "0")}:00Z`,
+  );
+  let guess = naive + zoneOffsetMinutes(timeZone, naive) * 60000;
+  guess = naive + zoneOffsetMinutes(timeZone, guess) * 60000;
+  return guess;
+}
+
+/**
+ * Local day bounds in an IANA zone. Built from midnight of this day and midnight
+ * of the next day, so a spring-forward day is 23h and a fall-back day is 25h.
+ */
+export function localDayRange(timeZone: string, date: string): { startMs: number; endMs: number } {
+  return {
+    startMs: zonedInstant(timeZone, date, "00:00"),
+    endMs: zonedInstant(timeZone, addDays(date, 1), "00:00"),
+  };
+}
+
+/** Default length used for an event with a missing or invalid end. */
+export const FORECAST_DEFAULT_EVENT_MIN = 30;
+
+export function eventInterval(
+  startsAt: string,
+  endsAt: string | null | undefined,
+  defaultMin = FORECAST_DEFAULT_EVENT_MIN,
+): { start: number; end: number } | null {
+  const start = Date.parse(startsAt);
+  if (!Number.isFinite(start)) return null;
+  const parsedEnd = endsAt ? Date.parse(endsAt) : Number.NaN;
+  const end =
+    Number.isFinite(parsedEnd) && parsedEnd > start
+      ? parsedEnd
+      : start + Math.max(5, defaultMin) * 60000;
+  return { start, end };
+}
+
+/** True when an event overlaps [startMs, endMs) — not merely starts inside it. */
+export function overlapsRange(
+  event: { starts_at: string; ends_at?: string | null },
+  startMs: number,
+  endMs: number,
+  defaultMin = FORECAST_DEFAULT_EVENT_MIN,
+): boolean {
+  const interval = eventInterval(event.starts_at, event.ends_at ?? null, defaultMin);
+  if (!interval) return false;
+  return interval.start < endMs && interval.end > startMs;
+}
+
+export type ForecastDate = {
+  date: string;
+  offsetMinutes: number;
+  startMs: number;
+  endMs: number;
+};
+
+/**
+ * Local dates across the horizon with exact zone-aware bounds per day, so DST
+ * transitions inside the horizon are honoured instead of today's offset being
+ * smeared over every day. `offsetMinutes` is the offset at local noon, kept for
+ * display and for callers that need a representative offset.
  */
 export function forecastDates(
   timeZone: string,
   nowMs: number,
   days = FORECAST_HORIZON_DAYS,
-): { date: string; offsetMinutes: number }[] {
+): ForecastDate[] {
   const first = localDateString(timeZone, nowMs);
-  const out: { date: string; offsetMinutes: number }[] = [];
+  const out: ForecastDate[] = [];
   for (let i = 0; i < days; i++) {
     const date = addDays(first, i);
-    const noonGuess = Date.parse(`${date}T12:00:00Z`);
-    const coarse = zoneOffsetMinutes(timeZone, noonGuess);
-    const offsetMinutes = zoneOffsetMinutes(timeZone, noonGuess + coarse * 60000);
-    out.push({ date, offsetMinutes });
+    const offsetMinutes = zoneOffsetMinutes(timeZone, zonedInstant(timeZone, date, "12:00"));
+    const { startMs, endMs } = localDayRange(timeZone, date);
+    out.push({ date, offsetMinutes, startMs, endMs });
   }
   return out;
 }
@@ -254,7 +321,13 @@ export function buildCapacityForecast(params: {
   const lastDate = days.length > 0 ? days[days.length - 1]!.date : localDateString(timeZone, nowMs);
   const firstDate = days.length > 0 ? days[0]!.date : lastDate;
 
-  const ranked = rankForecastTasks(tasks.filter((t) => t.status !== "done"));
+  // Only work that matters to this horizon: overdue and in-horizon deadlines,
+  // plus undated work. A deadline beyond `lastDate` is a later horizon's problem
+  // and must not consume this horizon's capacity or appear as a risk here.
+  const inHorizon = tasks.filter(
+    (t) => t.status !== "done" && (!t.deadline || t.deadline <= lastDate),
+  );
+  const ranked = rankForecastTasks(inHorizon);
 
   const deadlines: ForecastDeadline[] = [];
   const backlog: ForecastBacklogItem[] = [];
@@ -277,13 +350,23 @@ export function buildCapacityForecast(params: {
       critical = true;
       reasons.push("Its booked block has already passed and the work is not marked done.");
     }
+    let bookedAfterDeadline = false;
     if (task.deadline && Number.isFinite(scheduledStartMs)) {
       const blockDate = localDateString(timeZone, scheduledStartMs);
       if (blockDate > task.deadline) {
         critical = true;
+        bookedAfterDeadline = true;
         reasons.push(`Its booked block on ${blockDate} lands after the deadline.`);
       }
     }
+
+    /**
+     * Work sitting in a live block that lands on or before its deadline is
+     * already satisfied: its minutes are busy time on the calendar, so counting
+     * them again as outstanding demand would invent an overload.
+     */
+    const satisfiedByBlock = hasLiveBlock && !bookedAfterDeadline;
+    const outstandingMinutes = satisfiedByBlock ? 0 : need;
 
     // Work already held in a live future block keeps that block; only work that
     // still needs time competes for the shared free capacity.
@@ -341,7 +424,9 @@ export function buildCapacityForecast(params: {
           ? `No free working time left in the next ${days.length} days.`
           : `Needs ${minutesLabel(need)} in one sitting — the largest free window left is ${minutesLabel(largest)}.`,
       );
-    } else if (plannedDate && plannedDate > task.deadline) {
+    } else if (bookedAfterDeadline) {
+      shortfallMinutes = need;
+    } else if (!hasLiveBlock && plannedDate && plannedDate > task.deadline) {
       shortfallMinutes = need;
       critical = true;
       reasons.push(`The earliest free time for it is ${plannedDate}, after the deadline.`);
@@ -363,6 +448,8 @@ export function buildCapacityForecast(params: {
       title: task.title,
       deadline: task.deadline,
       estimatedMin: need,
+      outstandingMinutes,
+      alreadyBooked: satisfiedByBlock,
       priority: task.priority,
       status,
       slackMinutes,
@@ -391,15 +478,21 @@ export function buildCapacityForecast(params: {
     };
   });
 
-  // Earliest day where the work due by then no longer fits the capacity up to then.
+  /**
+   * Earliest day the plan stops working. Derived from actual allocation
+   * outcomes: a deadline that could not be fitted (capacity or contiguous-gap
+   * failure) overloads its own due date, and otherwise cumulative *outstanding*
+   * demand — protected on-time blocks excluded, since their minutes are already
+   * reserved inside the busy calendar — is compared with cumulative capacity.
+   */
   let firstOverloadedDate: string | null = null;
   let cumulativeCapacity = 0;
   for (const day of forecastDays) {
     cumulativeCapacity += day.capacityMinutes;
-    const dueByThen = deadlines
-      .filter((d) => d.deadline <= day.date)
-      .reduce((sum, d) => sum + d.estimatedMin, 0);
-    if (dueByThen > cumulativeCapacity) {
+    const due = deadlines.filter((d) => d.deadline <= day.date);
+    const outstandingByThen = due.reduce((sum, d) => sum + d.outstandingMinutes, 0);
+    const anyShortfall = due.some((d) => d.shortfallMinutes > 0);
+    if (anyShortfall || outstandingByThen > cumulativeCapacity) {
       firstOverloadedDate = day.date;
       break;
     }
@@ -407,7 +500,9 @@ export function buildCapacityForecast(params: {
 
   const totalCapacityMinutes = forecastDays.reduce((s, d) => s + d.capacityMinutes, 0);
   const totalFreeMinutes = forecastDays.reduce((s, d) => s + d.freeMinutes, 0);
-  const deadlineRequiredMinutes = deadlines.reduce((s, d) => s + d.estimatedMin, 0);
+  // Required = work still needing time. On-time booked blocks are excluded so
+  // the summary never reports reserved work as outstanding demand.
+  const deadlineRequiredMinutes = deadlines.reduce((s, d) => s + d.outstandingMinutes, 0);
   const requiredMinutes = deadlineRequiredMinutes + backlog.reduce((s, b) => s + b.estimatedMin, 0);
 
   const counts = {
