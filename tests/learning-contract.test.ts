@@ -159,9 +159,10 @@ describe("learning migration", () => {
       expect(migration).toContain(`ALTER TABLE public.${table} ENABLE ROW LEVEL SECURITY`);
       expect(migration).toContain(`GRANT ALL ON public.${table} TO service_role`);
       expect(migration).toContain(`REVOKE ALL ON public.${table} FROM anon`);
+      expect(migration).toContain(`REVOKE ALL ON public.${table} FROM authenticated`);
       expect(migration).toContain(`REVOKE ALL ON public.${table} FROM PUBLIC`);
     }
-    expect(migration).toContain("auth.uid() = user_id");
+    expect(migration).toContain("(SELECT auth.uid()) = user_id");
     expect(migration).toContain("ON DELETE CASCADE");
   });
 

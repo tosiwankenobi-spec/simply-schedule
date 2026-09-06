@@ -20,6 +20,7 @@ CREATE TABLE public.learning_settings (
 
 REVOKE ALL ON public.learning_settings FROM PUBLIC;
 REVOKE ALL ON public.learning_settings FROM anon;
+REVOKE ALL ON public.learning_settings FROM authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.learning_settings TO authenticated;
 GRANT ALL ON public.learning_settings TO service_role;
 
@@ -27,8 +28,8 @@ ALTER TABLE public.learning_settings ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users manage their own learning settings"
   ON public.learning_settings FOR ALL TO authenticated
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
+  USING ((SELECT auth.uid()) = user_id)
+  WITH CHECK ((SELECT auth.uid()) = user_id);
 
 CREATE TRIGGER learning_settings_set_updated_at
   BEFORE UPDATE ON public.learning_settings
@@ -63,6 +64,7 @@ CREATE TABLE public.learning_events (
 
 REVOKE ALL ON public.learning_events FROM PUBLIC;
 REVOKE ALL ON public.learning_events FROM anon;
+REVOKE ALL ON public.learning_events FROM authenticated;
 GRANT SELECT, INSERT, DELETE ON public.learning_events TO authenticated;
 GRANT ALL ON public.learning_events TO service_role;
 
@@ -70,15 +72,15 @@ ALTER TABLE public.learning_events ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users read their own learning events"
   ON public.learning_events FOR SELECT TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((SELECT auth.uid()) = user_id);
 
 CREATE POLICY "Users add their own learning events"
   ON public.learning_events FOR INSERT TO authenticated
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK ((SELECT auth.uid()) = user_id);
 
 CREATE POLICY "Users delete their own learning events"
   ON public.learning_events FOR DELETE TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((SELECT auth.uid()) = user_id);
 
 CREATE INDEX learning_events_user_created_idx
   ON public.learning_events (user_id, created_at DESC);
