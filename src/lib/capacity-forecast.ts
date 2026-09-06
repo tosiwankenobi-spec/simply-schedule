@@ -35,6 +35,51 @@ export type ForecastTask = {
   scheduledEnd: string | null;
 };
 
+export type ForecastTaskRow = {
+  id: string;
+  title: string;
+  estimated_min: number | null;
+  priority: number | null;
+  deadline: string | null;
+  status: string;
+  created_at: string;
+  scheduled_appointment_id: string | null;
+};
+
+export type TaskBlockRow = { id: string; starts_at: string | null; ends_at: string | null };
+
+/** The distinct linked block IDs to look up — never a time window. */
+export function linkedBlockIds(rows: readonly ForecastTaskRow[]): string[] {
+  const ids = new Set<string>();
+  for (const row of rows) {
+    if (row.scheduled_appointment_id) ids.add(row.scheduled_appointment_id);
+  }
+  return [...ids];
+}
+
+export function mapForecastTasks(
+  rows: readonly ForecastTaskRow[],
+  blockRows: readonly TaskBlockRow[],
+): ForecastTask[] {
+  const blocks = new Map(blockRows.map((row) => [row.id, row]));
+  return rows.map((row) => {
+    const block = row.scheduled_appointment_id
+      ? blocks.get(row.scheduled_appointment_id)
+      : undefined;
+    return {
+      id: row.id,
+      title: row.title,
+      estimatedMin: row.estimated_min ?? 30,
+      priority: row.priority ?? 2,
+      deadline: row.deadline ?? null,
+      status: row.status,
+      createdAt: row.created_at,
+      scheduledStart: block?.starts_at ?? null,
+      scheduledEnd: block?.ends_at ?? null,
+    };
+  });
+}
+
 export type ForecastGap = { start: number; end: number };
 
 export type ForecastDayInput = {
@@ -436,7 +481,11 @@ export function buildCapacityForecast(params: {
 
     let status: ForecastStatus = "on-track";
     if (critical) status = "critical";
-    else if (slackMinutes < TIGHT_SLACK_MINUTES || slackMinutes < need * TIGHT_SLACK_RATIO) {
+    else if (satisfiedByBlock) {
+      // The time is already reserved on the calendar on or before the deadline,
+      // so remaining free capacity says nothing about whether it will be done.
+      status = "on-track";
+    } else if (slackMinutes < TIGHT_SLACK_MINUTES || slackMinutes < need * TIGHT_SLACK_RATIO) {
       status = "tight";
       reasons.push(`Only ${minutesLabel(slackMinutes)} spare before the deadline.`);
     } else {

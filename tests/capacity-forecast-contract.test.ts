@@ -10,6 +10,17 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(join(process.cwd(), "src/lib/capacity-forecast.functions.ts"), "utf8");
+const uiSource = readFileSync(join(process.cwd(), "src/components/CapacityForecast.tsx"), "utf8");
+
+describe("CapacityForecast deadline label", () => {
+  it("names the booked date and hides spare capacity for booked work", () => {
+    expect(uiSource).not.toContain("already booked in");
+    expect(uiSource).toContain("already booked for ${dayLabel(item.plannedDate)}");
+    const row = uiSource.slice(uiSource.indexOf("item.alreadyBooked"));
+    expect(row.indexOf("spare")).toBeGreaterThan(row.indexOf("already booked for"));
+    expect(uiSource).toContain("item.alreadyBooked && item.plannedDate");
+  });
+});
 
 describe("capacity forecast server contract", () => {
   it("requires an authenticated session and derives the user from it", () => {
@@ -83,6 +94,17 @@ describe("capacity forecast server contract", () => {
   it("uses exact zoned instants for local clock times", () => {
     expect(source).toContain("zonedInstant(timeZone");
     expect(source).not.toContain("localDayBounds(");
+  });
+
+  it("looks up linked task blocks by exact id with no fixed lookback", () => {
+    expect(source).not.toContain("blockLookbackStart");
+    expect(source).not.toMatch(/86400000\s*\)/);
+    expect(source).toContain("linkedBlockIds(taskRows)");
+    expect(source).toContain('.in("id", linkedIds)');
+    expect(source).toContain("if (linkedIds.length > 0)");
+    const lookup = source.slice(source.indexOf("if (linkedIds.length > 0)"));
+    expect(lookup).toContain('.eq("user_id", context.userId)');
+    expect(lookup).toContain('.eq("source", "task")');
   });
 
   it("validates its input narrowly and bounds the horizon", () => {
