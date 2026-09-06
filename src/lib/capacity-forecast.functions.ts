@@ -15,6 +15,7 @@ import {
   type ForecastDayInput,
   type ForecastTask,
   type ProfileAssignment,
+  type TaskBlockRow,
 } from "./capacity-forecast";
 import type { PlannerScheduleEvent, Prefs } from "./tasks.server";
 
