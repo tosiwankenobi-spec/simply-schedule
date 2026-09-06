@@ -3,6 +3,8 @@ import {
   buildCapacityForecast,
   forecastDates,
   formatMinutes,
+  linkedBlockIds,
+  mapForecastTasks,
   localDateString,
   localDayRange,
   normalizeTimeZone,
