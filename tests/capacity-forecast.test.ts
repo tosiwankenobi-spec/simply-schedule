@@ -422,7 +422,10 @@ describe("capacity forecast — already-booked work is not double-counted", () =
   });
 
   test("mixed booked and unbooked demand counts only the unbooked part", () => {
-    const result = forecast([booked(), task({ id: "open", estimatedMin: 90, deadline: "2026-09-08" })]);
+    const result = forecast([
+      booked(),
+      task({ id: "open", estimatedMin: 90, deadline: "2026-09-08" }),
+    ]);
     expect(result.deadlineRequiredMinutes).toBe(90);
     expect(result.counts.critical).toBe(0);
     expect(result.firstOverloadedDate).toBeNull();
@@ -497,10 +500,18 @@ describe("capacity forecast — overlap filtering", () => {
   test("a null end uses the default duration for overlap", () => {
     const day = localDayRange("UTC", "2026-09-08");
     expect(
-      overlapsRange({ starts_at: "2026-09-07T23:50:00.000Z", ends_at: null }, day.startMs, day.endMs),
+      overlapsRange(
+        { starts_at: "2026-09-07T23:50:00.000Z", ends_at: null },
+        day.startMs,
+        day.endMs,
+      ),
     ).toBe(true);
     expect(
-      overlapsRange({ starts_at: "2026-09-07T23:00:00.000Z", ends_at: null }, day.startMs, day.endMs),
+      overlapsRange(
+        { starts_at: "2026-09-07T23:00:00.000Z", ends_at: null },
+        day.startMs,
+        day.endMs,
+      ),
     ).toBe(false);
   });
 

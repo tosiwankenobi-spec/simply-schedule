@@ -133,7 +133,13 @@ export const getCapacityForecast = createServerFn({ method: "POST" })
     const metadata = new Map((metadataResult.data ?? []).map((row) => [row.id, row]));
     const schedule: PlannerScheduleEvent[] = (scheduleResult.data ?? []).flatMap((event) => {
       if (!event.id || !event.starts_at) return [];
-      if (!overlapsRange({ starts_at: event.starts_at, ends_at: event.ends_at }, rangeStartMs, rangeEndMs))
+      if (
+        !overlapsRange(
+          { starts_at: event.starts_at, ends_at: event.ends_at },
+          rangeStartMs,
+          rangeEndMs,
+        )
+      )
         return [];
       const own = metadata.get(event.id);
       return [

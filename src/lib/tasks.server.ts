@@ -198,7 +198,6 @@ export function computeGaps(
     blocks.push({ start: ls, end: ls + prefs.lunch_length_min * 60000 });
   }
 
-
   const merged: Busy[] = [];
   for (const b of blocks.sort((a, b) => a.start - b.start)) {
     const last = merged[merged.length - 1];

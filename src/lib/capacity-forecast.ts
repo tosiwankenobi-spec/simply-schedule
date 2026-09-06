@@ -252,7 +252,6 @@ export function forecastDates(
   return out;
 }
 
-
 /* ------------------------------------------------------------------ */
 /* Planner profile assignment resolution (no per-day round trips).      */
 /* ------------------------------------------------------------------ */
