@@ -273,8 +273,9 @@ describe("capacity forecast — real day capacity from planner primitives", () =
     );
     const gaps = computeGaps("2026-09-08", prefs, busy, Date.parse("2026-09-08T00:00:00Z"), 0);
     const capacity = gaps.reduce((sum, g) => sum + (g.end - g.start) / 60000, 0);
-    // 8h working day − 45m lunch − (55m travel/prep + 60m appointment).
-    expect(capacity).toBe(480 - 45 - 115);
+    // 8h working day − 45m lunch − (55m travel/prep + 60m appointment), where the
+    // protected travel window (from 13:05) overlaps the last 10m of lunch.
+    expect(capacity).toBe(480 - 45 - 115 + 10);
   });
 
   test("all-day markers do not consume working time", () => {
