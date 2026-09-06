@@ -150,7 +150,6 @@ describe("automatic day replanning", () => {
     expect(result.affectedCount).toBe(0);
     expect(result.fixedCount).toBe(1);
   });
-});
 
   test("never proposes moving a task block that has been made fixed", () => {
     const appointment = taskBlock(
@@ -161,7 +160,6 @@ describe("automatic day replanning", () => {
     );
     const result = buildDayReplan({
       date: "2026-09-04",
-      previewId: "00000000-0000-4000-8000-000000000001",
       nowMs: Date.parse("2026-09-04T13:00:00.000Z"),
       timezoneOffsetMinutes: 0,
       prefs,
