@@ -48,8 +48,29 @@ export type CurrentBlock = {
   updated_at?: string | null;
 } | null;
 
-const sameInstant = (a: string | null | undefined, b: string | null | undefined) =>
-  Boolean(a) && Boolean(b) && Date.parse(a as string) === Date.parse(b as string);
+/**
+ * Convert a timestamp string to whole microseconds since the epoch.
+ *
+ * `Date.parse` silently drops anything finer than a millisecond, which would
+ * make two genuinely different versions of a block look identical. The database
+ * compares versions losslessly, so the preview must too.
+ */
+export function instantMicros(value: string | null | undefined): number | null {
+  if (typeof value !== "string") return null;
+  const match = value.match(/\.(\d+)/);
+  const fraction = match?.[1] ?? "";
+  const withoutFraction = match ? value.replace(match[0], "") : value;
+  const ms = Date.parse(withoutFraction);
+  if (Number.isNaN(ms)) return null;
+  const micros = Number.parseInt(fraction.padEnd(6, "0").slice(0, 6) || "0", 10);
+  return ms * 1000 + micros;
+}
+
+const sameInstant = (a: string | null | undefined, b: string | null | undefined) => {
+  const left = instantMicros(a);
+  const right = instantMicros(b);
+  return left !== null && right !== null && left === right;
+};
 
 /**
  * Decide what undoing a single change would do, given the block's current state.
