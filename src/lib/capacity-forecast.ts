@@ -72,6 +72,10 @@ export type ForecastDeadline = {
   status: ForecastStatus;
   /** Spare capacity left before the deadline once this task is fitted. */
   slackMinutes: number;
+  /** Minutes still needing free time — 0 when a live on-time block holds it. */
+  outstandingMinutes: number;
+  /** True when a live block on or before the deadline already holds this work. */
+  alreadyBooked: boolean;
   /** Minutes of this task that could not be fitted before the deadline. */
   shortfallMinutes: number;
   plannedDate: string | null;
@@ -330,7 +334,6 @@ export function buildCapacityForecast(params: {
   const backlog: ForecastBacklogItem[] = [];
 
   for (const task of ranked) {
-
     const need = Math.max(10, Math.round(task.estimatedMin || 30));
     const reasons: string[] = [];
     let critical = false;
@@ -348,13 +351,23 @@ export function buildCapacityForecast(params: {
       critical = true;
       reasons.push("Its booked block has already passed and the work is not marked done.");
     }
+    let bookedAfterDeadline = false;
     if (task.deadline && Number.isFinite(scheduledStartMs)) {
       const blockDate = localDateString(timeZone, scheduledStartMs);
       if (blockDate > task.deadline) {
         critical = true;
+        bookedAfterDeadline = true;
         reasons.push(`Its booked block on ${blockDate} lands after the deadline.`);
       }
     }
+
+    /**
+     * Work sitting in a live block that lands on or before its deadline is
+     * already satisfied: its minutes are busy time on the calendar, so counting
+     * them again as outstanding demand would invent an overload.
+     */
+    const satisfiedByBlock = hasLiveBlock && !bookedAfterDeadline;
+    const outstandingMinutes = satisfiedByBlock ? 0 : need;
 
     // Work already held in a live future block keeps that block; only work that
     // still needs time competes for the shared free capacity.
@@ -412,7 +425,9 @@ export function buildCapacityForecast(params: {
           ? `No free working time left in the next ${days.length} days.`
           : `Needs ${minutesLabel(need)} in one sitting — the largest free window left is ${minutesLabel(largest)}.`,
       );
-    } else if (plannedDate && plannedDate > task.deadline) {
+    } else if (bookedAfterDeadline) {
+      shortfallMinutes = need;
+    } else if (!hasLiveBlock && plannedDate && plannedDate > task.deadline) {
       shortfallMinutes = need;
       critical = true;
       reasons.push(`The earliest free time for it is ${plannedDate}, after the deadline.`);
@@ -434,6 +449,8 @@ export function buildCapacityForecast(params: {
       title: task.title,
       deadline: task.deadline,
       estimatedMin: need,
+      outstandingMinutes,
+      alreadyBooked: satisfiedByBlock,
       priority: task.priority,
       status,
       slackMinutes,
@@ -462,15 +479,21 @@ export function buildCapacityForecast(params: {
     };
   });
 
-  // Earliest day where the work due by then no longer fits the capacity up to then.
+  /**
+   * Earliest day the plan stops working. Derived from actual allocation
+   * outcomes: a deadline that could not be fitted (capacity or contiguous-gap
+   * failure) overloads its own due date, and otherwise cumulative *outstanding*
+   * demand — protected on-time blocks excluded, since their minutes are already
+   * reserved inside the busy calendar — is compared with cumulative capacity.
+   */
   let firstOverloadedDate: string | null = null;
   let cumulativeCapacity = 0;
   for (const day of forecastDays) {
     cumulativeCapacity += day.capacityMinutes;
-    const dueByThen = deadlines
-      .filter((d) => d.deadline <= day.date)
-      .reduce((sum, d) => sum + d.estimatedMin, 0);
-    if (dueByThen > cumulativeCapacity) {
+    const due = deadlines.filter((d) => d.deadline <= day.date);
+    const outstandingByThen = due.reduce((sum, d) => sum + d.outstandingMinutes, 0);
+    const anyShortfall = due.some((d) => d.shortfallMinutes > 0);
+    if (anyShortfall || outstandingByThen > cumulativeCapacity) {
       firstOverloadedDate = day.date;
       break;
     }
@@ -478,7 +501,9 @@ export function buildCapacityForecast(params: {
 
   const totalCapacityMinutes = forecastDays.reduce((s, d) => s + d.capacityMinutes, 0);
   const totalFreeMinutes = forecastDays.reduce((s, d) => s + d.freeMinutes, 0);
-  const deadlineRequiredMinutes = deadlines.reduce((s, d) => s + d.estimatedMin, 0);
+  // Required = work still needing time. On-time booked blocks are excluded so
+  // the summary never reports reserved work as outstanding demand.
+  const deadlineRequiredMinutes = deadlines.reduce((s, d) => s + d.outstandingMinutes, 0);
   const requiredMinutes = deadlineRequiredMinutes + backlog.reduce((s, b) => s + b.estimatedMin, 0);
 
   const counts = {
