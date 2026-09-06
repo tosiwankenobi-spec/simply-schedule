@@ -318,12 +318,19 @@ export function buildCapacityForecast(params: {
   const lastDate = days.length > 0 ? days[days.length - 1]!.date : localDateString(timeZone, nowMs);
   const firstDate = days.length > 0 ? days[0]!.date : lastDate;
 
-  const ranked = rankForecastTasks(tasks.filter((t) => t.status !== "done"));
+  // Only work that matters to this horizon: overdue and in-horizon deadlines,
+  // plus undated work. A deadline beyond `lastDate` is a later horizon's problem
+  // and must not consume this horizon's capacity or appear as a risk here.
+  const inHorizon = tasks.filter(
+    (t) => t.status !== "done" && (!t.deadline || t.deadline <= lastDate),
+  );
+  const ranked = rankForecastTasks(inHorizon);
 
   const deadlines: ForecastDeadline[] = [];
   const backlog: ForecastBacklogItem[] = [];
 
   for (const task of ranked) {
+
     const need = Math.max(10, Math.round(task.estimatedMin || 30));
     const reasons: string[] = [];
     let critical = false;
