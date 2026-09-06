@@ -164,26 +164,90 @@ function addDays(date: string, days: number): string {
 }
 
 /**
- * Local dates across the horizon with the offset that actually applies on each
- * day (sampled at local noon), so a DST change inside the horizon is honoured
- * instead of today's offset being smeared over every day.
+ * Exact UTC instant for a local wall-clock time in an IANA zone. Two passes so
+ * the offset used is the one actually in force at that instant, not at some
+ * other hour of the same day (which differs on DST transition days).
+ */
+export function zonedInstant(timeZone: string, date: string, hhmm: string): number {
+  const [h, m] = hhmm.split(":").map(Number);
+  const naive = Date.parse(
+    `${date}T${String(h ?? 0).padStart(2, "0")}:${String(m ?? 0).padStart(2, "0")}:00Z`,
+  );
+  let guess = naive + zoneOffsetMinutes(timeZone, naive) * 60000;
+  guess = naive + zoneOffsetMinutes(timeZone, guess) * 60000;
+  return guess;
+}
+
+/**
+ * Local day bounds in an IANA zone. Built from midnight of this day and midnight
+ * of the next day, so a spring-forward day is 23h and a fall-back day is 25h.
+ */
+export function localDayRange(timeZone: string, date: string): { startMs: number; endMs: number } {
+  return {
+    startMs: zonedInstant(timeZone, date, "00:00"),
+    endMs: zonedInstant(timeZone, addDays(date, 1), "00:00"),
+  };
+}
+
+/** Default length used for an event with a missing or invalid end. */
+export const FORECAST_DEFAULT_EVENT_MIN = 30;
+
+export function eventInterval(
+  startsAt: string,
+  endsAt: string | null | undefined,
+  defaultMin = FORECAST_DEFAULT_EVENT_MIN,
+): { start: number; end: number } | null {
+  const start = Date.parse(startsAt);
+  if (!Number.isFinite(start)) return null;
+  const parsedEnd = endsAt ? Date.parse(endsAt) : Number.NaN;
+  const end =
+    Number.isFinite(parsedEnd) && parsedEnd > start
+      ? parsedEnd
+      : start + Math.max(5, defaultMin) * 60000;
+  return { start, end };
+}
+
+/** True when an event overlaps [startMs, endMs) — not merely starts inside it. */
+export function overlapsRange(
+  event: { starts_at: string; ends_at?: string | null },
+  startMs: number,
+  endMs: number,
+  defaultMin = FORECAST_DEFAULT_EVENT_MIN,
+): boolean {
+  const interval = eventInterval(event.starts_at, event.ends_at ?? null, defaultMin);
+  if (!interval) return false;
+  return interval.start < endMs && interval.end > startMs;
+}
+
+export type ForecastDate = {
+  date: string;
+  offsetMinutes: number;
+  startMs: number;
+  endMs: number;
+};
+
+/**
+ * Local dates across the horizon with exact zone-aware bounds per day, so DST
+ * transitions inside the horizon are honoured instead of today's offset being
+ * smeared over every day. `offsetMinutes` is the offset at local noon, kept for
+ * display and for callers that need a representative offset.
  */
 export function forecastDates(
   timeZone: string,
   nowMs: number,
   days = FORECAST_HORIZON_DAYS,
-): { date: string; offsetMinutes: number }[] {
+): ForecastDate[] {
   const first = localDateString(timeZone, nowMs);
-  const out: { date: string; offsetMinutes: number }[] = [];
+  const out: ForecastDate[] = [];
   for (let i = 0; i < days; i++) {
     const date = addDays(first, i);
-    const noonGuess = Date.parse(`${date}T12:00:00Z`);
-    const coarse = zoneOffsetMinutes(timeZone, noonGuess);
-    const offsetMinutes = zoneOffsetMinutes(timeZone, noonGuess + coarse * 60000);
-    out.push({ date, offsetMinutes });
+    const offsetMinutes = zoneOffsetMinutes(timeZone, zonedInstant(timeZone, date, "12:00"));
+    const { startMs, endMs } = localDayRange(timeZone, date);
+    out.push({ date, offsetMinutes, startMs, endMs });
   }
   return out;
 }
+
 
 /* ------------------------------------------------------------------ */
 /* Planner profile assignment resolution (no per-day round trips).      */
