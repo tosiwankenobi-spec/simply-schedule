@@ -17,7 +17,10 @@ export type PlanChange = {
   toStart: string;
   toEnd: string;
   reason: "missed" | "conflict";
+  /** The block's version stamp right after the plan moved it, when recorded. */
+  appliedVersion?: string;
 };
+
 
 export type PlanRunSummary = {
   id: string;
