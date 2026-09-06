@@ -13,11 +13,12 @@ const source = readFileSync(join(process.cwd(), "src/lib/capacity-forecast.funct
 const uiSource = readFileSync(join(process.cwd(), "src/components/CapacityForecast.tsx"), "utf8");
 
 describe("CapacityForecast deadline label", () => {
-  it("names the booked date and hides spare capacity for booked work", () => {
+  it("names the booked date without duplicating need or spare capacity", () => {
     expect(uiSource).not.toContain("already booked in");
     expect(uiSource).toContain("already booked for ${dayLabel(item.plannedDate)}");
-    const row = uiSource.slice(uiSource.indexOf("item.alreadyBooked"));
-    expect(row.indexOf("spare")).toBeGreaterThan(row.indexOf("already booked for"));
+    expect(uiSource).not.toContain(
+      "needs {formatMinutes(item.estimatedMin)}\n        {item.alreadyBooked",
+    );
     expect(uiSource).toContain("item.alreadyBooked && item.plannedDate");
   });
 });

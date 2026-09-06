@@ -221,12 +221,12 @@ function DeadlineRow({ item }: { item: ForecastDeadline }) {
         <StatusChip status={item.status} />
       </div>
       <p className="mt-1 text-xs text-muted-foreground">
-        Due {dayLabel(item.deadline)} · needs {formatMinutes(item.estimatedMin)}
+        Due {dayLabel(item.deadline)} ·{" "}
         {item.alreadyBooked && item.plannedDate
-          ? ` · ${formatMinutes(item.estimatedMin)} already booked for ${dayLabel(item.plannedDate)}`
+          ? `${formatMinutes(item.estimatedMin)} already booked for ${dayLabel(item.plannedDate)}`
           : item.shortfallMinutes > 0
-            ? ` · ${formatMinutes(item.shortfallMinutes)} short`
-            : ` · ${formatMinutes(item.slackMinutes)} spare`}
+            ? `needs ${formatMinutes(item.estimatedMin)} · ${formatMinutes(item.shortfallMinutes)} short`
+            : `needs ${formatMinutes(item.estimatedMin)} · ${formatMinutes(item.slackMinutes)} spare`}
       </p>
       {item.reasons.length > 0 ? (
         <p className="mt-1 text-xs text-muted-foreground">{item.reasons[0]}</p>
