@@ -57,6 +57,8 @@ export type PendingNotification = {
   dedupe_key: string;
   title: string;
   body: string;
+  target_type: "appointment" | "task" | "planner";
+  target_id: string | null;
 };
 
 export type AdaptiveReminderPreview = {
@@ -109,6 +111,8 @@ export function buildDue(input: {
           dedupe_key: `appt:${appt.id}:${lead}`,
           title: `In ${lead < 60 ? `${lead} min` : `${Math.round(lead / 60)} hr`}: ${appt.title}`,
           body: `${fmtTime(appt.starts_at, timeZone)}${appt.location ? ` · ${appt.location}` : ""}`,
+          target_type: "appointment",
+          target_id: appt.id,
         });
       }
     }
@@ -126,6 +130,8 @@ export function buildDue(input: {
             body: online
               ? `${fmtTime(appt.starts_at, timeZone)} · Open the meeting link and get ready to join.`
               : `${fmtTime(appt.starts_at, timeZone)}${appt.location ? ` · ${appt.location}` : ""}`,
+            target_type: "appointment",
+            target_id: appt.id,
           });
         }
       } else if (
@@ -139,6 +145,8 @@ export function buildDue(input: {
           body: `Prepare tonight for ${fmtTime(appt.starts_at, timeZone)}${
             appt.location ? ` · ${appt.location}` : ""
           }`,
+          target_type: "appointment",
+          target_id: appt.id,
         });
       }
     }
@@ -156,6 +164,8 @@ export function buildDue(input: {
           dedupe_key: `overdue:${t.id}:${todayKey}`,
           title: `Overdue: ${t.title}`,
           body: `Was due ${t.deadline}. Schedule it or push the deadline.`,
+          target_type: "task",
+          target_id: t.id,
         });
       }
     }
@@ -184,6 +194,8 @@ export function buildDue(input: {
             ? `${dueSoon.length} urgent task${dueSoon.length === 1 ? "" : "s"} still unscheduled`
             : `${unscheduled.length} task${unscheduled.length === 1 ? "" : "s"} still unscheduled`,
         body: `Start with: ${top.join(", ")}${ranked.length > 3 ? `, +${ranked.length - 3} more` : ""}`,
+        target_type: "planner",
+        target_id: ranked[0]?.id ?? null,
       });
     }
   }

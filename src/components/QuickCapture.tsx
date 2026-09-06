@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
@@ -7,6 +7,13 @@ import {
   type CaptureDraft,
   type CaptureIntent,
 } from "@/lib/capture.functions";
+import {
+  enqueueCapture,
+  isLikelyOfflineError,
+  readQueuedCaptures,
+  removeQueuedCapture,
+  type QueuedCapture,
+} from "@/lib/mobile-capture";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +24,7 @@ import {
   CalendarClock,
   Check,
   Clock,
+  CloudOff,
   ListTodo,
   Loader2,
   MapPin,
@@ -24,6 +32,7 @@ import {
   ShieldCheck,
   Sparkles,
   Timer,
+  Trash2,
   X,
 } from "lucide-react";
 
@@ -34,22 +43,60 @@ const INTENT_LABEL: Record<CaptureIntent, string> = {
   find_time: "Time found",
 };
 
-export function QuickCapture() {
+export function QuickCapture({
+  initialText = "",
+  autoFocus = false,
+  storageScope,
+  onSaved,
+}: {
+  initialText?: string;
+  autoFocus?: boolean;
+  storageScope: string;
+  onSaved?: () => void;
+}) {
   const queryClient = useQueryClient();
-  const [text, setText] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [text, setText] = useState(initialText.slice(0, 2000));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState<CaptureDraft | null>(null);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [online, setOnline] = useState(() => typeof navigator === "undefined" || navigator.onLine);
+  const [queued, setQueued] = useState<QueuedCapture[]>(() =>
+    readQueuedCaptures({ scope: storageScope }),
+  );
+
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine);
+    window.addEventListener("online", update);
+    window.addEventListener("offline", update);
+    if (autoFocus) inputRef.current?.focus();
+    return () => {
+      window.removeEventListener("online", update);
+      window.removeEventListener("offline", update);
+    };
+  }, [autoFocus]);
 
   const updateDraft = <K extends keyof CaptureDraft>(key: K, value: CaptureDraft[K]) => {
     setDraft((current) => (current ? { ...current, [key]: value } : current));
   };
 
-  async function parse() {
-    const value = text.trim();
+  function storeForLater(value: string) {
+    setQueued(enqueueCapture(value, { scope: storageScope }));
+    setText("");
+    setDraft(null);
+    setError(null);
+    toast.success("Saved safely on this device. Review it when you're online.");
+  }
+
+  async function parse(captureText = text, queuedId?: string) {
+    const value = captureText.trim();
     if (!value) return;
+    if (!online) {
+      storeForLater(value);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -61,8 +108,15 @@ export function QuickCapture() {
         },
       });
       setDraft(parsed);
+      setText(value);
+      if (queuedId) setQueued(removeQueuedCapture(queuedId, { scope: storageScope }));
       setEditing(false);
     } catch (caught) {
+      if (isLikelyOfflineError(caught)) {
+        setOnline(false);
+        storeForLater(value);
+        return;
+      }
       setError(
         caught instanceof Error ? caught.message : "Couldn't understand that. Try rephrasing it.",
       );
@@ -91,6 +145,7 @@ export function QuickCapture() {
             ? "Task added and scheduled"
             : "Task added to your list",
       );
+      onSaved?.();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Couldn't save this item.");
     } finally {
@@ -115,6 +170,7 @@ export function QuickCapture() {
         <div className="relative flex-1">
           <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-accent" />
           <Input
+            ref={inputRef}
             value={text}
             onChange={(event) => {
               setText(event.target.value);
@@ -130,6 +186,7 @@ export function QuickCapture() {
             className="pl-9"
             aria-label="Natural-language schedule capture"
             disabled={busy}
+            maxLength={2000}
           />
         </div>
         <Button
@@ -141,16 +198,68 @@ export function QuickCapture() {
             <>
               <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Reading…
             </>
-          ) : (
+          ) : online ? (
             "Review"
+          ) : (
+            "Save offline"
           )}
         </Button>
       </div>
+
+      {!online ? (
+        <p className="mt-2 flex items-start gap-1.5 rounded-lg bg-secondary/50 px-3 py-2 text-xs text-muted-foreground">
+          <CloudOff className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          You’re offline. New captures stay only on this device until you choose to review them.
+        </p>
+      ) : null}
 
       {error ? (
         <p className="mt-2 flex items-start gap-1.5 text-xs text-destructive" role="alert">
           <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {error}
         </p>
+      ) : null}
+
+      {queued.length > 0 ? (
+        <div className="mt-3 rounded-xl border border-border bg-secondary/20 px-3 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-medium text-foreground">
+              Saved on this device · {queued.length}
+            </p>
+            <span className="text-[10px] text-muted-foreground">
+              {online ? "Ready to review" : "Waiting for a connection"}
+            </span>
+          </div>
+          <ul className="mt-2 space-y-2">
+            {queued.map((item) => (
+              <li
+                key={item.id}
+                className="flex items-center gap-2 rounded-lg border border-border/70 bg-background px-3 py-2"
+              >
+                <p className="min-w-0 flex-1 truncate text-xs text-foreground">{item.text}</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={!online || busy}
+                  onClick={() => void parse(item.text, item.id)}
+                  className="h-7 px-2.5 text-[11px]"
+                >
+                  Review
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setQueued(removeQueuedCapture(item.id, { scope: storageScope }))}
+                  className="h-7 w-7 text-muted-foreground"
+                  aria-label={`Remove saved capture: ${item.text}`}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
 
       {draft && !editing ? (

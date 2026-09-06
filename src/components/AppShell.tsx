@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, type ComponentType, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useState, type ComponentType, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -21,6 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { InstallAppPrompt } from "@/components/InstallAppPrompt";
+import { initializeNotificationDelivery } from "@/lib/mobile-notifications";
 
 type NavigationItem = {
   label: string;
@@ -66,7 +67,7 @@ const QuickCapture = lazy(async () => {
   return { default: module.QuickCapture };
 });
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({ children, userId }: { children: ReactNode; userId: string }) {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const queryClient = useQueryClient();
@@ -75,6 +76,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   const moreActive = MOBILE_MORE_NAV.some(
     (item) => pathname === item.to || pathname.startsWith(`${item.to}/`),
   );
+
+  useEffect(() => {
+    void initializeNotificationDelivery();
+  }, []);
 
   const signOut = async () => {
     await queryClient.cancelQueries();
@@ -182,7 +187,11 @@ export function AppShell({ children }: { children: ReactNode }) {
               <Suspense
                 fallback={<div className="mt-4 h-28 animate-pulse rounded-2xl bg-secondary" />}
               >
-                <QuickCapture />
+                <QuickCapture
+                  autoFocus
+                  storageScope={userId}
+                  onSaved={() => setCaptureOpen(false)}
+                />
               </Suspense>
             ) : null}
           </div>

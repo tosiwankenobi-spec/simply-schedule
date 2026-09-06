@@ -23,8 +23,10 @@ import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedRoutinesRouteImport } from './routes/_authenticated/routines'
 import { Route as AuthenticatedPrivacyRouteImport } from './routes/_authenticated/privacy'
 import { Route as AuthenticatedPlannerRouteImport } from './routes/_authenticated/planner'
+import { Route as AuthenticatedNotificationActionRouteImport } from './routes/_authenticated/notification-action'
 import { Route as AuthenticatedInboxRouteImport } from './routes/_authenticated/inbox'
 import { Route as AuthenticatedHouseholdRouteImport } from './routes/_authenticated/household'
+import { Route as AuthenticatedCaptureRouteImport } from './routes/_authenticated/capture'
 import { Route as AuthenticatedCalendarImportRouteImport } from './routes/_authenticated/calendar-import'
 import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/app'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
@@ -107,6 +109,12 @@ const AuthenticatedPlannerRoute = AuthenticatedPlannerRouteImport.update({
   path: '/planner',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedNotificationActionRoute =
+  AuthenticatedNotificationActionRouteImport.update({
+    id: '/notification-action',
+    path: '/notification-action',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedInboxRoute = AuthenticatedInboxRouteImport.update({
   id: '/inbox',
   path: '/inbox',
@@ -115,6 +123,11 @@ const AuthenticatedInboxRoute = AuthenticatedInboxRouteImport.update({
 const AuthenticatedHouseholdRoute = AuthenticatedHouseholdRouteImport.update({
   id: '/household',
   path: '/household',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedCaptureRoute = AuthenticatedCaptureRouteImport.update({
+  id: '/capture',
+  path: '/capture',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedCalendarImportRoute =
@@ -187,8 +200,10 @@ export interface FileRoutesByFullPath {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/app': typeof AuthenticatedAppRoute
   '/calendar-import': typeof AuthenticatedCalendarImportRoute
+  '/capture': typeof AuthenticatedCaptureRoute
   '/household': typeof AuthenticatedHouseholdRoute
   '/inbox': typeof AuthenticatedInboxRoute
+  '/notification-action': typeof AuthenticatedNotificationActionRoute
   '/planner': typeof AuthenticatedPlannerRouteWithChildren
   '/privacy': typeof AuthenticatedPrivacyRoute
   '/routines': typeof AuthenticatedRoutinesRoute
@@ -215,8 +230,10 @@ export interface FileRoutesByTo {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/app': typeof AuthenticatedAppRoute
   '/calendar-import': typeof AuthenticatedCalendarImportRoute
+  '/capture': typeof AuthenticatedCaptureRoute
   '/household': typeof AuthenticatedHouseholdRoute
   '/inbox': typeof AuthenticatedInboxRoute
+  '/notification-action': typeof AuthenticatedNotificationActionRoute
   '/planner': typeof AuthenticatedPlannerRouteWithChildren
   '/privacy': typeof AuthenticatedPrivacyRoute
   '/routines': typeof AuthenticatedRoutinesRoute
@@ -245,8 +262,10 @@ export interface FileRoutesById {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_authenticated/app': typeof AuthenticatedAppRoute
   '/_authenticated/calendar-import': typeof AuthenticatedCalendarImportRoute
+  '/_authenticated/capture': typeof AuthenticatedCaptureRoute
   '/_authenticated/household': typeof AuthenticatedHouseholdRoute
   '/_authenticated/inbox': typeof AuthenticatedInboxRoute
+  '/_authenticated/notification-action': typeof AuthenticatedNotificationActionRoute
   '/_authenticated/planner': typeof AuthenticatedPlannerRouteWithChildren
   '/_authenticated/privacy': typeof AuthenticatedPrivacyRoute
   '/_authenticated/routines': typeof AuthenticatedRoutinesRoute
@@ -275,8 +294,10 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/app'
     | '/calendar-import'
+    | '/capture'
     | '/household'
     | '/inbox'
+    | '/notification-action'
     | '/planner'
     | '/privacy'
     | '/routines'
@@ -303,8 +324,10 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/app'
     | '/calendar-import'
+    | '/capture'
     | '/household'
     | '/inbox'
+    | '/notification-action'
     | '/planner'
     | '/privacy'
     | '/routines'
@@ -332,8 +355,10 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/_authenticated/app'
     | '/_authenticated/calendar-import'
+    | '/_authenticated/capture'
     | '/_authenticated/household'
     | '/_authenticated/inbox'
+    | '/_authenticated/notification-action'
     | '/_authenticated/planner'
     | '/_authenticated/privacy'
     | '/_authenticated/routines'
@@ -464,6 +489,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPlannerRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/notification-action': {
+      id: '/_authenticated/notification-action'
+      path: '/notification-action'
+      fullPath: '/notification-action'
+      preLoaderRoute: typeof AuthenticatedNotificationActionRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/inbox': {
       id: '/_authenticated/inbox'
       path: '/inbox'
@@ -476,6 +508,13 @@ declare module '@tanstack/react-router' {
       path: '/household'
       fullPath: '/household'
       preLoaderRoute: typeof AuthenticatedHouseholdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/capture': {
+      id: '/_authenticated/capture'
+      path: '/capture'
+      fullPath: '/capture'
+      preLoaderRoute: typeof AuthenticatedCaptureRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/calendar-import': {
@@ -572,8 +611,10 @@ const AuthenticatedPlannerRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAppRoute: typeof AuthenticatedAppRoute
   AuthenticatedCalendarImportRoute: typeof AuthenticatedCalendarImportRoute
+  AuthenticatedCaptureRoute: typeof AuthenticatedCaptureRoute
   AuthenticatedHouseholdRoute: typeof AuthenticatedHouseholdRoute
   AuthenticatedInboxRoute: typeof AuthenticatedInboxRoute
+  AuthenticatedNotificationActionRoute: typeof AuthenticatedNotificationActionRoute
   AuthenticatedPlannerRoute: typeof AuthenticatedPlannerRouteWithChildren
   AuthenticatedPrivacyRoute: typeof AuthenticatedPrivacyRoute
   AuthenticatedRoutinesRoute: typeof AuthenticatedRoutinesRoute
@@ -593,8 +634,10 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAppRoute: AuthenticatedAppRoute,
   AuthenticatedCalendarImportRoute: AuthenticatedCalendarImportRoute,
+  AuthenticatedCaptureRoute: AuthenticatedCaptureRoute,
   AuthenticatedHouseholdRoute: AuthenticatedHouseholdRoute,
   AuthenticatedInboxRoute: AuthenticatedInboxRoute,
+  AuthenticatedNotificationActionRoute: AuthenticatedNotificationActionRoute,
   AuthenticatedPlannerRoute: AuthenticatedPlannerRouteWithChildren,
   AuthenticatedPrivacyRoute: AuthenticatedPrivacyRoute,
   AuthenticatedRoutinesRoute: AuthenticatedRoutinesRoute,

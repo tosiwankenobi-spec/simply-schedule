@@ -56,6 +56,7 @@ export const Route = createFileRoute("/_authenticated/today")({
 
 function TodayPage() {
   const now = new Date();
+  const { user } = Route.useRouteContext();
 
   const { data: events, isLoading, isError, error, refetch } = useScheduleEvents();
 
@@ -272,7 +273,7 @@ function TodayPage() {
 
           <aside className="min-w-0 xl:sticky xl:top-6">
             <div className="hidden xl:block [&>section]:mt-4">
-              <QuickCapture />
+              <QuickCapture storageScope={user.id} />
             </div>
             <div className="[&>section]:mt-4">
               <MorningPlanner />

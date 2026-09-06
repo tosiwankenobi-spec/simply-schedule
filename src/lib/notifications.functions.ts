@@ -6,6 +6,7 @@ import type {
   NotifPrefs,
   PendingNotification,
 } from "./notifications.server";
+import type { ActionableNotification, NotificationAction } from "./notification-actions";
 
 export type { AdaptiveReminderPreview, NotifPrefs, PendingNotification };
 
@@ -96,9 +97,9 @@ export const getAdaptiveReminderPreview = createServerFn({ method: "POST" })
 
 export type SweepResult = {
   /** Reminders created on this pass — the client shows these as device notifications. */
-  fresh: { id: string; kind: string; title: string; body: string }[];
+  fresh: ActionableNotification[];
   /** Everything unseen, newest first, for the in-app bell. */
-  unseen: { id: string; kind: string; title: string; body: string; created_at: string }[];
+  unseen: (ActionableNotification & { created_at: string })[];
   emailError: string | null;
 };
 
@@ -182,11 +183,13 @@ export const sweepNotifications = createServerFn({ method: "POST" })
             title: n.title,
             body: n.body,
             channels,
+            target_type: n.target_type,
+            target_id: n.target_id,
           })
-          .select("id,kind,title,body")
+          .select("id,kind,title,body,target_type,target_id")
           .maybeSingle();
         if (error || !inserted) continue; // already delivered
-        fresh.push(inserted);
+        fresh.push(inserted as ActionableNotification);
       }
 
       if (prefs.email_enabled && fresh.length > 0) {
@@ -213,13 +216,54 @@ export const sweepNotifications = createServerFn({ method: "POST" })
 
     const { data: unseen } = await context.supabase
       .from("notification_log")
-      .select("id,kind,title,body,created_at")
+      .select("id,kind,title,body,created_at,target_type,target_id")
       .eq("user_id", context.userId)
       .is("seen_at", null)
+      .or(`snoozed_until.is.null,snoozed_until.lte.${new Date(now).toISOString()}`)
       .order("created_at", { ascending: false })
       .limit(30);
 
-    return { fresh, unseen: unseen ?? [], emailError };
+    return {
+      fresh,
+      unseen: (unseen ?? []) as SweepResult["unseen"],
+      emailError,
+    };
+  });
+
+const notificationActionSchema = z.object({
+  notificationId: z.string().uuid(),
+  action: z.enum([
+    "done",
+    "snooze",
+    "reschedule",
+    "review_plan",
+    "open_navigation",
+    "open",
+    "dismiss",
+  ]),
+  snoozeMinutes: z.number().int().min(5).max(1440).default(15),
+});
+
+export type NotificationActionResult = {
+  notificationId: string;
+  action: NotificationAction;
+  targetType: "task" | "appointment" | "planner" | null;
+  targetId: string | null;
+  location: string | null;
+  snoozedUntil: string | null;
+};
+
+export const performNotificationAction = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => notificationActionSchema.parse(input))
+  .handler(async ({ data, context }): Promise<NotificationActionResult> => {
+    const { data: result, error } = await context.supabase.rpc("act_on_notification", {
+      p_notification_id: data.notificationId,
+      p_action: data.action,
+      p_snooze_minutes: data.snoozeMinutes,
+    });
+    if (error) throw error;
+    return result as unknown as NotificationActionResult;
   });
 
 export const markNotificationsSeen = createServerFn({ method: "POST" })

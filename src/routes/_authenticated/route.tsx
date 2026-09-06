@@ -12,10 +12,15 @@ export const Route = createFileRoute("/_authenticated")({
     }
     return { user: data.user };
   },
-  component: () => (
-    <AppShell>
+  component: AuthenticatedLayout,
+});
+
+function AuthenticatedLayout() {
+  const { user } = Route.useRouteContext();
+  return (
+    <AppShell userId={user.id}>
       <RoutineScheduleMaintainer />
       <Outlet />
     </AppShell>
-  ),
-});
+  );
+}

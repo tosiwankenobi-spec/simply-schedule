@@ -8,6 +8,7 @@ import {
   sendTestNotification,
   type NotifPrefs,
 } from "@/lib/notifications.functions";
+import { showTestDeviceNotification } from "@/lib/mobile-notifications";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -110,12 +111,7 @@ function NotificationSetup() {
 
   const test = async () => {
     try {
-      if ("Notification" in window && Notification.permission !== "granted") {
-        await Notification.requestPermission();
-      }
-      if ("Notification" in window && Notification.permission === "granted") {
-        new Notification("Chronos-V test reminder", { body: "Device notifications are working." });
-      } else {
+      if (!(await showTestDeviceNotification())) {
         toast("Chronos-V test reminder", {
           description: "Device notifications are blocked — shown in-app instead.",
         });

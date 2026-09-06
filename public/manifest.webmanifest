@@ -24,11 +24,28 @@
       "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
+      "name": "Capture anything",
+      "short_name": "Capture",
+      "description": "Quickly capture a task, appointment or reminder",
+      "url": "/capture",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
       "name": "AI planner",
       "short_name": "Planner",
       "description": "Build a realistic plan for your day",
       "url": "/planner",
       "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     }
-  ]
+  ],
+  "share_target": {
+    "action": "/capture",
+    "method": "GET",
+    "enctype": "application/x-www-form-urlencoded",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
 }

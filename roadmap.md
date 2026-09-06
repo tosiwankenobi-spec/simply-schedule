@@ -11,22 +11,22 @@ sync with pagination + resync fallback, two-way create/update/delete, provider-i
 dedupe and deletion queue, encrypted service-role-only connection key storage,
 tests + migration + advisors verified.
 
-## 2. Replan Preview + Undo (next)
+## 2. Replan Preview + Undo — DONE
 
 Preview proposed schedule changes before applying, explain why each item moves,
 protect fixed commitments, selective approval per change, dependable undo and audit trail.
 
-## 3. Deadline and capacity forecasting
+## 3. Deadline and capacity forecasting — DONE
 
 Workload vs available time, early warning of likely misses/overload, realistic scope
 or scheduling recommendations.
 
-## 4. Learning from user decisions
+## 4. Learning from user decisions — DONE
 
 Learn from accepted / rejected / moved / shortened / deferred / completed plans.
 Explainable, reversible, private, user-controllable.
 
-## 5. Mobile capture and notification actions
+## 5. Mobile capture and notification actions — DONE
 
 Fast natural-language capture; actionable notifications (done, snooze, reschedule,
 accept plan, open navigation); safe sync and offline handling.
