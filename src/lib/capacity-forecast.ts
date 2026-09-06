@@ -408,8 +408,7 @@ export function buildCapacityForecast(params: {
   const totalCapacityMinutes = forecastDays.reduce((s, d) => s + d.capacityMinutes, 0);
   const totalFreeMinutes = forecastDays.reduce((s, d) => s + d.freeMinutes, 0);
   const deadlineRequiredMinutes = deadlines.reduce((s, d) => s + d.estimatedMin, 0);
-  const requiredMinutes =
-    deadlineRequiredMinutes + backlog.reduce((s, b) => s + b.estimatedMin, 0);
+  const requiredMinutes = deadlineRequiredMinutes + backlog.reduce((s, b) => s + b.estimatedMin, 0);
 
   const counts = {
     critical: deadlines.filter((d) => d.status === "critical").length,
