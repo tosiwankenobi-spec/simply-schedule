@@ -3,7 +3,7 @@
  * confirmation never promises a move that undo would refuse.
  */
 import { describe, expect, it } from "vitest";
-import { classifyUndo, parsePlanChanges, type CurrentBlock, type PlanChange } from "../src/lib/plan-history";
+import { classifyUndo, instantMicros, parsePlanChanges, type CurrentBlock, type PlanChange } from "../src/lib/plan-history";
 
 const APPLIED_VERSION = "2026-01-02T14:05:00.000Z";
 
@@ -86,5 +86,34 @@ describe("stored change records", () => {
     const [parsed] = parsePlanChanges([older]);
     expect(parsed?.appliedVersion).toBeUndefined();
     expect(parsed?.title).toBe("Draft proposal");
+  });
+});
+
+describe("microsecond-precision versions", () => {
+  const MICRO_VERSION = "2026-01-02T14:05:00.123456Z";
+
+  it("restores an untouched block whose version has non-zero microseconds", () => {
+    const line = classifyUndo(
+      change({ appliedVersion: MICRO_VERSION }),
+      block({ updated_at: MICRO_VERSION }),
+    );
+    expect(line.outcome).toBe("restore");
+  });
+
+  it("keeps a newer metadata edit that differs only by microseconds", () => {
+    const line = classifyUndo(
+      change({ appliedVersion: MICRO_VERSION }),
+      block({ updated_at: "2026-01-02T14:05:00.123789Z" }),
+    );
+    expect(line.outcome).toBe("changed-since");
+    expect(line.explanation).toMatch(/edited this block/i);
+  });
+
+  it("measures instants losslessly to whole microseconds", () => {
+    expect(instantMicros("2026-01-02T14:05:00.123456Z")).toBe(
+      Date.parse("2026-01-02T14:05:00Z") * 1000 + 123456,
+    );
+    expect(instantMicros("2026-01-02T14:05:00+00:00")).toBe(Date.parse("2026-01-02T14:05:00Z") * 1000);
+    expect(instantMicros("not a date")).toBeNull();
   });
 });
