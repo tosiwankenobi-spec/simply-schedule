@@ -6,7 +6,9 @@ import {
   buildCapacityForecast,
   forecastDates,
   normalizeTimeZone,
+  overlapsRange,
   resolveProfileIdForDate,
+  zonedInstant,
   type CapacityForecast,
   type ForecastDayInput,
   type ForecastTask,
@@ -20,8 +22,20 @@ const inputSchema = z.object({
   horizonDays: z.number().int().min(1).max(21).default(FORECAST_HORIZON_DAYS),
 });
 
+/** Working-hours shape only — planner notes are never needed by the forecast. */
 const PROFILE_COLS =
-  "id,name,is_default,work_start,work_end,default_meeting_min,break_every_min,break_length_min,lunch_at,lunch_length_min,notes";
+  "id,name,is_default,work_start,work_end,default_meeting_min,break_every_min,break_length_min,lunch_at,lunch_length_min";
+
+/** Only the travel/preparation fields; no email_to or unrelated reminder settings. */
+const TRAVEL_PREF_COLS =
+  "travel_reminders_enabled,travel_mode,default_travel_min,travel_buffer_min,default_prep_min";
+
+/**
+ * Events beginning before the window can still overlap it. Anything longer than
+ * this is treated as an all-day/multi-day marker by the planner and ignored, so
+ * a bounded look-back is enough to catch every real overlap.
+ */
+const OVERLAP_LOOKBACK_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Read-only 14-day capacity forecast. Never writes, never calls AI, and returns
@@ -42,8 +56,13 @@ export const getCapacityForecast = createServerFn({ method: "POST" })
     const dates = forecastDates(timeZone, nowMs, data.horizonDays);
     const firstDate = dates[0]!;
     const lastDate = dates[dates.length - 1]!;
-    const rangeStart = tasksServer.localDayBounds(firstDate.date, firstDate.offsetMinutes).start;
-    const rangeEnd = tasksServer.localDayBounds(lastDate.date, lastDate.offsetMinutes).end;
+    const rangeStartMs = firstDate.startMs;
+    const rangeEndMs = lastDate.endMs;
+    const rangeStart = new Date(rangeStartMs).toISOString();
+    const rangeEnd = new Date(rangeEndMs).toISOString();
+    // Query by overlap, not by start instant, so a commitment that begins before
+    // a boundary (overnight, or before the horizon starts) still occupies time.
+    const queryStart = new Date(rangeStartMs - OVERLAP_LOOKBACK_MS).toISOString();
     const blockLookbackStart = new Date(nowMs - 45 * 86400000).toISOString();
 
     const [
@@ -58,14 +77,14 @@ export const getCapacityForecast = createServerFn({ method: "POST" })
       context.supabase
         .from("schedule_hub_events")
         .select("id,title,starts_at,ends_at,location,is_all_day")
-        .gte("starts_at", rangeStart)
+        .gte("starts_at", queryStart)
         .lt("starts_at", rangeEnd)
         .order("starts_at"),
       context.supabase
         .from("appointments")
         .select("id,travel_minutes,preparation_minutes")
         .eq("user_id", context.userId)
-        .gte("starts_at", rangeStart)
+        .gte("starts_at", queryStart)
         .lt("starts_at", rangeEnd),
       context.supabase
         .from("appointments")
@@ -82,7 +101,7 @@ export const getCapacityForecast = createServerFn({ method: "POST" })
         .neq("status", "done"),
       context.supabase
         .from("notification_prefs")
-        .select(notificationsServer.NOTIF_COLS)
+        .select(TRAVEL_PREF_COLS)
         .eq("user_id", context.userId)
         .maybeSingle(),
       context.supabase
@@ -114,6 +133,7 @@ export const getCapacityForecast = createServerFn({ method: "POST" })
     const metadata = new Map((metadataResult.data ?? []).map((row) => [row.id, row]));
     const schedule: PlannerScheduleEvent[] = (scheduleResult.data ?? []).flatMap((event) => {
       if (!event.id || !event.starts_at) return [];
+      if (!overlapsRange(event, rangeStartMs, rangeEndMs)) return [];
       const own = metadata.get(event.id);
       return [
         {
@@ -150,23 +170,22 @@ export const getCapacityForecast = createServerFn({ method: "POST" })
       notes: null,
     };
 
-    const days: ForecastDayInput[] = dates.map(({ date, offsetMinutes }) => {
+    const resolveLocal = (day: string, hhmm: string) => zonedInstant(timeZone, day, hhmm);
+
+    const days: ForecastDayInput[] = dates.map(({ date, offsetMinutes, startMs, endMs }) => {
       const assignedId = resolveProfileIdForDate(assignments, date);
       const prefs =
         (assignedId ? profileById.get(assignedId) : undefined) ?? defaultProfile ?? fallbackPrefs;
-      const bounds = tasksServer.localDayBounds(date, offsetMinutes);
-      const startMs = Date.parse(bounds.start);
-      const endMs = Date.parse(bounds.end);
-      const dayEvents = schedule.filter((event) => {
-        const s = Date.parse(event.starts_at);
-        return s >= startMs && s < endMs;
-      });
+      // Membership by overlap; computeGaps clips whatever crosses the boundary.
+      const dayEvents = schedule.filter((event) =>
+        overlapsRange(event, startMs, endMs, prefs.default_meeting_min),
+      );
       const busy = tasksServer.buildPlannerBusyIntervals(
         dayEvents,
         travelPreferences,
         prefs.default_meeting_min,
       );
-      const gaps = tasksServer.computeGaps(date, prefs, busy, nowMs, offsetMinutes);
+      const gaps = tasksServer.computeGaps(date, prefs, busy, nowMs, offsetMinutes, resolveLocal);
       const workingMinutes = minutesBetween(prefs.work_start, prefs.work_end);
       const capacity = gaps.reduce((sum, g) => sum + Math.round((g.end - g.start) / 60000), 0);
       return {
