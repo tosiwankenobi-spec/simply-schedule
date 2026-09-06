@@ -100,7 +100,10 @@ describe("recording hooks", () => {
   });
 
   it("does not record previews or cancelled dialogs", () => {
-    const previewChunk = replan.slice(0, replan.indexOf("export const applyDayReplan"));
+    const previewChunk = replan.slice(
+      replan.indexOf("export const previewDayReplan"),
+      replan.indexOf("export const applyDayReplan"),
+    );
     expect(previewChunk).not.toContain("recordLearningSignal");
     expect(planner).not.toMatch(/previewDayPlan[\s\S]{0,1200}recordLearningSignal/);
   });
