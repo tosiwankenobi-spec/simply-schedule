@@ -11,7 +11,7 @@ import {
   type ForecastStatus,
 } from "@/lib/capacity-forecast";
 
-export const capacityForecastKey = ["capacity-forecast"] as const;
+const capacityForecastKey = ["capacity-forecast"] as const;
 
 const STATUS_LABEL: Record<ForecastStatus, string> = {
   critical: "At risk",
