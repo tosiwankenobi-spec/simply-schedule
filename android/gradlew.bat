@@ -41,6 +41,13 @@ set DEFAULT_JVM_OPTS="-Xmx64m" "-Xms64m"
 @rem Find java.exe
 if defined JAVA_HOME goto findJavaFromJavaHome
 
+@rem Prefer the project-local Java 21 runtime when one has been provisioned.
+set LOCAL_JAVA_EXE=%APP_HOME%\..\.java.local\jdk-21\bin\java.exe
+if exist "%LOCAL_JAVA_EXE%" (
+    set JAVA_EXE=%LOCAL_JAVA_EXE%
+    goto execute
+)
+
 set JAVA_EXE=java.exe
 %JAVA_EXE% -version >NUL 2>&1
 if %ERRORLEVEL% equ 0 goto execute
