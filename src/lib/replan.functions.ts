@@ -247,7 +247,7 @@ async function buildUndoLines(
   if (changes.length === 0) return [];
   const { data, error } = await supabase
     .from("appointments")
-    .select("id,starts_at,ends_at")
+    .select("id,starts_at,ends_at,commitment_type,is_all_day,updated_at")
     .eq("user_id", userId)
     .eq("source", "task")
     .in(
