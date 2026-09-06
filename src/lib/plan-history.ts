@@ -148,7 +148,11 @@ export function parsePlanChanges(value: unknown): PlanChange[] {
         toStart: row['toStart'] as string,
         toEnd: row['toEnd'] as string,
         reason,
+        ...(typeof row['appliedVersion'] === "string"
+          ? { appliedVersion: row['appliedVersion'] }
+          : {}),
       },
+
     ];
   });
 }
