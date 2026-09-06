@@ -409,6 +409,81 @@ export type Database = {
         }
         Relationships: []
       }
+      learning_events: {
+        Row: {
+          approved_count: number
+          conflict_strategy: string | null
+          created_at: string
+          id: string
+          kind: string
+          left_alone_count: number
+          local_dow: number | null
+          local_hour: number | null
+          moved_count: number
+          offered_count: number
+          restored_count: number
+          user_id: string
+        }
+        Insert: {
+          approved_count?: number
+          conflict_strategy?: string | null
+          created_at?: string
+          id?: string
+          kind: string
+          left_alone_count?: number
+          local_dow?: number | null
+          local_hour?: number | null
+          moved_count?: number
+          offered_count?: number
+          restored_count?: number
+          user_id: string
+        }
+        Update: {
+          approved_count?: number
+          conflict_strategy?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          left_alone_count?: number
+          local_dow?: number | null
+          local_hour?: number | null
+          moved_count?: number
+          offered_count?: number
+          restored_count?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      learning_settings: {
+        Row: {
+          accepted_at: string | null
+          accepted_conflict_strategy: string | null
+          created_at: string
+          enabled: boolean
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_conflict_strategy?: string | null
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_conflict_strategy?: string | null
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notification_log: {
         Row: {
           body: string
@@ -1041,10 +1116,25 @@ export type Database = {
         Args: { p_display_name: string; p_invite_id: string }
         Returns: string
       }
+      record_learning_event: {
+        Args: {
+          p_approved?: number
+          p_conflict_strategy?: string
+          p_kind: string
+          p_left_alone?: number
+          p_local_dow?: number
+          p_local_hour?: number
+          p_moved?: number
+          p_offered?: number
+          p_restored?: number
+        }
+        Returns: boolean
+      }
       release_sync_lock: {
         Args: { p_lock_key: string; p_token: string }
         Returns: boolean
       }
+      reset_learning_data: { Args: never; Returns: Json }
       undo_plan_run: { Args: { p_run_id: string }; Returns: Json }
     }
     Enums: {

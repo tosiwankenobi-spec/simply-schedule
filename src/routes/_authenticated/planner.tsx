@@ -40,12 +40,38 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { WorkspaceHeader } from "@/components/WorkspaceHeader";
+import { getLearningOverview } from "@/lib/learning.functions";
+import { LEARNING_QUERY_KEY } from "@/lib/learning";
 
 export const Route = createFileRoute("/_authenticated/planner")({
   component: PlannerPage,
 });
 
 type Resolution = "shift" | "skip" | "force";
+
+/**
+ * Starts from the learned default once settings have loaded, but never
+ * overwrites a choice the user already made in the current draft.
+ */
+function useResolution() {
+  const [resolution, setValue] = useState<Resolution>("shift");
+  const [touched, setTouched] = useState(false);
+  const { data: learning } = useQuery({
+    queryKey: LEARNING_QUERY_KEY,
+    queryFn: () => getLearningOverview(),
+    staleTime: 60_000,
+  });
+  useEffect(() => {
+    if (touched) return;
+    const learned = learning?.acceptedStrategy;
+    if (learned) setValue(learned);
+  }, [learning, touched]);
+  const setResolution = (next: Resolution) => {
+    setTouched(true);
+    setValue(next);
+  };
+  return { resolution, setResolution };
+}
 
 function fmtTime(iso: string) {
   return format(new Date(iso), "HH:mm");
@@ -130,7 +156,7 @@ function DayOptimizer() {
   const [previewing, setPreviewing] = useState(false);
   const [applying, setApplying] = useState(false);
   const [plan, setPlan] = useState<{ summary: string; items: DailyPlanItem[] } | null>(null);
-  const [resolution, setResolution] = useState<Resolution>("shift");
+  const { resolution, setResolution } = useResolution();
   const [preview, setPreview] = useState<DayPreview | null>(null);
 
   const { data: dayPrefs } = useQuery({
@@ -561,7 +587,7 @@ function WeekPlanner() {
   const [startDate, setStartDate] = useState(format(addDays(new Date(), 1), "yyyy-MM-dd"));
   const [days, setDays] = useState(7);
   const [profileId, setProfileId] = useState<string>("");
-  const [resolution, setResolution] = useState<Resolution>("shift");
+  const { resolution, setResolution } = useResolution();
   const [busy, setBusy] = useState(false);
   const [applying, setApplying] = useState(false);
   const [draft, setDraft] = useState<WeekDraft | null>(null);
