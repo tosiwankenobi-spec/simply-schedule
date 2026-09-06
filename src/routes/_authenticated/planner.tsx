@@ -41,7 +41,7 @@ import {
 } from "@/components/ui/select";
 import { WorkspaceHeader } from "@/components/WorkspaceHeader";
 import { getLearningOverview } from "@/lib/learning.functions";
-import { LEARNING_QUERY_KEY } from "@/components/LearningPanel";
+import { LEARNING_QUERY_KEY } from "@/lib/learning";
 
 export const Route = createFileRoute("/_authenticated/planner")({
   component: PlannerPage,

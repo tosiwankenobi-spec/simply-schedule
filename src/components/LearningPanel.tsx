@@ -23,15 +23,12 @@ import {
   resetLearningData,
   setLearningEnabled,
 } from "@/lib/learning.functions";
-import { MIN_STRATEGY_EVENTS, type ConflictStrategy } from "@/lib/learning";
-
-export const LEARNING_QUERY_KEY = ["learning-overview"] as const;
-
-export function strategyLabel(strategy: ConflictStrategy): string {
-  if (strategy === "shift") return "Shift the block after the clash";
-  if (strategy === "skip") return "Skip blocks that clash";
-  return "Add anyway, even if it overlaps";
-}
+import {
+  LEARNING_QUERY_KEY,
+  MIN_STRATEGY_EVENTS,
+  strategyLabel,
+  type ConflictStrategy,
+} from "@/lib/learning";
 
 /** Learning section for Planner preferences (full) and Privacy (compact). */
 export function LearningPanel({ compact = false }: { compact?: boolean }) {

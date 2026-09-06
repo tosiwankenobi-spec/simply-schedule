@@ -161,3 +161,13 @@ export function clampCount(value: unknown): number {
   const n = typeof value === "number" && Number.isFinite(value) ? Math.round(value) : 0;
   return Math.min(500, Math.max(0, n));
 }
+
+/** Shared query key so every surface reads one cached learning overview. */
+export const LEARNING_QUERY_KEY = ["learning-overview"] as const;
+
+/** Plain-language name for a clash-handling choice. */
+export function strategyLabel(strategy: ConflictStrategy): string {
+  if (strategy === "shift") return "Shift the block after the clash";
+  if (strategy === "skip") return "Skip blocks that clash";
+  return "Add anyway, even if it overlaps";
+}
