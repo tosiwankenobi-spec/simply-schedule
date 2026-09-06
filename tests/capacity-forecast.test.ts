@@ -385,7 +385,7 @@ describe("capacity forecast — already-booked work is not double-counted", () =
     const entry = result.deadlines[0]!;
     expect(entry.alreadyBooked).toBe(true);
     expect(entry.outstandingMinutes).toBe(0);
-    expect(entry.status).not.toBe("critical");
+    expect(entry.status).toBe("on-track");
     expect(result.deadlineRequiredMinutes).toBe(0);
     expect(result.firstOverloadedDate).toBeNull();
     expect(result.headline).not.toContain("won't be met");
@@ -533,5 +533,87 @@ describe("capacity forecast — overlap filtering", () => {
     const capacity = gaps.reduce((sum, g) => sum + (g.end - g.start) / 60000, 0);
     // 09:00–17:00 minus the 09:00–10:00 spillover and the 45m lunch.
     expect(capacity).toBe(480 - 60 - 45);
+  });
+});
+
+describe("capacity forecast — booked work is protected, not tight", () => {
+  test("a day whose only free time is the reserved block raises no warning", () => {
+    const result = forecast(
+      [
+        task({
+          id: "booked",
+          estimatedMin: 240,
+          status: "scheduled",
+          deadline: "2026-09-08",
+          scheduledStart: "2026-09-08T09:00:00.000Z",
+          scheduledEnd: "2026-09-08T13:00:00.000Z",
+        }),
+      ],
+      [
+        {
+          id: "block",
+          title: "Deep work",
+          starts_at: "2026-09-08T09:00:00.000Z",
+          ends_at: "2026-09-08T17:00:00.000Z",
+          location: null,
+        },
+      ],
+    );
+    const entry = result.deadlines[0]!;
+    expect(entry.status).toBe("on-track");
+    expect(entry.slackMinutes).toBe(0);
+    expect(result.counts.tight).toBe(0);
+    expect(result.counts.critical).toBe(0);
+    expect(result.firstOverloadedDate).toBeNull();
+  });
+});
+
+describe("linked task blocks", () => {
+  const rows = [
+    {
+      id: "t1",
+      title: "A",
+      estimated_min: 60,
+      priority: 1,
+      deadline: null,
+      status: "todo",
+      created_at: "2026-01-01T00:00:00.000Z",
+      scheduled_appointment_id: "a1",
+    },
+    {
+      id: "t2",
+      title: "B",
+      estimated_min: null,
+      priority: null,
+      deadline: "2026-09-09",
+      status: "todo",
+      created_at: "2026-01-01T00:00:00.000Z",
+      scheduled_appointment_id: null,
+    },
+    {
+      id: "t3",
+      title: "C",
+      estimated_min: 30,
+      priority: 2,
+      deadline: null,
+      status: "todo",
+      created_at: "2026-01-01T00:00:00.000Z",
+      scheduled_appointment_id: "a1",
+    },
+  ];
+
+  test("collects distinct linked ids only", () => {
+    expect(linkedBlockIds(rows)).toEqual(["a1"]);
+    expect(linkedBlockIds([])).toEqual([]);
+  });
+
+  test("maps a block from years ago rather than treating it as unscheduled", () => {
+    const mapped = mapForecastTasks(rows, [
+      { id: "a1", starts_at: "2023-02-01T09:00:00.000Z", ends_at: "2023-02-01T10:00:00.000Z" },
+    ]);
+    expect(mapped[0]!.scheduledStart).toBe("2023-02-01T09:00:00.000Z");
+    expect(mapped[1]!.scheduledStart).toBeNull();
+    expect(mapped[1]!.estimatedMin).toBe(30);
+    expect(mapped[2]!.scheduledEnd).toBe("2023-02-01T10:00:00.000Z");
   });
 });

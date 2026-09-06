@@ -85,6 +85,17 @@ describe("capacity forecast server contract", () => {
     expect(source).not.toContain("localDayBounds(");
   });
 
+  it("looks up linked task blocks by exact id with no fixed lookback", () => {
+    expect(source).not.toContain("blockLookbackStart");
+    expect(source).not.toMatch(/86400000\s*\)/);
+    expect(source).toContain("linkedBlockIds(taskRows)");
+    expect(source).toContain('.in("id", linkedIds)');
+    expect(source).toContain("if (linkedIds.length > 0)");
+    const lookup = source.slice(source.indexOf("if (linkedIds.length > 0)"));
+    expect(lookup).toContain('.eq("user_id", context.userId)');
+    expect(lookup).toContain('.eq("source", "task")');
+  });
+
   it("validates its input narrowly and bounds the horizon", () => {
     expect(source).toContain("z.string().max(80)");
     expect(source).toContain("min(1).max(21)");
