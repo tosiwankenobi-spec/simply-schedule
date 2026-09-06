@@ -76,6 +76,26 @@ describe("the routines in force are the corrective ones", () => {
   });
 });
 
+describe("the repaired plan history table", () => {
+  it("is private by default and exposed only through owner-scoped RLS", () => {
+    expect(sql).toContain("ALTER TABLE public.plan_runs ENABLE ROW LEVEL SECURITY");
+    expect(sql).toContain("REVOKE ALL ON public.plan_runs FROM PUBLIC");
+    expect(sql).toContain("REVOKE ALL ON public.plan_runs FROM anon");
+    expect(sql).toContain("REVOKE ALL ON public.plan_runs FROM authenticated");
+    expect(sql).toContain(
+      "GRANT SELECT, INSERT, UPDATE, DELETE ON public.plan_runs TO authenticated",
+    );
+    expect(sql).toContain("(SELECT auth.uid()) = user_id");
+  });
+
+  it("deduplicates approvals and keeps update timestamps trustworthy", () => {
+    expect(sql).toContain("plan_runs_user_preview_uidx");
+    expect(sql).toContain("WHERE preview_id IS NOT NULL");
+    expect(sql).toContain("plan_runs_set_updated_at");
+    expect(sql).toContain("public.set_updated_at()");
+  });
+});
+
 describe("applying a plan cannot be steered by the browser", () => {
   it("records the stored title, task and source, not the ones sent in", () => {
     expect(apply).toMatch(/'title',\s*v_row\.title/);
@@ -142,6 +162,10 @@ describe("applying a plan cannot be steered by the browser", () => {
   it("stays safe when two approvals of one proposal race", () => {
     stronger(apply, weakApply, /EXCEPTION WHEN unique_violation THEN/);
     expect(apply).toMatch(/'repeated', true/);
+  });
+
+  it("requires the preview id used for idempotency", () => {
+    expect(apply).toMatch(/p_preview_id IS NULL/);
   });
 
   it("keeps the 60-day history limit scoped to the caller", () => {
