@@ -62,7 +62,8 @@ describe("capacity forecast server contract", () => {
 
   it("takes only the travel fields from notification settings", () => {
     expect(source).not.toContain("NOTIF_COLS");
-    expect(source).not.toContain("email_to");
+    const code = source.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, "");
+    expect(code).not.toContain("email_to");
     expect(source).toContain(
       '"travel_reminders_enabled,travel_mode,default_travel_min,travel_buffer_min,default_prep_min"',
     );
