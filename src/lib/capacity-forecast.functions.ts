@@ -6,6 +6,8 @@ import {
   buildCapacityForecast,
   forecastDates,
   normalizeTimeZone,
+  linkedBlockIds,
+  mapForecastTasks,
   overlapsRange,
   resolveProfileIdForDate,
   zonedInstant,
@@ -63,12 +65,10 @@ export const getCapacityForecast = createServerFn({ method: "POST" })
     // Query by overlap, not by start instant, so a commitment that begins before
     // a boundary (overnight, or before the horizon starts) still occupies time.
     const queryStart = new Date(rangeStartMs - OVERLAP_LOOKBACK_MS).toISOString();
-    const blockLookbackStart = new Date(nowMs - 45 * 86400000).toISOString();
 
     const [
       scheduleResult,
       metadataResult,
-      taskBlockResult,
       tasksResult,
       notificationResult,
       assignmentResult,
@@ -86,12 +86,6 @@ export const getCapacityForecast = createServerFn({ method: "POST" })
         .eq("user_id", context.userId)
         .gte("starts_at", queryStart)
         .lt("starts_at", rangeEnd),
-      context.supabase
-        .from("appointments")
-        .select("id,starts_at,ends_at")
-        .eq("user_id", context.userId)
-        .eq("source", "task")
-        .gte("starts_at", blockLookbackStart),
       context.supabase
         .from("tasks")
         .select(
@@ -121,7 +115,6 @@ export const getCapacityForecast = createServerFn({ method: "POST" })
     if (
       scheduleResult.error ||
       metadataResult.error ||
-      taskBlockResult.error ||
       tasksResult.error ||
       notificationResult.error ||
       assignmentResult.error ||
@@ -211,23 +204,28 @@ export const getCapacityForecast = createServerFn({ method: "POST" })
       };
     });
 
-    const blocks = new Map((taskBlockResult.data ?? []).map((row) => [row.id, row]));
-    const tasks: ForecastTask[] = (tasksResult.data ?? []).map((row) => {
-      const block = row.scheduled_appointment_id
-        ? blocks.get(row.scheduled_appointment_id)
-        : undefined;
-      return {
-        id: row.id,
-        title: row.title,
-        estimatedMin: row.estimated_min ?? 30,
-        priority: row.priority ?? 2,
-        deadline: row.deadline ?? null,
-        status: row.status,
-        createdAt: row.created_at,
-        scheduledStart: block?.starts_at ?? null,
-        scheduledEnd: block?.ends_at ?? null,
-      };
-    });
+    /**
+     * Dependent on the task rows by necessity: only the exact linked block IDs
+     * are fetched, so there is no arbitrary lookback window and no scan of
+     * every historical task block.
+     */
+    const taskRows = tasksResult.data ?? [];
+    const linkedIds = linkedBlockIds(taskRows);
+    let blockRows: TaskBlockRow[] = [];
+    if (linkedIds.length > 0) {
+      const blockResult = await context.supabase
+        .from("appointments")
+        .select("id,starts_at,ends_at")
+        .eq("user_id", context.userId)
+        .eq("source", "task")
+        .in("id", linkedIds);
+      if (blockResult.error) {
+        throw new Error("Your forecast could not be built right now. Please try again.");
+      }
+      blockRows = blockResult.data ?? [];
+    }
+
+    const tasks: ForecastTask[] = mapForecastTasks(taskRows, blockRows);
 
     return buildCapacityForecast({ nowMs, timeZone, days, tasks });
   });
