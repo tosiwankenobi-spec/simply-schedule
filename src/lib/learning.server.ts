@@ -7,7 +7,6 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
-import { learningDb } from "./learning-db";
 import {
   clampCount,
   isConflictStrategy,
@@ -50,7 +49,7 @@ export async function recordLearningSignal(
         : null;
     if (signal.kind === "plan_applied" && !strategy) return;
 
-    const { error } = await learningDb(supabase).rpc("record_learning_event", {
+    const { error } = await supabase.rpc("record_learning_event", {
       p_kind: signal.kind,
       p_conflict_strategy: strategy,
       p_offered: clampCount(signal.offered),

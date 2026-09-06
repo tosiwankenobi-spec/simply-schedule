@@ -5,7 +5,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { learningDb } from "./learning-db";
 import {
   CONFLICT_STRATEGIES,
   acceptedStillSupported,
@@ -33,7 +32,7 @@ export type LearningOverview = {
 export const getLearningOverview = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<LearningOverview> => {
-    const db = learningDb(context.supabase);
+    const db = context.supabase;
     const now = Date.now();
     const [settingsRes, eventsRes] = await Promise.all([
       db
@@ -86,7 +85,7 @@ export const setLearningEnabled = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ enabled: z.boolean() }).parse(input))
   .handler(async ({ data, context }) => {
-    const db = learningDb(context.supabase);
+    const db = context.supabase;
     const { error } = await db
       .from("learning_settings")
       .upsert({ user_id: context.userId, enabled: data.enabled }, { onConflict: "user_id" });
@@ -100,7 +99,7 @@ export const acceptLearnedStrategy = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => strategySchema.parse(input))
   .handler(async ({ data, context }) => {
-    const db = learningDb(context.supabase);
+    const db = context.supabase;
     const { error } = await db.from("learning_settings").upsert(
       {
         user_id: context.userId,
@@ -117,7 +116,7 @@ export const acceptLearnedStrategy = createServerFn({ method: "POST" })
 export const clearLearnedStrategy = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const db = learningDb(context.supabase);
+    const db = context.supabase;
     const { error } = await db
       .from("learning_settings")
       .update({ accepted_conflict_strategy: null, accepted_at: null })
@@ -134,7 +133,7 @@ export const clearLearnedStrategy = createServerFn({ method: "POST" })
 export const resetLearningData = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const db = learningDb(context.supabase);
+    const db = context.supabase;
     const { data, error } = await db.rpc("reset_learning_data");
     if (error) throw new Error("Your learning data could not be cleared. Please try again.");
     const payload = (data ?? {}) as { deletedEvents?: number };
