@@ -8,7 +8,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { learningDb } from "./learning-db";
-import { clampCount, isConflictStrategy, type ConflictStrategy, type LearningEventKind } from "./learning";
+import {
+  clampCount,
+  isConflictStrategy,
+  type ConflictStrategy,
+  type LearningEventKind,
+} from "./learning";
 
 type Client = SupabaseClient<Database>;
 

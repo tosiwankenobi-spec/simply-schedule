@@ -89,10 +89,7 @@ export const setLearningEnabled = createServerFn({ method: "POST" })
     const db = learningDb(context.supabase);
     const { error } = await db
       .from("learning_settings")
-      .upsert(
-        { user_id: context.userId, enabled: data.enabled },
-        { onConflict: "user_id" },
-      );
+      .upsert({ user_id: context.userId, enabled: data.enabled }, { onConflict: "user_id" });
     if (error) throw new Error("That setting could not be saved. Please try again.");
     return { enabled: data.enabled };
   });

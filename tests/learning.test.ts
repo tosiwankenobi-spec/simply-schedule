@@ -62,7 +62,13 @@ describe("conflict strategy rules", () => {
       applied("force"),
     ];
     const result = deriveStrategySuggestion(events, { enabled: true, nowMs: NOW });
-    expect(result).toMatchObject({ status: "suggested", strategy: "skip", count: 7, total: 10, percent: 70 });
+    expect(result).toMatchObject({
+      status: "suggested",
+      strategy: "skip",
+      count: 7,
+      total: 10,
+      percent: 70,
+    });
   });
 
   it("stays silent just below the 70% boundary", () => {
@@ -70,7 +76,9 @@ describe("conflict strategy rules", () => {
       ...Array.from({ length: 6 }, () => applied("skip")),
       ...Array.from({ length: 4 }, () => applied("shift")),
     ];
-    expect(deriveStrategySuggestion(events, { enabled: true, nowMs: NOW }).status).toBe("no-winner");
+    expect(deriveStrategySuggestion(events, { enabled: true, nowMs: NOW }).status).toBe(
+      "no-winner",
+    );
   });
 
   it("refuses a tie", () => {

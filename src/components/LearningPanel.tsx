@@ -92,9 +92,7 @@ export function LearningPanel({ compact = false }: { compact?: boolean }) {
   if (isError || !data) {
     return (
       <SectionShell compact={compact}>
-        <p className="text-sm text-muted-foreground">
-          Your learning settings could not be loaded.
-        </p>
+        <p className="text-sm text-muted-foreground">Your learning settings could not be loaded.</p>
         <Button variant="outline" className="mt-3" onClick={() => void refetch()}>
           Try again
         </Button>

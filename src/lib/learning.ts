@@ -8,11 +8,7 @@
 export const CONFLICT_STRATEGIES = ["shift", "skip", "force"] as const;
 export type ConflictStrategy = (typeof CONFLICT_STRATEGIES)[number];
 
-export const LEARNING_EVENT_KINDS = [
-  "plan_applied",
-  "replan_applied",
-  "undo_completed",
-] as const;
+export const LEARNING_EVENT_KINDS = ["plan_applied", "replan_applied", "undo_completed"] as const;
 export type LearningEventKind = (typeof LEARNING_EVENT_KINDS)[number];
 
 /** Bounded retention for learning history. */
@@ -34,15 +30,10 @@ export type LearningEvent = {
 };
 
 export function isConflictStrategy(value: unknown): value is ConflictStrategy {
-  return (
-    typeof value === "string" && (CONFLICT_STRATEGIES as readonly string[]).includes(value)
-  );
+  return typeof value === "string" && (CONFLICT_STRATEGIES as readonly string[]).includes(value);
 }
 
-export function learningRetentionCutoffISO(
-  nowMs: number,
-  days = LEARNING_RETENTION_DAYS,
-): string {
+export function learningRetentionCutoffISO(nowMs: number, days = LEARNING_RETENTION_DAYS): string {
   return new Date(nowMs - days * 24 * 60 * 60 * 1000).toISOString();
 }
 

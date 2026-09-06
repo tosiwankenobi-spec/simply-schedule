@@ -30,7 +30,9 @@ describe("learning server contract", () => {
       const uses = fns.split(`.from("${table}")`).slice(1);
       expect(uses.length).toBeGreaterThan(0);
       for (const chunk of uses) {
-        expect(chunk.slice(0, 400)).toMatch(/user_id["']?[,:]\s*context\.userId|\.eq\("user_id", context\.userId\)/);
+        expect(chunk.slice(0, 400)).toMatch(
+          /user_id["']?[,:]\s*context\.userId|\.eq\("user_id", context\.userId\)/,
+        );
       }
     }
   });
@@ -50,7 +52,13 @@ describe("learning server contract", () => {
 
   it("resets through an RPC scoped to learning data only", () => {
     expect(fns).toContain('db.rpc("reset_learning_data")');
-    for (const table of ["appointments", "tasks", "plan_runs", "planner_profiles", "sync_settings"]) {
+    for (const table of [
+      "appointments",
+      "tasks",
+      "plan_runs",
+      "planner_profiles",
+      "sync_settings",
+    ]) {
       expect(fns).not.toContain(`.from("${table}")`);
     }
   });
@@ -60,7 +68,9 @@ describe("recording hooks", () => {
   it("never throws: recording is best-effort and observable only in development", () => {
     expect(recorder).toContain("} catch {");
     expect(recorder).toContain('process.env["NODE_ENV"] !== "production"');
-    expect(recorder).not.toMatch(/console\.(log|warn|error)\([^)]*signal\.(offered|approved|moved)/);
+    expect(recorder).not.toMatch(
+      /console\.(log|warn|error)\([^)]*signal\.(offered|approved|moved)/,
+    );
   });
 
   it("sends only allowlisted fields", () => {
@@ -90,9 +100,9 @@ describe("recording hooks", () => {
   it("records replan and undo aggregates without item identities", () => {
     expect(replan).toContain('kind: "replan_applied"');
     expect(replan).toContain('kind: "undo_completed"');
-    const signalBlocks = [...replan.matchAll(/recordLearningSignal\(context\.supabase, \{[\s\S]*?\}\);/g)].map(
-      (m) => m[0],
-    );
+    const signalBlocks = [
+      ...replan.matchAll(/recordLearningSignal\(context\.supabase, \{[\s\S]*?\}\);/g),
+    ].map((m) => m[0]);
     expect(signalBlocks).toHaveLength(2);
     for (const block of signalBlocks) {
       expect(block).not.toMatch(/appointmentId|title|notes|planRunId|previewId/);
@@ -149,7 +159,9 @@ describe("staged migration", () => {
   });
 
   it("validates enums and ranges in SQL and derives the user from auth.uid()", () => {
-    expect(migration).toContain("CHECK (kind IN ('plan_applied', 'replan_applied', 'undo_completed'))");
+    expect(migration).toContain(
+      "CHECK (kind IN ('plan_applied', 'replan_applied', 'undo_completed'))",
+    );
     expect(migration).toContain("BETWEEN 0 AND 500");
     expect(migration).toContain("auth.uid()");
     expect(migration).toContain("SECURITY INVOKER");
@@ -161,7 +173,17 @@ describe("staged migration", () => {
       migration.indexOf("CREATE TABLE public.learning_events"),
       migration.indexOf("REVOKE ALL ON public.learning_events"),
     );
-    for (const term of ["title", "notes", "location", "task_id", "appointment_id", "plan_run", "calendar", "provider", "message"]) {
+    for (const term of [
+      "title",
+      "notes",
+      "location",
+      "task_id",
+      "appointment_id",
+      "plan_run",
+      "calendar",
+      "provider",
+      "message",
+    ]) {
       expect(table).not.toContain(term);
     }
   });

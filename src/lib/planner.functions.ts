@@ -293,7 +293,9 @@ export const deletePlannerAssignment = createServerFn({ method: "POST" })
 
 export const getPrefsForDate = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: unknown) => z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }).parse(i))
+  .inputValidator((i: unknown) =>
+    z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }).parse(i),
+  )
   .handler(async ({ data, context }): Promise<PlannerProfile> => {
     return resolvePrefsForDate(context.supabase, context.userId, data.date);
   });
@@ -330,7 +332,10 @@ async function callAI(system: string, user: string, key: string) {
   }
   const json = await res.json();
   let content: string = json?.choices?.[0]?.message?.content ?? "";
-  content = content.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
+  content = content
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/i, "");
   try {
     return JSON.parse(content);
   } catch {
@@ -363,7 +368,12 @@ export const optimizeDay = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<{ summary: string; items: DailyPlanItem[] }> => {
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("Missing LOVABLE_API_KEY");
-    const prefs = await loadProfileById(context.supabase, context.userId, data.profileId ?? null, data.date);
+    const prefs = await loadProfileById(
+      context.supabase,
+      context.userId,
+      data.profileId ?? null,
+      data.date,
+    );
     const workStart = data.workStart ?? prefs.work_start;
     const workEnd = data.workEnd ?? prefs.work_end;
 
@@ -480,7 +490,12 @@ export const planWeek = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("Missing LOVABLE_API_KEY");
-    const prefs = await loadProfileById(context.supabase, context.userId, data.profileId ?? null, data.startDate);
+    const prefs = await loadProfileById(
+      context.supabase,
+      context.userId,
+      data.profileId ?? null,
+      data.startDate,
+    );
     const workStart = data.workStart ?? prefs.work_start;
     const workEnd = data.workEnd ?? prefs.work_end;
     const tzOffsetMin = new Date().getTimezoneOffset();
@@ -517,9 +532,10 @@ Return JSON: {"summary":string,"appointments":[{"title":string,"starts_at":ISO86
       .slice(0, 20)
       .map((a: any) => {
         const s = Date.parse(a.starts_at);
-        const e = a.ends_at && !Number.isNaN(Date.parse(a.ends_at))
-          ? Date.parse(a.ends_at)
-          : s + prefs.default_meeting_min * 60 * 1000;
+        const e =
+          a.ends_at && !Number.isNaN(Date.parse(a.ends_at))
+            ? Date.parse(a.ends_at)
+            : s + prefs.default_meeting_min * 60 * 1000;
         return {
           start: s,
           end: e,
@@ -534,7 +550,12 @@ Return JSON: {"summary":string,"appointments":[{"title":string,"starts_at":ISO86
         };
       });
 
-    const result = resolveConflicts(proposed, existing ?? [], data.resolution, prefs.default_meeting_min);
+    const result = resolveConflicts(
+      proposed,
+      existing ?? [],
+      data.resolution,
+      prefs.default_meeting_min,
+    );
     const summary = String(out.summary ?? "").slice(0, 400);
 
     if (data.dryRun) {
@@ -549,7 +570,11 @@ Return JSON: {"summary":string,"appointments":[{"title":string,"starts_at":ISO86
         dryRun: true as const,
         proposals,
         preview: {
-          accepted: result.accepted.map((r) => ({ title: r.title, starts_at: r.starts_at, ends_at: r.ends_at })),
+          accepted: result.accepted.map((r) => ({
+            title: r.title,
+            starts_at: r.starts_at,
+            ends_at: r.ends_at,
+          })),
           skipped: result.skipped,
           shifted: result.shifted,
           conflicts: result.conflicts,
@@ -576,19 +601,29 @@ const applyWeekSchema = z.object({
   days: z.number().int().min(1).max(14),
   resolution: z.enum(["skip", "shift", "force"]).default("shift"),
   profileId: z.string().uuid().optional(),
-  items: z.array(z.object({
-    title: z.string().min(1).max(200),
-    starts_at: z.string(),
-    ends_at: z.string(),
-    notes: z.string().max(1000).nullable().optional(),
-  })).min(1).max(40),
+  items: z
+    .array(
+      z.object({
+        title: z.string().min(1).max(200),
+        starts_at: z.string(),
+        ends_at: z.string(),
+        notes: z.string().max(1000).nullable().optional(),
+      }),
+    )
+    .min(1)
+    .max(40),
 });
 
 export const applyWeekPlan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => applyWeekSchema.parse(i))
   .handler(async ({ data, context }) => {
-    const prefs = await loadProfileById(context.supabase, context.userId, data.profileId ?? null, data.startDate);
+    const prefs = await loadProfileById(
+      context.supabase,
+      context.userId,
+      data.profileId ?? null,
+      data.startDate,
+    );
     const start = new Date(`${data.startDate}T00:00:00`);
     const end = new Date(start.getTime() + data.days * 24 * 3600 * 1000);
     const { data: existing } = await context.supabase
@@ -616,7 +651,12 @@ export const applyWeekPlan = createServerFn({ method: "POST" })
         };
       });
 
-    const result = resolveConflicts(proposed, existing ?? [], data.resolution, prefs.default_meeting_min);
+    const result = resolveConflicts(
+      proposed,
+      existing ?? [],
+      data.resolution,
+      prefs.default_meeting_min,
+    );
     if (result.accepted.length > 0) {
       const { error } = await context.supabase.from("appointments").insert(result.accepted);
       if (error) throw error;
@@ -635,7 +675,6 @@ export const applyWeekPlan = createServerFn({ method: "POST" })
       conflicts: result.conflicts,
     };
   });
-
 
 // ============ 4. Conflict resolution helpers ============
 
@@ -682,7 +721,11 @@ function resolveConflicts(
     const hits = blocks.filter((x) => overlap(s, e, x));
 
     if (hits.length === 0) {
-      const row = { ...p.row, starts_at: new Date(s).toISOString(), ends_at: new Date(e).toISOString() };
+      const row = {
+        ...p.row,
+        starts_at: new Date(s).toISOString(),
+        ends_at: new Date(e).toISOString(),
+      };
       out.accepted.push(row);
       blocks.push({ title: row.title, s, e });
       continue;
@@ -696,7 +739,11 @@ function resolveConflicts(
     });
 
     if (mode === "skip") {
-      out.skipped.push({ title: p.row.title, starts_at: new Date(s).toISOString(), conflictsWith: firstHit.title });
+      out.skipped.push({
+        title: p.row.title,
+        starts_at: new Date(s).toISOString(),
+        conflictsWith: firstHit.title,
+      });
       continue;
     }
     if (mode === "shift") {
@@ -704,16 +751,27 @@ function resolveConflicts(
       let placed = false;
       for (let i = 0; i < 6; i++) {
         const conflicting = blocks.filter((x) => overlap(s, e, x));
-        if (conflicting.length === 0) { placed = true; break; }
+        if (conflicting.length === 0) {
+          placed = true;
+          break;
+        }
         const latestEnd = Math.max(...conflicting.map((c) => c.e));
         s = latestEnd;
         e = s + dur;
       }
       if (!placed) {
-        out.skipped.push({ title: p.row.title, starts_at: new Date(originalStart).toISOString(), conflictsWith: firstHit.title });
+        out.skipped.push({
+          title: p.row.title,
+          starts_at: new Date(originalStart).toISOString(),
+          conflictsWith: firstHit.title,
+        });
         continue;
       }
-      const row = { ...p.row, starts_at: new Date(s).toISOString(), ends_at: new Date(e).toISOString() };
+      const row = {
+        ...p.row,
+        starts_at: new Date(s).toISOString(),
+        ends_at: new Date(e).toISOString(),
+      };
       out.accepted.push(row);
       out.shifted.push({
         title: p.row.title,
@@ -725,7 +783,11 @@ function resolveConflicts(
       continue;
     }
     // force
-    const row = { ...p.row, starts_at: new Date(s).toISOString(), ends_at: new Date(e).toISOString() };
+    const row = {
+      ...p.row,
+      starts_at: new Date(s).toISOString(),
+      ends_at: new Date(e).toISOString(),
+    };
     out.accepted.push(row);
     blocks.push({ title: row.title, s, e });
   }
@@ -737,13 +799,18 @@ function resolveConflicts(
 const applyDaySchema = z.object({
   date: z.string(), // YYYY-MM-DD
   resolution: z.enum(["skip", "shift", "force"]).default("skip"),
-  items: z.array(z.object({
-    time: z.string(), // "HH:mm"
-    title: z.string().min(1).max(200),
-    kind: z.enum(["appointment", "block", "break"]),
-    rationale: z.string().optional().nullable(),
-    durationMin: z.number().int().min(5).max(480).optional(),
-  })).min(1).max(30),
+  items: z
+    .array(
+      z.object({
+        time: z.string(), // "HH:mm"
+        title: z.string().min(1).max(200),
+        kind: z.enum(["appointment", "block", "break"]),
+        rationale: z.string().optional().nullable(),
+        durationMin: z.number().int().min(5).max(480).optional(),
+      }),
+    )
+    .min(1)
+    .max(30),
 });
 
 function tzOffsetString() {
@@ -755,20 +822,28 @@ function tzOffsetString() {
 
 function buildProposed(
   date: string,
-  candidates: { time: string; title: string; kind: "appointment" | "block" | "break"; rationale?: string | null; durationMin?: number }[],
+  candidates: {
+    time: string;
+    title: string;
+    kind: "appointment" | "block" | "break";
+    rationale?: string | null;
+    durationMin?: number;
+  }[],
   prefs: PlannerPrefs,
   userId: string,
 ): ProposedRow[] {
   const offset = tzOffsetString();
   return candidates.map((it, idx) => {
     const [h, m] = it.time.split(":").map((n) => parseInt(n, 10));
-    const start = new Date(`${date}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00${offset}`);
+    const start = new Date(
+      `${date}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00${offset}`,
+    );
     const fallback = it.kind === "break" ? prefs.break_length_min : prefs.default_meeting_min;
     let durationMin = it.durationMin ?? fallback;
     const next = candidates[idx + 1];
     if (!it.durationMin && next) {
       const [nh, nm] = next.time.split(":").map((n) => parseInt(n, 10));
-      const diff = (nh * 60 + nm) - (h * 60 + m);
+      const diff = nh * 60 + nm - (h * 60 + m);
       if (diff > 0 && diff <= 240) durationMin = diff;
     }
     const end = new Date(start.getTime() + durationMin * 60 * 1000);
@@ -842,7 +917,9 @@ export const previewDayConflicts = createServerFn({ method: "POST" })
     const blocks = existing.map((e: any) => ({
       title: e.title,
       s: Date.parse(e.starts_at),
-      e: e.ends_at ? Date.parse(e.ends_at) : Date.parse(e.starts_at) + prefs.default_meeting_min * 60 * 1000,
+      e: e.ends_at
+        ? Date.parse(e.ends_at)
+        : Date.parse(e.starts_at) + prefs.default_meeting_min * 60 * 1000,
     }));
     const conflicts = proposed
       .map((p) => {
@@ -876,4 +953,3 @@ export const previewDayPlan = createServerFn({ method: "POST" })
       existingCount: existing.length,
     };
   });
-
