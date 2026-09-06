@@ -153,7 +153,12 @@ export const getCapacityForecast = createServerFn({ method: "POST" })
       notificationResult.data ?? notificationsServer.DEFAULT_PREFS,
     );
 
-    const profiles = (profileResult.data ?? []) as unknown as Prefs[];
+    // Notes are not selected; the planner shape carries an explicit null.
+    const profiles: Prefs[] = (profileResult.data ?? []).map((row) => ({
+      ...(row as unknown as Omit<Prefs, "notes">),
+      notes: null,
+    }));
+
     const profileById = new Map(profiles.map((p) => [p.id, p]));
     const defaultProfile = profiles[0];
     const assignments = (assignmentResult.data ?? []) as ProfileAssignment[];
