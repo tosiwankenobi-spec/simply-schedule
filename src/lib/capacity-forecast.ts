@@ -436,7 +436,11 @@ export function buildCapacityForecast(params: {
 
     let status: ForecastStatus = "on-track";
     if (critical) status = "critical";
-    else if (slackMinutes < TIGHT_SLACK_MINUTES || slackMinutes < need * TIGHT_SLACK_RATIO) {
+    else if (satisfiedByBlock) {
+      // The time is already reserved on the calendar on or before the deadline,
+      // so remaining free capacity says nothing about whether it will be done.
+      status = "on-track";
+    } else if (slackMinutes < TIGHT_SLACK_MINUTES || slackMinutes < need * TIGHT_SLACK_RATIO) {
       status = "tight";
       reasons.push(`Only ${minutesLabel(slackMinutes)} spare before the deadline.`);
     } else {
