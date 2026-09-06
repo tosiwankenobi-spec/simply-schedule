@@ -663,7 +663,7 @@ export const applyWeekPlan = createServerFn({ method: "POST" })
       await recordLearningSignal(context.supabase, {
         kind: "plan_applied",
         conflictStrategy: data.resolution,
-        offered: result.accepted.length + result.skipped.length + result.shifted.length,
+        offered: result.accepted.length + result.skipped.length,
         approved: result.accepted.length,
         moved: result.shifted.length,
       });
@@ -891,7 +891,7 @@ export const applyDayPlan = createServerFn({ method: "POST" })
       await recordLearningSignal(context.supabase, {
         kind: "plan_applied",
         conflictStrategy: data.resolution,
-        offered: result.accepted.length + result.skipped.length + result.shifted.length,
+        offered: result.accepted.length + result.skipped.length,
         approved: result.accepted.length,
         moved: result.shifted.length,
       });

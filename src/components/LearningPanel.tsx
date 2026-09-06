@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Brain, Check, Info, Trash2, X } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ import {
 /** Learning section for Planner preferences (full) and Privacy (compact). */
 export function LearningPanel({ compact = false }: { compact?: boolean }) {
   const qc = useQueryClient();
+  const [dismissedSuggestion, setDismissedSuggestion] = useState<string | null>(null);
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: LEARNING_QUERY_KEY,
     queryFn: () => getLearningOverview(),
@@ -98,6 +100,10 @@ export function LearningPanel({ compact = false }: { compact?: boolean }) {
   }
 
   const { suggestion } = data;
+  const suggestionKey =
+    suggestion.status === "suggested"
+      ? `${suggestion.strategy}:${suggestion.count}:${suggestion.total}`
+      : null;
 
   return (
     <SectionShell compact={compact}>
@@ -167,7 +173,7 @@ export function LearningPanel({ compact = false }: { compact?: boolean }) {
                 {suggestion.counts.force}. No clear preference yet.
               </p>
             )}
-            {suggestion.status === "suggested" && (
+            {suggestion.status === "suggested" && suggestionKey !== dismissedSuggestion && (
               <div className="mt-2 rounded-xl border border-accent/40 bg-accent/5 p-4">
                 <p className="text-sm text-foreground">
                   You chose <b>{strategyLabel(suggestion.strategy).toLowerCase()}</b> in{" "}
@@ -189,7 +195,13 @@ export function LearningPanel({ compact = false }: { compact?: boolean }) {
                     >
                       <Check className="mr-1.5 h-4 w-4" /> Use this as my default
                     </Button>
-                    <Button variant="ghost" onClick={() => toast.message("Suggestion dismissed")}>
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        setDismissedSuggestion(suggestionKey);
+                        toast.message("Suggestion dismissed for now");
+                      }}
+                    >
                       <X className="mr-1.5 h-4 w-4" /> Not now
                     </Button>
                   </div>

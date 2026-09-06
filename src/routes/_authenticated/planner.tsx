@@ -63,7 +63,7 @@ function useResolution() {
   });
   useEffect(() => {
     if (touched) return;
-    const learned = learning?.acceptedStrategy;
+    const learned = learning?.enabled ? learning.acceptedStrategy : null;
     if (learned) setValue(learned);
   }, [learning, touched]);
   const setResolution = (next: Resolution) => {

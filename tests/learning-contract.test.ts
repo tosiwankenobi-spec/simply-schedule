@@ -16,7 +16,9 @@ const planner = read("src/lib/planner.functions.ts");
 const replan = read("src/lib/replan.functions.ts");
 const panel = read("src/components/LearningPanel.tsx");
 const plannerUi = read("src/routes/_authenticated/planner.tsx");
-const migration = read("supabase/pending-migrations/20260906120000_learning_layer.sql");
+const migration = read(
+  "supabase/migrations/20260906120426_042c012b-cd42-4172-bdcc-befeb90971ed.sql",
+);
 
 describe("learning server contract", () => {
   it("requires an authenticated session and never trusts a submitted user id", () => {
@@ -82,8 +84,6 @@ describe("recording hooks", () => {
       "p_moved",
       "p_restored",
       "p_left_alone",
-      "p_local_hour",
-      "p_local_dow",
     ];
     const params = [...recorder.matchAll(/p_[a-z_]+/g)].map((m) => m[0]);
     for (const p of params) expect(allowed).toContain(p);
@@ -95,6 +95,13 @@ describe("recording hooks", () => {
     for (const before of planner.split("recordLearningSignal(context.supabase, {").slice(0, -1)) {
       expect(before.slice(-260)).toContain("if (error) throw error;");
     }
+  });
+
+  it("counts every offered plan item exactly once", () => {
+    expect(planner).toContain("offered: result.accepted.length + result.skipped.length");
+    expect(planner).not.toContain(
+      "result.accepted.length + result.skipped.length + result.shifted.length",
+    );
   });
 
   it("records replan and undo aggregates without item identities", () => {
@@ -133,14 +140,20 @@ describe("learning UI", () => {
     expect(panel).toContain("suggestion.percent");
   });
 
+  it("dismisses a suggestion without changing a setting", () => {
+    expect(panel).toContain("setDismissedSuggestion(suggestionKey)");
+    expect(panel).toContain("Suggestion dismissed for now");
+  });
+
   it("preselects the learned default without clobbering the current draft", () => {
     expect(plannerUi).toContain("function useResolution()");
     expect(plannerUi).toContain("if (touched) return;");
+    expect(plannerUi).toContain("learning?.enabled ? learning.acceptedStrategy : null");
     expect(plannerUi).toContain("acceptedStrategy");
   });
 });
 
-describe("staged migration", () => {
+describe("learning migration", () => {
   it("enables RLS with owner-only policies and explicit grants", () => {
     for (const table of ["learning_settings", "learning_events"]) {
       expect(migration).toContain(`ALTER TABLE public.${table} ENABLE ROW LEVEL SECURITY`);
@@ -156,6 +169,7 @@ describe("staged migration", () => {
     expect(migration).toContain("interval '180 days'");
     expect(migration).toContain("learning_events_user_created_idx");
     expect(migration).toContain("(user_id, created_at DESC)");
+    expect(migration).toContain("chronos_v_purge_learning_events");
   });
 
   it("validates enums and ranges in SQL and derives the user from auth.uid()", () => {
@@ -186,5 +200,7 @@ describe("staged migration", () => {
     ]) {
       expect(table).not.toContain(term);
     }
+    expect(table).not.toContain("local_hour");
+    expect(table).not.toContain("local_dow");
   });
 });

@@ -24,15 +24,7 @@ export type LearningSignal = {
   moved?: number;
   restored?: number;
   leftAlone?: number;
-  localHour?: number | null;
-  localDow?: number | null;
 };
-
-function bucket(value: number | null | undefined, max: number): number | null {
-  if (typeof value !== "number" || !Number.isFinite(value)) return null;
-  const n = Math.trunc(value);
-  return n >= 0 && n <= max ? n : null;
-}
 
 /**
  * Records one allowlisted decision event. The database RPC re-validates and
@@ -51,14 +43,12 @@ export async function recordLearningSignal(
 
     const { error } = await supabase.rpc("record_learning_event", {
       p_kind: signal.kind,
-      p_conflict_strategy: strategy,
+      p_conflict_strategy: strategy ?? undefined,
       p_offered: clampCount(signal.offered),
       p_approved: clampCount(signal.approved),
       p_moved: clampCount(signal.moved),
       p_restored: clampCount(signal.restored),
       p_left_alone: clampCount(signal.leftAlone),
-      p_local_hour: bucket(signal.localHour, 23),
-      p_local_dow: bucket(signal.localDow, 6),
     });
     if (error) throw error;
   } catch {

@@ -1,6 +1,6 @@
 -- Feature 4: opt-in, privacy-first learning layer.
 -- Forward-only additive migration: one settings row per user plus compact,
--- allowlisted decision events. No free text, no identifiers of any kind.
+-- allowlisted decision events. No free text or schedule-item identifiers.
 
 -- 1. Per-user learning settings ------------------------------------------------
 CREATE TABLE public.learning_settings (
@@ -45,12 +45,19 @@ CREATE TABLE public.learning_events (
   moved_count integer NOT NULL DEFAULT 0 CHECK (moved_count BETWEEN 0 AND 500),
   restored_count integer NOT NULL DEFAULT 0 CHECK (restored_count BETWEEN 0 AND 500),
   left_alone_count integer NOT NULL DEFAULT 0 CHECK (left_alone_count BETWEEN 0 AND 500),
-  local_hour smallint CHECK (local_hour BETWEEN 0 AND 23),
-  local_dow smallint CHECK (local_dow BETWEEN 0 AND 6),
   created_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT learning_events_strategy_required CHECK (
     (kind = 'plan_applied' AND conflict_strategy IS NOT NULL)
     OR (kind <> 'plan_applied' AND conflict_strategy IS NULL)
+  ),
+  CONSTRAINT learning_events_count_relationships CHECK (
+    approved_count <= offered_count AND moved_count <= approved_count
+  ),
+  CONSTRAINT learning_events_kind_shape CHECK (
+    (kind IN ('plan_applied', 'replan_applied')
+      AND restored_count = 0 AND left_alone_count = 0)
+    OR (kind = 'undo_completed'
+      AND offered_count = 0 AND approved_count = 0 AND moved_count = 0)
   )
 );
 
@@ -84,9 +91,7 @@ CREATE OR REPLACE FUNCTION public.record_learning_event(
   p_approved integer DEFAULT 0,
   p_moved integer DEFAULT 0,
   p_restored integer DEFAULT 0,
-  p_left_alone integer DEFAULT 0,
-  p_local_hour integer DEFAULT NULL,
-  p_local_dow integer DEFAULT NULL
+  p_left_alone integer DEFAULT 0
 )
 RETURNS boolean
 LANGUAGE plpgsql
@@ -120,17 +125,14 @@ BEGIN
 
   INSERT INTO public.learning_events (
     user_id, kind, conflict_strategy,
-    offered_count, approved_count, moved_count, restored_count, left_alone_count,
-    local_hour, local_dow
+    offered_count, approved_count, moved_count, restored_count, left_alone_count
   ) VALUES (
     v_user, p_kind, p_conflict_strategy,
     LEAST(GREATEST(COALESCE(p_offered, 0), 0), 500),
     LEAST(GREATEST(COALESCE(p_approved, 0), 0), 500),
     LEAST(GREATEST(COALESCE(p_moved, 0), 0), 500),
     LEAST(GREATEST(COALESCE(p_restored, 0), 0), 500),
-    LEAST(GREATEST(COALESCE(p_left_alone, 0), 0), 500),
-    CASE WHEN p_local_hour BETWEEN 0 AND 23 THEN p_local_hour::smallint ELSE NULL END,
-    CASE WHEN p_local_dow BETWEEN 0 AND 6 THEN p_local_dow::smallint ELSE NULL END
+    LEAST(GREATEST(COALESCE(p_left_alone, 0), 0), 500)
   );
 
   -- bounded retention: 180 days, own rows only
@@ -141,10 +143,10 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.record_learning_event(text, text, integer, integer, integer, integer, integer, integer, integer) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.record_learning_event(text, text, integer, integer, integer, integer, integer, integer, integer) FROM anon;
-GRANT EXECUTE ON FUNCTION public.record_learning_event(text, text, integer, integer, integer, integer, integer, integer, integer) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.record_learning_event(text, text, integer, integer, integer, integer, integer, integer, integer) TO service_role;
+REVOKE ALL ON FUNCTION public.record_learning_event(text, text, integer, integer, integer, integer, integer) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.record_learning_event(text, text, integer, integer, integer, integer, integer) FROM anon;
+GRANT EXECUTE ON FUNCTION public.record_learning_event(text, text, integer, integer, integer, integer, integer) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.record_learning_event(text, text, integer, integer, integer, integer, integer) TO service_role;
 
 -- 4. Reset RPC: learning history + accepted default only ------------------------
 CREATE OR REPLACE FUNCTION public.reset_learning_data()
@@ -178,3 +180,14 @@ REVOKE ALL ON FUNCTION public.reset_learning_data() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.reset_learning_data() FROM anon;
 GRANT EXECUTE ON FUNCTION public.reset_learning_data() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.reset_learning_data() TO service_role;
+
+-- 5. Enforce the retention promise even when a user stops opening the app. -------
+CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA pg_catalog;
+GRANT USAGE ON SCHEMA cron TO postgres;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA cron TO postgres;
+
+SELECT cron.schedule(
+  'chronos_v_purge_learning_events',
+  '17 3 * * *',
+  $$DELETE FROM public.learning_events WHERE created_at < now() - interval '180 days'$$
+);
