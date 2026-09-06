@@ -167,14 +167,7 @@ export const getCapacityForecast = createServerFn({ method: "POST" })
         prefs.default_meeting_min,
       );
       const gaps = tasksServer.computeGaps(date, prefs, busy, nowMs, offsetMinutes);
-      const workingMinutes = Math.max(
-        0,
-        Math.round(
-          (Date.parse(tasksServer.localDayBounds(date, offsetMinutes).start) === startMs
-            ? minutesBetween(prefs.work_start, prefs.work_end)
-            : 0) || 0,
-        ),
-      );
+      const workingMinutes = minutesBetween(prefs.work_start, prefs.work_end);
       const capacity = gaps.reduce((sum, g) => sum + Math.round((g.end - g.start) / 60000), 0);
       return {
         date,
