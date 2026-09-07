@@ -923,6 +923,7 @@ export type Database = {
           gmail_sync_enabled: boolean
           id: string
           outlook_export_enabled: boolean
+          outlook_mail_sync_enabled: boolean
           outlook_target_calendar_id: string | null
           selected_calendar_ids: string[]
           updated_at: string
@@ -935,6 +936,7 @@ export type Database = {
           gmail_sync_enabled?: boolean
           id?: string
           outlook_export_enabled?: boolean
+          outlook_mail_sync_enabled?: boolean
           outlook_target_calendar_id?: string | null
           selected_calendar_ids?: string[]
           updated_at?: string
@@ -947,6 +949,7 @@ export type Database = {
           gmail_sync_enabled?: boolean
           id?: string
           outlook_export_enabled?: boolean
+          outlook_mail_sync_enabled?: boolean
           outlook_target_calendar_id?: string | null
           selected_calendar_ids?: string[]
           updated_at?: string
