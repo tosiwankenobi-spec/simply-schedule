@@ -486,6 +486,8 @@ export type Database = {
       }
       notification_log: {
         Row: {
+          acted_at: string | null
+          action_taken: string | null
           body: string
           channels: string[]
           created_at: string
@@ -494,10 +496,15 @@ export type Database = {
           id: string
           kind: string
           seen_at: string | null
+          snoozed_until: string | null
+          target_id: string | null
+          target_type: string | null
           title: string
           user_id: string
         }
         Insert: {
+          acted_at?: string | null
+          action_taken?: string | null
           body: string
           channels?: string[]
           created_at?: string
@@ -506,10 +513,15 @@ export type Database = {
           id?: string
           kind: string
           seen_at?: string | null
+          snoozed_until?: string | null
+          target_id?: string | null
+          target_type?: string | null
           title: string
           user_id: string
         }
         Update: {
+          acted_at?: string | null
+          action_taken?: string | null
           body?: string
           channels?: string[]
           created_at?: string
@@ -518,6 +530,9 @@ export type Database = {
           id?: string
           kind?: string
           seen_at?: string | null
+          snoozed_until?: string | null
+          target_id?: string | null
+          target_type?: string | null
           title?: string
           user_id?: string
         }
@@ -1099,6 +1114,14 @@ export type Database = {
       }
     }
     Functions: {
+      act_on_notification: {
+        Args: {
+          p_action: string
+          p_notification_id: string
+          p_snooze_minutes?: number
+        }
+        Returns: Json
+      }
       apply_day_replan: {
         Args: { p_moves: Json; p_plan_date: string; p_preview_id: string }
         Returns: Json
