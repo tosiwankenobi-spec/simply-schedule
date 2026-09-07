@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { format } from "date-fns";
@@ -20,7 +20,15 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { RefreshCw, AlertTriangle, CheckCircle2, Info, Trash2, RotateCcw } from "lucide-react";
+import {
+  RefreshCw,
+  AlertTriangle,
+  CheckCircle2,
+  Info,
+  Trash2,
+  RotateCcw,
+  Smartphone,
+} from "lucide-react";
 import { WorkspaceHeader } from "@/components/WorkspaceHeader";
 
 export const Route = createFileRoute("/_authenticated/setup/sync")({
@@ -143,7 +151,24 @@ function SyncSetupPage() {
           }
         />
 
-        <div className="mt-8 grid items-start gap-6 xl:grid-cols-2">
+        <Card className="mt-8 rounded-2xl border-dashed bg-card/70">
+          <CardHeader className="flex-row items-start justify-between gap-4 space-y-0">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Smartphone className="h-5 w-5" /> Device calendars
+              </CardTitle>
+              <CardDescription>
+                In the installed mobile app, choose calendars and approve a read-only preview.
+                Chronos-V never changes the originals.
+              </CardDescription>
+            </div>
+            <Button asChild variant="outline">
+              <Link to="/setup/device-calendar">Manage device calendars</Link>
+            </Button>
+          </CardHeader>
+        </Card>
+
+        <div className="mt-6 grid items-start gap-6 xl:grid-cols-2">
           {/* Conflict resolution */}
           <Card className="rounded-2xl bg-card/90 shadow-[0_18px_45px_rgba(0,46,40,0.04)]">
             <CardHeader>

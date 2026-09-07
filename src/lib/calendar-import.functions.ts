@@ -105,7 +105,7 @@ export const getCalendarImports = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<CalendarImportSummary[]> => {
     const { data, error } = await context.supabase
       .from("appointments")
-      .select("provider,calendar_id,starts_at,last_synced_at")
+      .select("provider,calendar_id,starts_at,last_synced_at,source_metadata")
       .eq("user_id", context.userId)
       .eq("source", "calendar_import")
       .order("starts_at");
@@ -113,6 +113,13 @@ export const getCalendarImports = createServerFn({ method: "GET" })
 
     const groups = new Map<string, CalendarImportSummary>();
     for (const row of data ?? []) {
+      const metadata =
+        row.source_metadata &&
+        typeof row.source_metadata === "object" &&
+        !Array.isArray(row.source_metadata)
+          ? row.source_metadata
+          : {};
+      if (metadata.imported_via === "native_read_only") continue;
       const kind: CalendarImportKind = row.provider === "microsoft_outlook" ? "outlook" : "device";
       const name = row.calendar_id ?? "Imported calendar";
       const key = `${kind}\0${name}`;

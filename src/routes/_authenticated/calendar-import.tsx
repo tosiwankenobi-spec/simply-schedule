@@ -130,11 +130,16 @@ function CalendarImportPage() {
           }
           description="Export an iCalendar file from Outlook, Apple Calendar, Android, or another calendar app. Chronos-V previews it on this device before anything is saved."
           action={
-            <Button asChild variant="outline" className="bg-card/80">
-              <Link to="/setup/outlook">
-                Prepare live Outlook <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild variant="outline" className="bg-card/80">
+                <Link to="/setup/device-calendar">
+                  Direct device access <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+              <Button asChild variant="ghost">
+                <Link to="/setup/outlook">Prepare live Outlook</Link>
+              </Button>
+            </div>
           }
         />
 

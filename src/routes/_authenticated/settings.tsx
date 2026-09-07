@@ -39,6 +39,7 @@ type SettingsPath =
   | "/setup/notifications"
   | "/privacy"
   | "/setup/android"
+  | "/setup/device-calendar"
   | "/calendar-import";
 
 type SettingsCard = {
@@ -122,6 +123,13 @@ const SETTINGS_GROUPS: Array<{
         action: "Open privacy controls",
         to: "/privacy",
         icon: ShieldCheck,
+      },
+      {
+        title: "Device calendars",
+        description: "Choose and preview phone calendars before importing read-only copies.",
+        action: "Connect this device",
+        to: "/setup/device-calendar",
+        icon: Smartphone,
       },
       {
         title: "Android app",

@@ -266,7 +266,7 @@ function PrivacyPage() {
               Your data, connection by <span className="text-accent italic">connection.</span>
             </>
           }
-          description="See what Chronos-V can access, pause it at any time, and delete imported copies without touching the originals in Google."
+          description="See what Chronos-V can access, pause it at any time, and delete imported copies without touching the originals."
           action={
             <Button asChild variant="outline" className="bg-card/80">
               <Link to="/setup/sync">
@@ -371,12 +371,17 @@ function PrivacyPage() {
                   <Smartphone className="h-5 w-5" /> Other sources
                 </CardTitle>
                 <CardDescription>
-                  Outlook and device calendars are never read automatically. You can preview and
-                  import a local iCalendar snapshot now, or prepare a per-user Outlook connector
-                  whose OAuth tokens stay in Lovable's encrypted gateway. Each imported snapshot can
-                  be deleted independently.
+                  Direct device-calendar access is read-only, requires an explicit mobile
+                  permission, and stays on-device until you approve a preview. You can also import
+                  an iCalendar snapshot or use a per-user Outlook connector whose OAuth tokens stay
+                  encrypted. Every imported copy can be deleted without changing the original.
                 </CardDescription>
                 <div className="mt-3 flex flex-wrap gap-2">
+                  <Button asChild variant="outline">
+                    <Link to="/setup/device-calendar">
+                      <Smartphone className="mr-1.5 h-4 w-4" /> Device calendar access
+                    </Link>
+                  </Button>
                   <Button asChild variant="outline">
                     <Link to="/calendar-import">
                       <CalendarArrowUp className="mr-1.5 h-4 w-4" /> Manage calendar imports

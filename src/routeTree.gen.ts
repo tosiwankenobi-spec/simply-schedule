@@ -35,6 +35,7 @@ import { Route as AuthenticatedSetupSyncRouteImport } from './routes/_authentica
 import { Route as AuthenticatedSetupOutlookRouteImport } from './routes/_authenticated/setup.outlook'
 import { Route as AuthenticatedSetupNotificationsRouteImport } from './routes/_authenticated/setup.notifications'
 import { Route as AuthenticatedSetupGmailRouteImport } from './routes/_authenticated/setup.gmail'
+import { Route as AuthenticatedSetupDeviceCalendarRouteImport } from './routes/_authenticated/setup.device-calendar'
 import { Route as AuthenticatedSetupAndroidRouteImport } from './routes/_authenticated/setup.android'
 import { Route as AuthenticatedPlannerPreferencesRouteImport } from './routes/_authenticated/planner.preferences'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
@@ -174,6 +175,12 @@ const AuthenticatedSetupGmailRoute = AuthenticatedSetupGmailRouteImport.update({
   path: '/setup/gmail',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSetupDeviceCalendarRoute =
+  AuthenticatedSetupDeviceCalendarRouteImport.update({
+    id: '/setup/device-calendar',
+    path: '/setup/device-calendar',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSetupAndroidRoute =
   AuthenticatedSetupAndroidRouteImport.update({
     id: '/setup/android',
@@ -216,6 +223,7 @@ export interface FileRoutesByFullPath {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/planner/preferences': typeof AuthenticatedPlannerPreferencesRoute
   '/setup/android': typeof AuthenticatedSetupAndroidRoute
+  '/setup/device-calendar': typeof AuthenticatedSetupDeviceCalendarRoute
   '/setup/gmail': typeof AuthenticatedSetupGmailRoute
   '/setup/notifications': typeof AuthenticatedSetupNotificationsRoute
   '/setup/outlook': typeof AuthenticatedSetupOutlookRoute
@@ -246,6 +254,7 @@ export interface FileRoutesByTo {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/planner/preferences': typeof AuthenticatedPlannerPreferencesRoute
   '/setup/android': typeof AuthenticatedSetupAndroidRoute
+  '/setup/device-calendar': typeof AuthenticatedSetupDeviceCalendarRoute
   '/setup/gmail': typeof AuthenticatedSetupGmailRoute
   '/setup/notifications': typeof AuthenticatedSetupNotificationsRoute
   '/setup/outlook': typeof AuthenticatedSetupOutlookRoute
@@ -278,6 +287,7 @@ export interface FileRoutesById {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/_authenticated/planner/preferences': typeof AuthenticatedPlannerPreferencesRoute
   '/_authenticated/setup/android': typeof AuthenticatedSetupAndroidRoute
+  '/_authenticated/setup/device-calendar': typeof AuthenticatedSetupDeviceCalendarRoute
   '/_authenticated/setup/gmail': typeof AuthenticatedSetupGmailRoute
   '/_authenticated/setup/notifications': typeof AuthenticatedSetupNotificationsRoute
   '/_authenticated/setup/outlook': typeof AuthenticatedSetupOutlookRoute
@@ -310,6 +320,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/planner/preferences'
     | '/setup/android'
+    | '/setup/device-calendar'
     | '/setup/gmail'
     | '/setup/notifications'
     | '/setup/outlook'
@@ -340,6 +351,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/planner/preferences'
     | '/setup/android'
+    | '/setup/device-calendar'
     | '/setup/gmail'
     | '/setup/notifications'
     | '/setup/outlook'
@@ -371,6 +383,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/_authenticated/planner/preferences'
     | '/_authenticated/setup/android'
+    | '/_authenticated/setup/device-calendar'
     | '/_authenticated/setup/gmail'
     | '/_authenticated/setup/notifications'
     | '/_authenticated/setup/outlook'
@@ -573,6 +586,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSetupGmailRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/setup/device-calendar': {
+      id: '/_authenticated/setup/device-calendar'
+      path: '/setup/device-calendar'
+      fullPath: '/setup/device-calendar'
+      preLoaderRoute: typeof AuthenticatedSetupDeviceCalendarRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/setup/android': {
       id: '/_authenticated/setup/android'
       path: '/setup/android'
@@ -625,6 +645,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedWeeklyResetRoute: typeof AuthenticatedWeeklyResetRoute
   AuthenticatedWelcomeRoute: typeof AuthenticatedWelcomeRoute
   AuthenticatedSetupAndroidRoute: typeof AuthenticatedSetupAndroidRoute
+  AuthenticatedSetupDeviceCalendarRoute: typeof AuthenticatedSetupDeviceCalendarRoute
   AuthenticatedSetupGmailRoute: typeof AuthenticatedSetupGmailRoute
   AuthenticatedSetupNotificationsRoute: typeof AuthenticatedSetupNotificationsRoute
   AuthenticatedSetupOutlookRoute: typeof AuthenticatedSetupOutlookRoute
@@ -648,6 +669,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedWeeklyResetRoute: AuthenticatedWeeklyResetRoute,
   AuthenticatedWelcomeRoute: AuthenticatedWelcomeRoute,
   AuthenticatedSetupAndroidRoute: AuthenticatedSetupAndroidRoute,
+  AuthenticatedSetupDeviceCalendarRoute: AuthenticatedSetupDeviceCalendarRoute,
   AuthenticatedSetupGmailRoute: AuthenticatedSetupGmailRoute,
   AuthenticatedSetupNotificationsRoute: AuthenticatedSetupNotificationsRoute,
   AuthenticatedSetupOutlookRoute: AuthenticatedSetupOutlookRoute,

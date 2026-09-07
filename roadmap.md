@@ -31,6 +31,11 @@ Explainable, reversible, private, user-controllable.
 Fast natural-language capture; actionable notifications (done, snooze, reschedule,
 accept plan, open navigation); safe sync and offline handling.
 
+## 6. Native device calendars — DONE
+
+Explicit read-only mobile permission, per-calendar selection, local preview before
+upload, dependable refresh/deduplication, and deletion limited to Chronos-V copies.
+
 ## Capability list to preserve and complete over time
 
 - Universal schedule hub: Google Calendar, Outlook, device calendars, Gmail/Outlook

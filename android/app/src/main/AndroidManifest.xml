@@ -39,6 +39,11 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Device calendars are imported read-only after explicit consent. -->
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <uses-permission
+        android:name="android.permission.WRITE_CALENDAR"
+        tools:node="remove" />
     <!-- Chronos-V posts reminders immediately and never requests exact alarm access. -->
     <uses-permission
         android:name="android.permission.SCHEDULE_EXACT_ALARM"
