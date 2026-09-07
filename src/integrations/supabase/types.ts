@@ -417,6 +417,8 @@ export type Database = {
           id: string
           kind: string
           left_alone_count: number
+          local_dow: number | null
+          local_hour: number | null
           moved_count: number
           offered_count: number
           restored_count: number
@@ -429,6 +431,8 @@ export type Database = {
           id?: string
           kind: string
           left_alone_count?: number
+          local_dow?: number | null
+          local_hour?: number | null
           moved_count?: number
           offered_count?: number
           restored_count?: number
@@ -441,6 +445,8 @@ export type Database = {
           id?: string
           kind?: string
           left_alone_count?: number
+          local_dow?: number | null
+          local_hour?: number | null
           moved_count?: number
           offered_count?: number
           restored_count?: number
@@ -480,8 +486,6 @@ export type Database = {
       }
       notification_log: {
         Row: {
-          acted_at: string | null
-          action_taken: string | null
           body: string
           channels: string[]
           created_at: string
@@ -490,15 +494,10 @@ export type Database = {
           id: string
           kind: string
           seen_at: string | null
-          snoozed_until: string | null
-          target_id: string | null
-          target_type: string | null
           title: string
           user_id: string
         }
         Insert: {
-          acted_at?: string | null
-          action_taken?: string | null
           body: string
           channels?: string[]
           created_at?: string
@@ -507,15 +506,10 @@ export type Database = {
           id?: string
           kind: string
           seen_at?: string | null
-          snoozed_until?: string | null
-          target_id?: string | null
-          target_type?: string | null
           title: string
           user_id: string
         }
         Update: {
-          acted_at?: string | null
-          action_taken?: string | null
           body?: string
           channels?: string[]
           created_at?: string
@@ -524,9 +518,6 @@ export type Database = {
           id?: string
           kind?: string
           seen_at?: string | null
-          snoozed_until?: string | null
-          target_id?: string | null
-          target_type?: string | null
           title?: string
           user_id?: string
         }
@@ -930,7 +921,6 @@ export type Database = {
           conflict_policy: string
           created_at: string
           gmail_sync_enabled: boolean
-          outlook_mail_sync_enabled: boolean
           id: string
           outlook_export_enabled: boolean
           outlook_target_calendar_id: string | null
@@ -943,7 +933,6 @@ export type Database = {
           conflict_policy?: string
           created_at?: string
           gmail_sync_enabled?: boolean
-          outlook_mail_sync_enabled?: boolean
           id?: string
           outlook_export_enabled?: boolean
           outlook_target_calendar_id?: string | null
@@ -956,7 +945,6 @@ export type Database = {
           conflict_policy?: string
           created_at?: string
           gmail_sync_enabled?: boolean
-          outlook_mail_sync_enabled?: boolean
           id?: string
           outlook_export_enabled?: boolean
           outlook_target_calendar_id?: string | null
@@ -1108,14 +1096,6 @@ export type Database = {
       }
     }
     Functions: {
-      act_on_notification: {
-        Args: {
-          p_action: string
-          p_notification_id: string
-          p_snooze_minutes?: number
-        }
-        Returns: Json
-      }
       apply_day_replan: {
         Args: { p_moves: Json; p_plan_date: string; p_preview_id: string }
         Returns: Json
@@ -1142,6 +1122,8 @@ export type Database = {
           p_conflict_strategy?: string
           p_kind: string
           p_left_alone?: number
+          p_local_dow?: number
+          p_local_hour?: number
           p_moved?: number
           p_offered?: number
           p_restored?: number
