@@ -41,9 +41,9 @@ const SETUP_STEPS = [
       "Create an app registration for personal, work, and school Microsoft accounts, then add the gateway callback below as a web redirect URI.",
   },
   {
-    title: "Start with calendar read access",
+    title: "Grant calendar and read-only mail access",
     description:
-      "Use delegated User.Read, Calendars.Read, and offline_access permissions first. This is enough to build a trustworthy read-only timeline connection.",
+      "Use delegated User.Read, Calendars.ReadWrite, Mail.Read, and offline_access. Mail access can read suggestions but cannot send, change, or delete messages.",
   },
   {
     title: "Create an Outlook app-user client in Lovable",
@@ -82,7 +82,7 @@ function OutlookSetupPage() {
               Connect each account, <span className="text-accent italic">privately.</span>
             </>
           }
-          description="Connect your own Microsoft account for live two-way calendar sync. Chronos-V never sees your Microsoft password or tokens."
+          description="Connect your own Microsoft account for live two-way calendar sync and read-only Smart Inbox suggestions. Chronos-V never sees your Microsoft password or tokens."
           action={
             <Button asChild variant="outline" className="min-h-11 bg-card/80">
               <Link to="/calendar-import">
@@ -203,26 +203,28 @@ function OutlookSetupPage() {
                 <CardTitle className="flex items-center gap-2">
                   <KeyRound className="h-5 w-5" /> Least-privilege plan
                 </CardTitle>
-                <CardDescription>Add access only when a finished feature needs it.</CardDescription>
+                <CardDescription>
+                  Only the permissions used by finished features are requested.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <PermissionRow
                   icon={<CalendarDays className="h-4 w-4" />}
                   title="Calendar foundation"
-                  scopes="User.Read · Calendars.Read · offline_access"
-                  note="Read events and keep the connection refreshed."
+                  scopes="User.Read · offline_access"
+                  note="Identify the connected account and keep the connection refreshed."
                 />
                 <PermissionRow
                   icon={<CalendarDays className="h-4 w-4" />}
                   title="Two-way calendar"
                   scopes="Calendars.ReadWrite"
-                  note="Add only when Outlook conflict-safe writes are ready."
+                  note="Read and synchronize calendar changes in both directions."
                 />
                 <PermissionRow
                   icon={<Mail className="h-4 w-4" />}
                   title="Smart Inbox"
                   scopes="Mail.Read"
-                  note="Add separately when Outlook suggestions are ready. Mail.Send is not required."
+                  note="Read matching inbox messages only after a scan. Mail.Send and Mail.ReadWrite are not requested. Existing connections may need Reconnect account once."
                 />
               </CardContent>
             </Card>

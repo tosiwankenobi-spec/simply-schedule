@@ -31,6 +31,7 @@ const MICROSOFT_SCOPES = [
   "offline_access",
   "User.Read",
   "Calendars.ReadWrite",
+  "Mail.Read",
 ];
 
 export const startOutlookConnect = createServerFn({ method: "POST" })

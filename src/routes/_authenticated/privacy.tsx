@@ -90,7 +90,8 @@ function ProviderCard({
   onAccessChange,
   onDelete,
 }: ProviderCardProps) {
-  const deleteLabel = provider === "google_calendar" ? "calendar" : "Gmail";
+  const deleteLabel =
+    provider === "google_calendar" ? "calendar" : provider === "gmail" ? "Gmail" : "Outlook";
 
   return (
     <Card className="rounded-2xl bg-card/90 shadow-[0_18px_45px_rgba(0,46,40,0.04)]">
@@ -166,9 +167,9 @@ function ProviderCard({
                   ?
                 </AlertDialogTitle>
                 <AlertDialogDescription>
-                  This removes only Chronos-V's local copies. The original emails and Google
-                  Calendar events will not be changed. Manually created appointments and tasks are
-                  kept. Access will also be paused so the items are not imported again.
+                  This removes only Chronos-V's local copies. Original emails and calendar events
+                  will not be changed. Manually created appointments and tasks are kept. Access will
+                  also be paused so the items are not imported again.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -325,6 +326,22 @@ function PrivacyPage() {
                 onAccessChange={(provider, enabled) => access.mutate({ provider, enabled })}
                 onDelete={(provider) => remove.mutate(provider)}
               />
+
+              <ProviderCard
+                provider="outlook_mail"
+                title="Outlook email"
+                icon={<Mail className="h-5 w-5" />}
+                configured={data.outlookMail.configured}
+                enabled={data.outlookMail.enabled}
+                importedItems={data.outlookMail.importedItems}
+                lastAccessedAt={data.outlookMail.lastAccessedAt}
+                reads="Up to 15 recent matching Outlook inbox messages per scan, including sender, subject, date, and message text. The connection is read-only for mail."
+                reason="To suggest likely schedule items or tasks for your review. Nothing is added until you approve it."
+                stores="Approved details and hashed message identifiers for deduplication, dismissed identifiers for 30 days, and a short activity log. Raw email bodies and Microsoft tokens are not stored in Chronos-V."
+                busy={busy}
+                onAccessChange={(provider, enabled) => access.mutate({ provider, enabled })}
+                onDelete={(provider) => remove.mutate(provider)}
+              />
             </div>
 
             <div className="grid items-start gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
@@ -343,8 +360,8 @@ function PrivacyPage() {
                     automatically and are never shown here.
                   </p>
                   <p>
-                    Google provider credentials are not written into Chronos-V tables. Server-side
-                    connector keys are never sent to the browser.
+                    Google provider credentials are not written into Chronos-V tables. The encrypted
+                    Microsoft connection handle stays server-side and is never sent to the browser.
                   </p>
                   <p>
                     Travel guidance uses appointment locations and time estimates you control. It is

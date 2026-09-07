@@ -101,12 +101,14 @@ Live Outlook access must use a Lovable **app-user connector**, not a shared app 
 
 Microsoft access tokens and refresh tokens must never be stored in Supabase tables, browser storage, application logs, or Chronos-V environment files. The Supabase session proves who the Chronos-V user is; the separate Outlook consent controls what that user has allowed Microsoft Graph to return.
 
-The setup plan is deliberately incremental:
+The implemented permissions are deliberately scoped:
 
-- Begin with delegated `User.Read`, `Calendars.Read`, and `offline_access` permissions for a read-only timeline connection.
-- Add `Calendars.ReadWrite` only when conflict-safe two-way Outlook writes are implemented and verified.
-- Add `Mail.Read` separately for Outlook Smart Inbox detection. `Mail.Send` is not required for detection and should not be requested by default.
+- `User.Read` and `offline_access` identify the connected account and allow Lovable to refresh its connection.
+- `Calendars.ReadWrite` supports the verified conflict-safe two-way calendar engine.
+- `Mail.Read` supports user-initiated Outlook Smart Inbox scans. `Mail.Send` and `Mail.ReadWrite` are not requested.
 - Always give users an explicit disconnect control and a separate option to delete normalized local copies.
+
+Outlook Smart Inbox reads up to 15 recent matching messages per explicit scan and sends matching text through the configured Lovable AI gateway for structured extraction. Raw bodies and Microsoft message IDs are not stored in Chronos-V: approved items retain normalized details and hashed message identities; dismissals retain only a hashed identity for 30 days. Outlook email access can be paused and its imported copies deleted independently of Outlook Calendar. Existing Outlook users may need to choose **Reconnect account** once to grant the new delegated `Mail.Read` permission.
 
 The authenticated `/setup/outlook` page documents the builder configuration and the gateway callback URL. Opening it does not request Microsoft permissions. Until the app-user client is linked to the Lovable project, Outlook remains disconnected; users can still import a local Outlook iCalendar snapshot without granting account access.
 

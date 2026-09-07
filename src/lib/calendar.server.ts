@@ -20,6 +20,8 @@ export type SyncSettings = {
   auto_sync_enabled: boolean;
   /** Gmail incremental sync runs on its own switch, independent of Calendar. */
   gmail_sync_enabled: boolean;
+  /** Outlook Smart Inbox is independent of Outlook Calendar synchronization. */
+  outlook_mail_sync_enabled: boolean;
 };
 
 export type CalendarOption = {
@@ -64,6 +66,7 @@ const DEFAULT_SETTINGS: SyncSettings = {
   selected_calendar_ids: ["primary"],
   auto_sync_enabled: true,
   gmail_sync_enabled: true,
+  outlook_mail_sync_enabled: true,
 };
 
 function keys(): Keys {
@@ -112,12 +115,19 @@ async function trimLog(supabase: SupabaseClient, userId: string) {
         .delete()
         .eq("user_id", userId)
         .neq("kind", "gmail_dismissed")
+        .neq("kind", "outlook_mail_dismissed")
         .lt("created_at", standardCutoff),
       supabase
         .from("sync_log")
         .delete()
         .eq("user_id", userId)
         .eq("kind", "gmail_dismissed")
+        .lt("created_at", dismissalCutoff),
+      supabase
+        .from("sync_log")
+        .delete()
+        .eq("user_id", userId)
+        .eq("kind", "outlook_mail_dismissed")
         .lt("created_at", dismissalCutoff),
     ]);
   } catch {
@@ -217,7 +227,9 @@ function describeStatus(status: number, msg: string) {
 export async function getSettings(supabase: SupabaseClient, userId: string): Promise<SyncSettings> {
   const { data, error } = await supabase
     .from("sync_settings")
-    .select("conflict_policy, selected_calendar_ids, auto_sync_enabled, gmail_sync_enabled")
+    .select(
+      "conflict_policy, selected_calendar_ids, auto_sync_enabled, gmail_sync_enabled, outlook_mail_sync_enabled",
+    )
     .eq("user_id", userId)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -227,6 +239,8 @@ export async function getSettings(supabase: SupabaseClient, userId: string): Pro
     selected_calendar_ids: data.selected_calendar_ids ?? ["primary"],
     auto_sync_enabled: data.auto_sync_enabled ?? true,
     gmail_sync_enabled: (data as { gmail_sync_enabled?: boolean }).gmail_sync_enabled ?? true,
+    outlook_mail_sync_enabled:
+      (data as { outlook_mail_sync_enabled?: boolean }).outlook_mail_sync_enabled ?? true,
   };
 }
 

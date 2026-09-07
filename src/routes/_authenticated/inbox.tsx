@@ -26,6 +26,13 @@ import {
   type SmartInboxCandidate,
   type SmartInboxScanResult,
 } from "@/lib/gmail.functions";
+import {
+  acceptOutlookSmartInboxCandidate,
+  dismissOutlookSmartInboxCandidate,
+  scanOutlookSmartInbox,
+} from "@/lib/outlook-inbox.functions";
+
+type InboxSource = "gmail" | "outlook";
 
 export const Route = createFileRoute("/_authenticated/inbox")({
   component: SmartInboxPage,
@@ -35,7 +42,7 @@ export const Route = createFileRoute("/_authenticated/inbox")({
       {
         name: "description",
         content:
-          "Review appointment, delivery, school, renewal and deadline suggestions from Gmail.",
+          "Review appointment, delivery, school, renewal and deadline suggestions from Gmail and Outlook.",
       },
     ],
   }),
@@ -160,9 +167,13 @@ function ScanSummary({ result }: { result: SmartInboxScanResult }) {
 function SmartInboxPage() {
   const queryClient = useQueryClient();
   const [result, setResult] = useState<SmartInboxScanResult | null>(null);
+  const [source, setSource] = useState<InboxSource>("gmail");
 
   const scan = useMutation({
-    mutationFn: () => scanGmailInbox({ data: { tzOffsetMin: new Date().getTimezoneOffset() } }),
+    mutationFn: (selected: InboxSource) =>
+      selected === "gmail"
+        ? scanGmailInbox({ data: { tzOffsetMin: new Date().getTimezoneOffset() } })
+        : scanOutlookSmartInbox({ data: { tzOffsetMin: new Date().getTimezoneOffset() } }),
     onSuccess: (data) => {
       setResult(data);
       queryClient.invalidateQueries({ queryKey: ["privacy-status"] });
@@ -174,29 +185,47 @@ function SmartInboxPage() {
         toast.message("No new schedule or task suggestions found");
       }
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Couldn't scan Gmail"),
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : "Couldn't scan that inbox"),
   });
 
   const accept = useMutation({
-    mutationFn: (candidate: SmartInboxCandidate) =>
-      acceptGmailCandidate({
+    mutationFn: ({
+      candidate,
+      selected,
+    }: {
+      candidate: SmartInboxCandidate;
+      selected: InboxSource;
+    }) => {
+      const data = {
+        messageId: candidate.messageId,
+        threadId: candidate.threadId,
+        from: candidate.from,
+        subject: candidate.subject,
+        kind: candidate.kind,
+        destination: candidate.destination,
+        title: candidate.title,
+        starts_at: candidate.starts_at,
+        ends_at: candidate.ends_at,
+        deadline: candidate.deadline,
+        estimated_min: candidate.estimated_min,
+        location: candidate.location,
+        notes: candidate.notes,
+      };
+      if (selected === "gmail") return acceptGmailCandidate({ data });
+      if (!candidate.connectionFingerprint || !candidate.proof) {
+        throw new Error("That Outlook suggestion needs a fresh scan.");
+      }
+      return acceptOutlookSmartInboxCandidate({
         data: {
-          messageId: candidate.messageId,
-          threadId: candidate.threadId,
-          from: candidate.from,
-          subject: candidate.subject,
-          kind: candidate.kind,
-          destination: candidate.destination,
-          title: candidate.title,
-          starts_at: candidate.starts_at,
-          ends_at: candidate.ends_at,
-          deadline: candidate.deadline,
-          estimated_min: candidate.estimated_min,
-          location: candidate.location,
-          notes: candidate.notes,
+          ...data,
+          connectionFingerprint: candidate.connectionFingerprint,
+          proof: candidate.proof,
         },
-      }),
-    onSuccess: (data, candidate) => {
+      });
+    },
+    onSuccess: (data, variables) => {
+      const { candidate } = variables;
       setResult((current) =>
         current
           ? {
@@ -225,9 +254,27 @@ function SmartInboxPage() {
   });
 
   const dismiss = useMutation({
-    mutationFn: (candidate: SmartInboxCandidate) =>
-      dismissGmailCandidate({ data: { messageId: candidate.messageId } }),
-    onSuccess: (_data, candidate) => {
+    mutationFn: ({
+      candidate,
+      selected,
+    }: {
+      candidate: SmartInboxCandidate;
+      selected: InboxSource;
+    }) => {
+      if (selected === "gmail") {
+        return dismissGmailCandidate({ data: { messageId: candidate.messageId } });
+      }
+      if (!candidate.connectionFingerprint)
+        throw new Error("That Outlook suggestion needs a fresh scan.");
+      return dismissOutlookSmartInboxCandidate({
+        data: {
+          messageId: candidate.messageId,
+          connectionFingerprint: candidate.connectionFingerprint,
+        },
+      });
+    },
+    onSuccess: (_data, variables) => {
+      const { candidate } = variables;
       setResult((current) =>
         current
           ? {
@@ -272,7 +319,7 @@ function SmartInboxPage() {
           <Card className="rounded-2xl bg-ink text-paper shadow-[0_24px_55px_rgba(0,46,40,0.14)] lg:sticky lg:top-8">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-paper">
-                <Mail className="h-5 w-5" /> Scan recent Gmail
+                <Mail className="h-5 w-5" /> Scan recent email
               </CardTitle>
               <CardDescription className="text-paper/65">
                 A scan reads up to 15 recent messages that match scheduling or deadline terms. Raw
@@ -280,18 +327,48 @@ function SmartInboxPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div
+                className="grid grid-cols-2 gap-2 rounded-xl bg-paper/10 p-1"
+                aria-label="Email source"
+              >
+                {(["gmail", "outlook"] as const).map((option) => (
+                  <Button
+                    key={option}
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    disabled={busy}
+                    aria-pressed={source === option}
+                    className={
+                      source === option
+                        ? "bg-paper text-ink hover:bg-paper/90"
+                        : "text-paper hover:bg-paper/10 hover:text-paper"
+                    }
+                    onClick={() => {
+                      setSource(option);
+                      setResult(null);
+                    }}
+                  >
+                    {option === "gmail" ? "Gmail" : "Outlook"}
+                  </Button>
+                ))}
+              </div>
               <Button
-                onClick={() => scan.mutate()}
+                onClick={() => scan.mutate(source)}
                 disabled={busy}
                 className="bg-paper text-ink hover:bg-paper/90"
               >
                 <RefreshCw className={`mr-1.5 h-4 w-4 ${scan.isPending ? "animate-spin" : ""}`} />
-                {scan.isPending ? "Scanning…" : result ? "Scan again" : "Scan Gmail"}
+                {scan.isPending
+                  ? "Scanning…"
+                  : result
+                    ? "Scan again"
+                    : `Scan ${source === "gmail" ? "Gmail" : "Outlook"}`}
               </Button>
               <p className="flex items-start gap-2 text-xs text-paper/60">
                 <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 <span>
-                  Gmail access follows your{" "}
+                  Email access follows your{" "}
                   <Link to="/privacy" className="text-paper underline">
                     Privacy controls
                   </Link>{" "}
@@ -314,8 +391,8 @@ function SmartInboxPage() {
                     key={candidate.messageId}
                     candidate={candidate}
                     busy={busy}
-                    onAccept={(item) => accept.mutate(item)}
-                    onDismiss={(item) => dismiss.mutate(item)}
+                    onAccept={(item) => accept.mutate({ candidate: item, selected: source })}
+                    onDismiss={(item) => dismiss.mutate({ candidate: item, selected: source })}
                   />
                 ))
               ) : (

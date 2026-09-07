@@ -5,7 +5,7 @@ import type { PrivacyStatus } from "./privacy.server";
 
 export type { PrivacyProvider, PrivacyStatus } from "./privacy.server";
 
-const providerSchema = z.enum(["google_calendar", "gmail"]);
+const providerSchema = z.enum(["google_calendar", "gmail", "outlook_mail"]);
 
 export const getPrivacyStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

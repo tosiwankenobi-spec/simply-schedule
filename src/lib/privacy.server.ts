@@ -1,8 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import { getConnectionMetaForUser } from "@/server/appUserConnections.server";
 import { getSettings, saveSettings } from "./calendar.server";
+import { OUTLOOK_CONNECTOR_ID } from "./outlook";
 
-export type PrivacyProvider = "google_calendar" | "gmail";
+export type PrivacyProvider = "google_calendar" | "gmail" | "outlook_mail";
 
 export type PrivacyStatus = {
   calendar: {
@@ -19,6 +21,12 @@ export type PrivacyStatus = {
     importedItems: number;
     lastAccessedAt: string | null;
   };
+  outlookMail: {
+    configured: boolean;
+    enabled: boolean;
+    importedItems: number;
+    lastAccessedAt: string | null;
+  };
   chronos: {
     scheduleItems: number;
     tasks: number;
@@ -30,7 +38,7 @@ type SyncDetail = Database["public"]["Tables"]["sync_log"]["Row"]["detail"];
 const READ_PAGE_SIZE = 1000;
 const MUTATION_BATCH_SIZE = 100;
 
-function collectGmailTaskIds(rows: Array<{ detail: SyncDetail }>, ids: Set<string>) {
+function collectTaskIds(rows: Array<{ detail: SyncDetail }>, ids: Set<string>) {
   for (const row of rows) {
     if (!row.detail || typeof row.detail !== "object" || Array.isArray(row.detail)) continue;
     const taskId = (row.detail as Record<string, unknown>).taskId;
@@ -43,19 +51,19 @@ function collectGmailTaskIds(rows: Array<{ detail: SyncDetail }>, ids: Set<strin
   }
 }
 
-async function readGmailTaskIds(supabase: UserClient, userId: string) {
+async function readProviderTaskIds(supabase: UserClient, userId: string, kind: string) {
   const ids = new Set<string>();
   for (let from = 0; ; from += READ_PAGE_SIZE) {
     const { data, error } = await supabase
       .from("sync_log")
       .select("detail")
       .eq("user_id", userId)
-      .eq("kind", "gmail_accepted_task")
+      .eq("kind", kind)
       .order("created_at", { ascending: true })
       .order("id", { ascending: true })
       .range(from, from + READ_PAGE_SIZE - 1);
-    assertResult(error, "Couldn't read Gmail task history.");
-    collectGmailTaskIds(data ?? [], ids);
+    assertResult(error, "Couldn't read Smart Inbox task history.");
+    collectTaskIds(data ?? [], ids);
     if ((data?.length ?? 0) < READ_PAGE_SIZE) break;
   }
   return [...ids];
@@ -81,12 +89,16 @@ export async function readPrivacyStatus(
     settings,
     calendarImported,
     gmailImported,
+    outlookMailImported,
     linked,
     schedule,
     tasks,
     calendarState,
     gmailState,
+    outlookMailState,
     gmailTaskIds,
+    outlookTaskIds,
+    outlookConnection,
   ] = await Promise.all([
     getSettings(supabase, userId),
     supabase
@@ -99,6 +111,11 @@ export async function readPrivacyStatus(
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId)
       .eq("source", "gmail"),
+    supabase
+      .from("appointments")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("source", "outlook_mail"),
     supabase
       .from("appointments")
       .select("id", { count: "exact", head: true })
@@ -123,17 +140,27 @@ export async function readPrivacyStatus(
       .eq("user_id", userId)
       .eq("provider", "google_mail")
       .maybeSingle(),
-    readGmailTaskIds(supabase, userId),
+    supabase
+      .from("sync_state")
+      .select("last_synced_at")
+      .eq("user_id", userId)
+      .eq("provider", "microsoft_outlook_mail")
+      .maybeSingle(),
+    readProviderTaskIds(supabase, userId, "gmail_accepted_task"),
+    readProviderTaskIds(supabase, userId, "outlook_mail_accepted_task"),
+    getConnectionMetaForUser(userId, OUTLOOK_CONNECTOR_ID),
   ]);
 
   const results = [
     calendarImported,
     gmailImported,
+    outlookMailImported,
     linked,
     schedule,
     tasks,
     calendarState,
     gmailState,
+    outlookMailState,
   ];
   for (const result of results) assertResult(result.error, "Couldn't read privacy status.");
 
@@ -146,6 +173,16 @@ export async function readPrivacyStatus(
       .in("id", taskIdBatch);
     assertResult(error, "Couldn't count Gmail task suggestions.");
     gmailTaskCount += count ?? 0;
+  }
+  let outlookTaskCount = 0;
+  for (const taskIdBatch of batches(outlookTaskIds)) {
+    const { count, error } = await supabase
+      .from("tasks")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .in("id", taskIdBatch);
+    assertResult(error, "Couldn't count Outlook task suggestions.");
+    outlookTaskCount += count ?? 0;
   }
 
   return {
@@ -164,6 +201,12 @@ export async function readPrivacyStatus(
       enabled: Boolean(process.env["GOOGLE_MAIL_API_KEY"]) && settings.gmail_sync_enabled,
       importedItems: (gmailImported.count ?? 0) + gmailTaskCount,
       lastAccessedAt: gmailState.data?.last_synced_at ?? null,
+    },
+    outlookMail: {
+      configured: Boolean(outlookConnection),
+      enabled: Boolean(outlookConnection) && settings.outlook_mail_sync_enabled,
+      importedItems: (outlookMailImported.count ?? 0) + outlookTaskCount,
+      lastAccessedAt: outlookMailState.data?.last_synced_at ?? null,
     },
     chronos: {
       scheduleItems: schedule.count ?? 0,
@@ -201,7 +244,7 @@ export async function setPrivacyProviderAccess(
       assertResult(state.error, "Couldn't clear calendar sync state.");
       assertResult(pending.error, "Couldn't clear pending calendar changes.");
     }
-  } else {
+  } else if (provider === "gmail") {
     await saveSettings(supabase, userId, { gmail_sync_enabled: enabled });
     if (!enabled) {
       const { error } = await supabase
@@ -210,6 +253,16 @@ export async function setPrivacyProviderAccess(
         .eq("user_id", userId)
         .eq("provider", "google_mail");
       assertResult(error, "Couldn't clear Gmail sync state.");
+    }
+  } else {
+    await saveSettings(supabase, userId, { outlook_mail_sync_enabled: enabled });
+    if (!enabled) {
+      const { error } = await supabase
+        .from("sync_state")
+        .delete()
+        .eq("user_id", userId)
+        .eq("provider", "microsoft_outlook_mail");
+      assertResult(error, "Couldn't clear Outlook email access history.");
     }
   }
 
@@ -221,7 +274,12 @@ export async function deletePrivacyProviderData(
   userId: string,
   provider: PrivacyProvider,
 ) {
-  const source = provider === "google_calendar" ? "google_calendar" : "gmail";
+  const source =
+    provider === "google_calendar"
+      ? "google_calendar"
+      : provider === "gmail"
+        ? "gmail"
+        : "outlook_mail";
 
   // Pause first so a background sync cannot immediately recreate the copies
   // the user is removing.
@@ -230,20 +288,27 @@ export async function deletePrivacyProviderData(
       auto_sync_enabled: false,
       selected_calendar_ids: [],
     });
-  } else {
+  } else if (provider === "gmail") {
     await saveSettings(supabase, userId, { gmail_sync_enabled: false });
+  } else {
+    await saveSettings(supabase, userId, { outlook_mail_sync_enabled: false });
   }
 
-  let removedGmailTasks = 0;
-  if (provider === "gmail") {
-    const taskIds = await readGmailTaskIds(supabase, userId);
+  let removedProviderTasks = 0;
+  if (provider === "gmail" || provider === "outlook_mail") {
+    const providerLabel = provider === "gmail" ? "Gmail" : "Outlook";
+    const taskIds = await readProviderTaskIds(
+      supabase,
+      userId,
+      provider === "gmail" ? "gmail_accepted_task" : "outlook_mail_accepted_task",
+    );
     for (const taskIdBatch of batches(taskIds)) {
       const { data: taskRows, error: taskRowsError } = await supabase
         .from("tasks")
         .select("id,scheduled_appointment_id")
         .eq("user_id", userId)
         .in("id", taskIdBatch);
-      assertResult(taskRowsError, "Couldn't read Gmail tasks.");
+      assertResult(taskRowsError, `Couldn't read ${providerLabel} tasks.`);
       const appointmentIds = (taskRows ?? [])
         .map((task) => task.scheduled_appointment_id)
         .filter((id): id is string => Boolean(id));
@@ -259,13 +324,13 @@ export async function deletePrivacyProviderData(
           })
           .eq("user_id", userId)
           .in("id", appointmentIds);
-        assertResult(taskUnlinkError, "Couldn't unlink Gmail task blocks.");
+        assertResult(taskUnlinkError, `Couldn't unlink ${providerLabel} task blocks.`);
         const { error: blockError } = await supabase
           .from("appointments")
           .delete()
           .eq("user_id", userId)
           .in("id", appointmentIds);
-        assertResult(blockError, "Couldn't delete Gmail task blocks.");
+        assertResult(blockError, `Couldn't delete ${providerLabel} task blocks.`);
       }
       const { data: deletedTasks, error: taskDeleteError } = await supabase
         .from("tasks")
@@ -273,8 +338,8 @@ export async function deletePrivacyProviderData(
         .eq("user_id", userId)
         .in("id", taskIdBatch)
         .select("id");
-      assertResult(taskDeleteError, "Couldn't delete Gmail tasks.");
-      removedGmailTasks += deletedTasks?.length ?? 0;
+      assertResult(taskDeleteError, `Couldn't delete ${providerLabel} tasks.`);
+      removedProviderTasks += deletedTasks?.length ?? 0;
     }
   }
 
@@ -313,14 +378,25 @@ export async function deletePrivacyProviderData(
     ]);
     assertResult(state.error, "Couldn't clear calendar sync state.");
     assertResult(pending.error, "Couldn't clear pending calendar changes.");
-  } else {
+  } else if (provider === "gmail") {
     const [state, log] = await Promise.all([
       supabase.from("sync_state").delete().eq("user_id", userId).eq("provider", "google_mail"),
       supabase.from("sync_log").delete().eq("user_id", userId).like("kind", "gmail_%"),
     ]);
     assertResult(state.error, "Couldn't clear Gmail sync state.");
     assertResult(log.error, "Couldn't clear Gmail activity history.");
+  } else {
+    const [state, log] = await Promise.all([
+      supabase
+        .from("sync_state")
+        .delete()
+        .eq("user_id", userId)
+        .eq("provider", "microsoft_outlook_mail"),
+      supabase.from("sync_log").delete().eq("user_id", userId).like("kind", "outlook_mail_%"),
+    ]);
+    assertResult(state.error, "Couldn't clear Outlook email access history.");
+    assertResult(log.error, "Couldn't clear Outlook Smart Inbox activity history.");
   }
 
-  return { removed: (removed?.length ?? 0) + removedGmailTasks };
+  return { removed: (removed?.length ?? 0) + removedProviderTasks };
 }

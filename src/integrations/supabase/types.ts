@@ -930,6 +930,7 @@ export type Database = {
           conflict_policy: string
           created_at: string
           gmail_sync_enabled: boolean
+          outlook_mail_sync_enabled: boolean
           id: string
           outlook_export_enabled: boolean
           outlook_target_calendar_id: string | null
@@ -942,6 +943,7 @@ export type Database = {
           conflict_policy?: string
           created_at?: string
           gmail_sync_enabled?: boolean
+          outlook_mail_sync_enabled?: boolean
           id?: string
           outlook_export_enabled?: boolean
           outlook_target_calendar_id?: string | null
@@ -954,6 +956,7 @@ export type Database = {
           conflict_policy?: string
           created_at?: string
           gmail_sync_enabled?: boolean
+          outlook_mail_sync_enabled?: boolean
           id?: string
           outlook_export_enabled?: boolean
           outlook_target_calendar_id?: string | null

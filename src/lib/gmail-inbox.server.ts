@@ -1,5 +1,20 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import { extractSmartInboxSuggestion } from "./smart-inbox-ai.server";
+import {
+  cleanSmartInboxText as cleanSummary,
+  type ParsedSmartInboxSuggestion,
+  type SmartInboxAcceptResult,
+  type SmartInboxCandidate,
+  type SmartInboxScanResult,
+} from "./smart-inbox";
+
+export { normalizeSmartInboxExtraction } from "./smart-inbox";
+export type {
+  SmartInboxAcceptResult,
+  SmartInboxCandidate,
+  SmartInboxScanResult,
+} from "./smart-inbox";
 
 const GMAIL_BASE = "https://connector-gateway.lovable.dev/google_mail/gmail/v1";
 const GMAIL_PROVIDER = "google_mail";
@@ -22,18 +37,7 @@ type GmailMessage = {
   snippet?: string;
   payload?: { headers?: GmailHeader[] } & GmailMessagePart;
 };
-type ParsedAppointment = Pick<
-  SmartInboxCandidate,
-  | "kind"
-  | "destination"
-  | "title"
-  | "starts_at"
-  | "ends_at"
-  | "deadline"
-  | "estimated_min"
-  | "location"
-  | "notes"
->;
+type ParsedAppointment = ParsedSmartInboxSuggestion;
 type ExistingAppointment = {
   id: string;
   starts_at: string;
@@ -41,100 +45,6 @@ type ExistingAppointment = {
   is_all_day: boolean;
 };
 type ScheduledCandidate = SmartInboxCandidate & { starts_at: string };
-
-export type SmartInboxCandidate = {
-  messageId: string;
-  threadId: string | null;
-  from: string;
-  subject: string;
-  kind: "appointment" | "reservation" | "school_event" | "delivery" | "renewal" | "deadline";
-  destination: "schedule" | "tasks";
-  title: string;
-  starts_at: string | null;
-  ends_at: string | null;
-  deadline: string | null;
-  estimated_min: number;
-  location: string | null;
-  notes: string | null;
-  conflicts: number;
-};
-
-export type SmartInboxScanResult = {
-  scanned: number;
-  candidates: SmartInboxCandidate[];
-  alreadyHandled: number;
-  dismissed: number;
-  skipped: number;
-};
-
-export type SmartInboxAcceptResult = {
-  itemId: string;
-  itemType: "appointment" | "task";
-  alreadyAdded: boolean;
-  conflicts: number;
-};
-
-const SMART_INBOX_KINDS = new Set<SmartInboxCandidate["kind"]>([
-  "appointment",
-  "reservation",
-  "school_event",
-  "delivery",
-  "renewal",
-  "deadline",
-]);
-
-function validDateKey(value: unknown): value is string {
-  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const parsed = new Date(`${value}T00:00:00Z`);
-  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
-}
-
-export function normalizeSmartInboxExtraction(raw: unknown): ParsedAppointment | null {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
-  const parsed = raw as Record<string, unknown>;
-  if (parsed.suggestion !== true || typeof parsed.kind !== "string") return null;
-  const kind = parsed.kind as SmartInboxCandidate["kind"];
-  if (!SMART_INBOX_KINDS.has(kind) || typeof parsed.title !== "string") return null;
-  const destination = parsed.destination;
-  if (destination !== "schedule" && destination !== "tasks") return null;
-  if (
-    ((kind === "renewal" || kind === "deadline") && destination !== "tasks") ||
-    ((kind === "appointment" || kind === "reservation" || kind === "school_event") &&
-      destination !== "schedule")
-  ) {
-    return null;
-  }
-
-  const rawStart = typeof parsed.starts_at === "string" ? Date.parse(parsed.starts_at) : Number.NaN;
-  const startsAt = Number.isFinite(rawStart) ? new Date(rawStart).toISOString() : null;
-  const deadline = validDateKey(parsed.deadline) ? parsed.deadline : null;
-  if ((destination === "schedule" && !startsAt) || (destination === "tasks" && !deadline)) {
-    return null;
-  }
-
-  const rawEnd = typeof parsed.ends_at === "string" ? Date.parse(parsed.ends_at) : Number.NaN;
-  const end =
-    startsAt && Number.isFinite(rawEnd) && rawEnd > rawStart && rawEnd - rawStart <= 7 * 86400000
-      ? new Date(rawEnd).toISOString()
-      : null;
-  const requestedMinutes =
-    typeof parsed.estimated_min === "number" ? Math.round(parsed.estimated_min) : 15;
-  const title = cleanSummary(parsed.title, 200);
-  if (!title) return null;
-
-  return {
-    kind,
-    destination,
-    title,
-    starts_at: destination === "schedule" ? startsAt : null,
-    ends_at: destination === "schedule" ? end : null,
-    deadline: destination === "tasks" ? deadline : null,
-    estimated_min: Math.min(480, Math.max(5, requestedMinutes)),
-    location:
-      typeof parsed.location === "string" ? cleanSummary(parsed.location, 300) || null : null,
-    notes: typeof parsed.notes === "string" ? cleanSummary(parsed.notes, 2000) || null : null,
-  };
-}
 
 function keys() {
   const lovableKey = process.env["LOVABLE_API_KEY"];
@@ -216,73 +126,6 @@ function header(message: GmailMessage, name: string) {
     message.payload?.headers?.find((item) => item.name.toLowerCase() === name.toLowerCase())
       ?.value ?? ""
   );
-}
-
-function cleanSummary(value: string, max: number) {
-  return Array.from(value)
-    .map((character) => {
-      const code = character.charCodeAt(0);
-      return code < 32 || code === 127 ? " " : character;
-    })
-    .join("")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, max);
-}
-
-async function aiExtract(
-  text: string,
-  lovableKey: string,
-  nowIso: string,
-  tzOffsetMin: number,
-): Promise<ParsedAppointment | null> {
-  const localNow = new Date(Date.now() - tzOffsetMin * 60000).toISOString().replace("Z", "");
-  const system = `You extract one useful schedule or task suggestion from an email only when the obligation is explicit.
-
-CURRENT CONTEXT
-- Now (UTC): ${nowIso}
-- Now (user local): ${localNow}
-- Resolve relative phrases against user-local time.
-
-SUPPORTED KINDS
-- appointment, reservation, or school_event: use destination "schedule" and require a specific date AND time.
-- delivery: use "schedule" when a delivery window has times; otherwise use "tasks" with the promised date as its deadline.
-- renewal or deadline: use destination "tasks" and require a specific due date.
-
-Newsletters, marketing, receipts without a future obligation, vague announcements, and messages without the required date return {"suggestion":false}.
-
-If useful, return {"suggestion":true,"kind":"appointment|reservation|school_event|delivery|renewal|deadline","destination":"schedule|tasks","title":string,"starts_at":ISO 8601 with timezone offset or null,"ends_at":ISO or null,"deadline":"YYYY-MM-DD" or null,"estimated_min":5-480,"location":string or null,"notes":one short sentence or null}.
-Assume the user's offset is ${-tzOffsetMin} minutes when the email omits one. Keep the title under 60 characters and remove reply/forward prefixes. Return ONLY JSON.`;
-
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${lovableKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: text.slice(0, 8000) },
-      ],
-      response_format: { type: "json_object" },
-      temperature: 0.1,
-    }),
-  });
-  if (response.status === 429) throw new Error("Smart Inbox AI is busy. Try again shortly.");
-  if (response.status === 402) throw new Error("Smart Inbox AI credits are exhausted.");
-  if (!response.ok) throw new Error(`Smart Inbox AI failed (${response.status}).`);
-
-  const json = (await response.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-  const content = (json.choices?.[0]?.message?.content ?? "")
-    .trim()
-    .replace(/^```(?:json)?\s*/i, "")
-    .replace(/\s*```$/i, "");
-  try {
-    return normalizeSmartInboxExtraction(JSON.parse(content));
-  } catch {
-    return null;
-  }
 }
 
 function interval(startsAt: string, endsAt: string | null, defaultMinutes: number) {
@@ -372,7 +215,7 @@ async function extractCandidate(
   const from = cleanSummary(header(full, "from"), 320);
   const date = cleanSummary(header(full, "date"), 200);
   const body = extractPlainText(full.payload) || full.snippet || "";
-  const parsed = await aiExtract(
+  const parsed = await extractSmartInboxSuggestion(
     `Subject: ${subject}\nFrom: ${from}\nDate: ${date}\n\n${body}`,
     lovableKey,
     nowIso,
