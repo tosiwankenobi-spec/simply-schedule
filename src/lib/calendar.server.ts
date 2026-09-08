@@ -211,7 +211,16 @@ async function calFetch(
   throw new CalendarApiError(0, lastReason);
 }
 
+/** True when Google refused a write because the calendar itself is read-only. */
+export function isReadOnlyCalendarMessage(msg: string) {
+  return /read[- ]only|forbiddenForNonOrganizer|cannot change this event|insufficient permissions for the specified calendar/i.test(
+    msg,
+  );
+}
+
 function describeStatus(status: number, msg: string) {
+  if (status === 403 && isReadOnlyCalendarMessage(msg))
+    return "That Google calendar is read-only, so the change stayed in Chronos-V only.";
   if (status === 401 || status === 403)
     return `Google denied the request (${status}). Reconnect Google Calendar or check the granted permissions. ${msg}`;
   if (status === 429)
@@ -621,6 +630,41 @@ async function push(
     result.retries++;
     void logEvent(supabase, userId, "warn", "retry", `Retry ${attempt}: ${reason}`);
   };
+
+  // Writes only ever go to calendars Google says we may edit. Pushing to a
+  // subscribed/read-only calendar returns 403 and used to look like a broken
+  // connection, prompting a needless "reconnect Google".
+  let writable: Set<string> | null = null;
+  try {
+    const { json } = await calFetch(
+      "/users/me/calendarList?maxResults=250&fields=items(id,primary,accessRole)",
+      k,
+      undefined,
+      onRetry,
+    );
+    writable = new Set<string>();
+    for (const c of (json?.items ?? []) as any[]) {
+      if (c.accessRole !== "owner" && c.accessRole !== "writer") continue;
+      writable.add(c.id);
+      if (c.primary) writable.add("primary");
+    }
+  } catch {
+    writable = null; // Can't tell — fall back to attempting the write.
+  }
+  const canWrite = (id: string) => writable === null || writable.has(id);
+
+  if (!canWrite(targetCalendar)) {
+    await logEvent(
+      supabase,
+      userId,
+      "info",
+      "push_skipped",
+      "This Google calendar is read-only, so Chronos-V events stay here only.",
+      { calendarId: targetCalendar },
+    );
+  }
+
+
 
   // 1. Deletions queued by the delete trigger.
   const { data: pending } = await supabase
