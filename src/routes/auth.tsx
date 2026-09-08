@@ -6,16 +6,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { CalendarDays, Eye, EyeOff, ShieldCheck, Sparkles } from "lucide-react";
+import { CalendarDays, CheckCircle2, Eye, EyeOff, Mail, ShieldCheck, Sparkles } from "lucide-react";
+import { buildEmailVerificationRedirect, readAuthRedirectError } from "@/lib/auth-verification";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
-  validateSearch: (s: Record<string, unknown>) => ({
-    next:
+  validateSearch: (s: Record<string, unknown>): { next?: string; verified?: boolean } => {
+    const next =
       typeof s.next === "string" && s.next.startsWith("/") && !s.next.startsWith("//")
         ? s.next
-        : undefined,
-  }),
+        : undefined;
+    return {
+      ...(next ? { next } : {}),
+      ...(s.verified === "1" || s.verified === true ? { verified: true } : {}),
+    };
+  },
   component: AuthPage,
   head: () => ({
     meta: [
@@ -48,13 +53,17 @@ const AUTH_FEATURES = [
 
 function AuthPage() {
   const navigate = useNavigate();
-  const { next } = Route.useSearch();
+  const { next, verified } = Route.useSearch();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
+  const [verificationNotice, setVerificationNotice] = useState(
+    verified ? "Email verified. Sign in to continue." : null,
+  );
 
   const goNext = () => {
     if (next) window.location.href = next;
@@ -62,12 +71,38 @@ function AuthPage() {
   };
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) return;
+    let active = true;
+    const redirectError = readAuthRedirectError(window.location.search, window.location.hash);
+    if (redirectError) {
+      setAuthError(redirectError);
+      setVerificationNotice(null);
+      setMode("signin");
+    }
+
+    const continueAfterVerification = () => {
+      if (!active) return;
       if (next) window.location.href = next;
       else navigate({ to: "/app" });
+    };
+
+    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN" && verified) {
+        window.setTimeout(continueAfterVerification, 0);
+      }
     });
-  }, [navigate, next]);
+
+    void supabase.auth.getUser().then(({ data }) => {
+      if (data.user) continueAfterVerification();
+    });
+
+    return () => {
+      active = false;
+      listener.subscription.unsubscribe();
+    };
+  }, [navigate, next, verified]);
+
+  const emailVerificationRedirect = () =>
+    buildEmailVerificationRedirect(window.location.origin, next);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -75,15 +110,21 @@ function AuthPage() {
     setAuthError(null);
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email,
+        const normalizedEmail = email.trim();
+        const { data, error } = await supabase.auth.signUp({
+          email: normalizedEmail,
           password,
           options: {
-            emailRedirectTo: next ? window.location.origin + next : window.location.origin,
+            emailRedirectTo: emailVerificationRedirect(),
           },
         });
         if (error) throw error;
-        toast.success("Welcome — check your inbox if confirmation is required.");
+        if (!data.session) {
+          setPendingEmail(normalizedEmail);
+          setPassword("");
+          toast.success("Verification email sent");
+          return;
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -91,6 +132,27 @@ function AuthPage() {
       goNext();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Authentication failed";
+      setAuthError(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleResendVerification() {
+    if (!pendingEmail) return;
+    setLoading(true);
+    setAuthError(null);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: pendingEmail,
+        options: { emailRedirectTo: emailVerificationRedirect() },
+      });
+      if (error) throw error;
+      toast.success("A new verification email is on its way");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not resend verification email";
       setAuthError(message);
       toast.error(message);
     } finally {
@@ -194,6 +256,7 @@ function AuthPage() {
               onClick={() => {
                 setMode("signin");
                 setAuthError(null);
+                setPendingEmail(null);
               }}
               disabled={loading}
               className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
@@ -210,6 +273,8 @@ function AuthPage() {
               onClick={() => {
                 setMode("signup");
                 setAuthError(null);
+                setPendingEmail(null);
+                setVerificationNotice(null);
               }}
               disabled={loading}
               className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
@@ -238,80 +303,140 @@ function AuthPage() {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="mt-7 space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                autoFocus
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="h-11 bg-background"
-              />
+          {verificationNotice ? (
+            <div
+              role="status"
+              className="mt-5 flex gap-3 rounded-2xl border border-leaf/20 bg-leaf/10 px-4 py-3 text-sm text-foreground"
+            >
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-leaf" />
+              <p>{verificationNotice}</p>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  autoComplete={mode === "signin" ? "current-password" : "new-password"}
-                  required
-                  minLength={6}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="h-11 bg-background pr-11"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((visible) => !visible)}
-                  className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-muted-foreground hover:text-foreground"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-              {mode === "signup" ? (
-                <p className="text-xs text-muted-foreground">Use at least six characters.</p>
-              ) : null}
-            </div>
+          ) : null}
 
-            {authError ? (
-              <p
-                role="alert"
-                className="rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive"
-              >
-                {authError}
-              </p>
-            ) : null}
-
-            <Button type="submit" disabled={loading} className="h-11 w-full">
-              <span aria-live="polite">
-                {loading ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
+          {pendingEmail ? (
+            <div className="mt-7 space-y-5 text-center">
+              <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/10 text-accent">
+                <Mail className="h-6 w-6" />
               </span>
-            </Button>
-          </form>
+              <div>
+                <h3 className="font-serif text-2xl text-foreground">Check your inbox</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  We sent a verification link to{" "}
+                  <span className="font-medium text-foreground">{pendingEmail}</span>. Open it in
+                  this browser to finish creating your account.
+                </p>
+              </div>
 
-          <div className="relative my-6 text-center text-xs text-muted-foreground">
-            <span className="relative z-10 bg-card px-3">or continue with</span>
-            <span className="absolute left-0 right-0 top-1/2 h-px bg-border" />
-          </div>
+              {authError ? (
+                <p
+                  role="alert"
+                  className="rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                >
+                  {authError}
+                </p>
+              ) : null}
 
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleGoogle}
-            disabled={loading}
-            className="h-11 w-full bg-background"
-          >
-            <span className="mr-2 flex h-5 w-5 items-center justify-center rounded-full bg-foreground text-[10px] font-semibold text-background">
-              G
-            </span>
-            Continue with Google
-          </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={loading}
+                onClick={handleResendVerification}
+                className="h-11 w-full bg-background"
+              >
+                {loading ? "Sending…" : "Resend verification email"}
+              </Button>
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => {
+                  setPendingEmail(null);
+                  setAuthError(null);
+                }}
+                className="text-sm font-medium text-accent hover:underline disabled:opacity-50"
+              >
+                Use a different email
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="mt-7 space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  autoFocus
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="h-11 bg-background"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="password">Password</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                    required
+                    minLength={6}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="h-11 bg-background pr-11"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((visible) => !visible)}
+                    className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-muted-foreground hover:text-foreground"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                {mode === "signup" ? (
+                  <p className="text-xs text-muted-foreground">Use at least six characters.</p>
+                ) : null}
+              </div>
+
+              {authError ? (
+                <p
+                  role="alert"
+                  className="rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                >
+                  {authError}
+                </p>
+              ) : null}
+
+              <Button type="submit" disabled={loading} className="h-11 w-full">
+                <span aria-live="polite">
+                  {loading ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
+                </span>
+              </Button>
+            </form>
+          )}
+
+          {!pendingEmail ? (
+            <>
+              <div className="relative my-6 text-center text-xs text-muted-foreground">
+                <span className="relative z-10 bg-card px-3">or continue with</span>
+                <span className="absolute left-0 right-0 top-1/2 h-px bg-border" />
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleGoogle}
+                disabled={loading}
+                className="h-11 w-full bg-background"
+              >
+                <span className="mr-2 flex h-5 w-5 items-center justify-center rounded-full bg-foreground text-[10px] font-semibold text-background">
+                  G
+                </span>
+                Continue with Google
+              </Button>
+            </>
+          ) : null}
 
           <p className="mt-6 text-center text-xs leading-relaxed text-muted-foreground">
             By continuing, you create a private session on this device. Connected calendars and

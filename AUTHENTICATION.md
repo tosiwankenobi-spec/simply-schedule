@@ -19,11 +19,12 @@ Chronos-V uses Supabase Auth for identity and sessions. The React/TanStack Start
 ## Email/password request flow
 
 1. The user submits the form on `/auth`.
-2. Sign-up calls `supabase.auth.signUp()`. Sign-in calls `supabase.auth.signInWithPassword()`.
-3. Supabase Auth verifies the credentials and returns a session containing an access token and refresh token.
-4. The public Supabase client persists the session and automatically refreshes access tokens.
-5. The authenticated route guard calls `supabase.auth.getUser()`. Missing or invalid users are redirected to `/auth`.
-6. Browser queries made through the public client carry the user's session, so Supabase evaluates database RLS policies as that user.
+2. Sign-up calls `supabase.auth.signUp()` with a verification callback on `/auth`. Sign-in calls `supabase.auth.signInWithPassword()`.
+3. When email confirmation is enabled, sign-up returns a user without a session. Chronos-V remains on a check-inbox screen and can resend the verification message. The confirmation link returns to `/auth`, where Supabase restores the browser session before Chronos-V enters the authenticated app.
+4. When confirmation is disabled, or after confirmed sign-in, Supabase Auth returns a session containing an access token and refresh token.
+5. The public Supabase client persists the session and automatically refreshes access tokens.
+6. The authenticated route guard calls `supabase.auth.getUser()`. Missing or invalid users are redirected to `/auth`.
+7. Browser queries made through the public client carry the user's session, so Supabase evaluates database RLS policies as that user.
 
 Passwords are sent to Supabase Auth over HTTPS and are not stored or processed by Chronos-V application code.
 
