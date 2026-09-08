@@ -211,7 +211,16 @@ async function calFetch(
   throw new CalendarApiError(0, lastReason);
 }
 
+/** True when Google refused a write because the calendar itself is read-only. */
+export function isReadOnlyCalendarMessage(msg: string) {
+  return /read[- ]only|forbiddenForNonOrganizer|cannot change this event|insufficient permissions for the specified calendar/i.test(
+    msg,
+  );
+}
+
 function describeStatus(status: number, msg: string) {
+  if (status === 403 && isReadOnlyCalendarMessage(msg))
+    return "That Google calendar is read-only, so the change stayed in Chronos-V only.";
   if (status === 401 || status === 403)
     return `Google denied the request (${status}). Reconnect Google Calendar or check the granted permissions. ${msg}`;
   if (status === 429)
