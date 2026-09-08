@@ -55,6 +55,8 @@ The public client is configured with:
 - `autoRefreshToken: true`
 - `brokeredPreviewStorage()` as its storage adapter
 
+In Lovable Cloud, the Supabase URL and publishable key are managed runtime values rather than committed files. The server adds those two public values to the initial HTML as metadata, and the browser client reads that metadata before creating the Supabase client. This keeps environment-specific values out of git while preserving browser authentication. The service-role key is never included in this metadata.
+
 On ordinary origins, the adapter uses browser `localStorage`. Signing out through `supabase.auth.signOut()` removes the active session. Treat browser storage as sensitive: do not log tokens, put them in URLs, send them to analytics, or copy them into application data.
 
 ### Lovable preview storage
