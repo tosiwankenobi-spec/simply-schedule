@@ -631,6 +631,41 @@ async function push(
     void logEvent(supabase, userId, "warn", "retry", `Retry ${attempt}: ${reason}`);
   };
 
+  // Writes only ever go to calendars Google says we may edit. Pushing to a
+  // subscribed/read-only calendar returns 403 and used to look like a broken
+  // connection, prompting a needless "reconnect Google".
+  let writable: Set<string> | null = null;
+  try {
+    const { json } = await calFetch(
+      "/users/me/calendarList?maxResults=250&fields=items(id,primary,accessRole)",
+      k,
+      undefined,
+      onRetry,
+    );
+    writable = new Set<string>();
+    for (const c of (json?.items ?? []) as any[]) {
+      if (c.accessRole !== "owner" && c.accessRole !== "writer") continue;
+      writable.add(c.id);
+      if (c.primary) writable.add("primary");
+    }
+  } catch {
+    writable = null; // Can't tell — fall back to attempting the write.
+  }
+  const canWrite = (id: string) => writable === null || writable.has(id);
+
+  if (!canWrite(targetCalendar)) {
+    await logEvent(
+      supabase,
+      userId,
+      "info",
+      "push_skipped",
+      "This Google calendar is read-only, so Chronos-V events stay here only.",
+      { calendarId: targetCalendar },
+    );
+  }
+
+
+
   // 1. Deletions queued by the delete trigger.
   const { data: pending } = await supabase
     .from("pending_calendar_deletions")
