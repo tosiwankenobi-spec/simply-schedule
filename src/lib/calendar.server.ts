@@ -715,6 +715,10 @@ async function push(
     .limit(50);
 
   for (const row of fresh ?? []) {
+    if (!canWrite(targetCalendar)) {
+      result.skipped++;
+      continue;
+    }
     try {
       const { json } = await calFetch(
         `/calendars/${encodeURIComponent(targetCalendar)}/events`,
