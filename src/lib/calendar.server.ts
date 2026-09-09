@@ -938,7 +938,8 @@ export async function readSyncStatus(
 
   const AUTH_HINT = /\b(401|403)\b|denied|invalid_grant|unauthori[sz]ed|reconnect|permission/i;
   const needsReauth =
-    !process.env["GOOGLE_CALENDAR_API_KEY"] || (lastError ? AUTH_HINT.test(lastError) : false);
+    !process.env["GOOGLE_CALENDAR_API_KEY"] ||
+    (lastError ? AUTH_HINT.test(lastError) && !isReadOnlyCalendarMessage(lastError) : false);
 
   const minutesSinceSync = lastSyncedAt
     ? Math.max(0, Math.round((Date.now() - Date.parse(lastSyncedAt)) / 60000))
