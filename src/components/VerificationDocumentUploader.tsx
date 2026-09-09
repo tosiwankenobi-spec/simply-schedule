@@ -97,10 +97,12 @@ export function VerificationDocumentUploader() {
         if (uploadError) throw new Error(uploadError.message);
 
         await record.mutateAsync({
-          filename: file.name,
-          storagePath,
-          contentType: file.type as "application/pdf" | "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-          sizeBytes: file.size,
+          data: {
+            filename: file.name,
+            storagePath,
+            contentType: file.type as "application/pdf" | "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            sizeBytes: file.size,
+          },
         });
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Upload failed");
