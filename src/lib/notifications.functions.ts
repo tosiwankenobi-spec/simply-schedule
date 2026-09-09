@@ -292,7 +292,7 @@ export const performNotificationAction = createServerFn({ method: "POST" })
               reminderTitle: notification?.title ?? "Your reminder",
               reminderBody: notification?.body ?? "",
               snoozedUntilLabel: actionResult.snoozedUntil
-                ? new Date(actionResult.snoozedUntil).toISOString()
+                ? `${new Date(actionResult.snoozedUntil).toUTCString().replace("GMT", "UTC")}`
                 : null,
             },
             idempotencyKey: `reminder-action-${data.action}-${data.notificationId}`,
