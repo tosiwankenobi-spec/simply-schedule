@@ -50,6 +50,41 @@ broken Google connection.
 
 Set up sender domain and email delivery for notification emails.
 
+## 10. "Why this plan?" explanations — NEXT
+
+Tap any scheduled block to see why that time was chosen and what would change if
+it moved. Builds on the existing placement reasons and replan preview.
+
+## 11. Low-energy / emergency day mode — QUEUED
+
+One tap for sick, overwhelmed, travelling, family emergency. Keep essentials,
+postpone everything safe to move, with preview and undo.
+
+## 12. Automatic task splitting — QUEUED
+
+Break long tasks into realistic sessions that respect deadlines and dependencies.
+
+## 13. Preparation assistant — QUEUED
+
+Before an appointment: travel, documents, prep tasks, contacts, leave-by time.
+
+## 14. Focus execution mode — QUEUED
+
+One task at a time with timer and complete / extend / skip / replan actions.
+
+## 15. Private availability sharing — QUEUED
+
+Let someone book free time without seeing event names or private details.
+
+## 16. Schedule reliability dashboard — QUEUED
+
+Completion patterns, overloaded days, chronically delayed tasks, protected personal
+time, planning-accuracy trend.
+
+## 17. Recovery and synchronization centre — QUEUED
+
+Per-calendar connection state, last sync, errors needing attention, pending uploads.
+
 ## Capability list to preserve and complete over time
 
 - Universal schedule hub: Google Calendar, Outlook, device calendars, Gmail/Outlook
