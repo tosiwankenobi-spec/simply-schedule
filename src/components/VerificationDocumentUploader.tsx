@@ -210,7 +210,7 @@ export function VerificationDocumentUploader() {
                   variant="ghost"
                   size="icon"
                   className="h-9 w-9 shrink-0 text-muted-foreground hover:text-destructive"
-                  onClick={() => remove.mutate({ id: doc.id })}
+                  onClick={() => remove.mutate({ data: { id: doc.id } })}
                   disabled={remove.isPending}
                   aria-label={`Remove ${doc.filename}`}
                 >
