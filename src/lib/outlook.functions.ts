@@ -71,7 +71,7 @@ export const startOutlookConnect = createServerFn({ method: "POST" })
       connectionAPIKey: existing ?? undefined,
       credentialsConfiguration: {
         scopes: MICROSOFT_SCOPES,
-        domain_hint: "none",
+        domain_hint: "consumers",
         prompt: "select_account",
       },
     });
