@@ -30,6 +30,7 @@ import { Route as AuthenticatedCaptureRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedCalendarImportRouteImport } from './routes/_authenticated/calendar-import'
 import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/app'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
+import { Route as Char91DotwellKnownChar93MicrosoftIdentityAssociationChar91DotChar93jsonRouteImport } from './routes/[.well-known]/microsoft-identity-association[.]json'
 import { Route as OauthMicrosoftReturnRouteImport } from './routes/oauth/microsoft/return'
 import { Route as AuthenticatedSetupSyncRouteImport } from './routes/_authenticated/setup.sync'
 import { Route as AuthenticatedSetupOutlookRouteImport } from './routes/_authenticated/setup.outlook'
@@ -149,6 +150,14 @@ const Char91DotwellKnownChar93OauthProtectedResourceRoute =
     path: '/.well-known/oauth-protected-resource',
     getParentRoute: () => rootRouteImport,
   } as any)
+const Char91DotwellKnownChar93MicrosoftIdentityAssociationChar91DotChar93jsonRoute =
+  Char91DotwellKnownChar93MicrosoftIdentityAssociationChar91DotChar93jsonRouteImport.update(
+    {
+      id: '/.well-known/microsoft-identity-association.json',
+      path: '/.well-known/microsoft-identity-association.json',
+      getParentRoute: () => rootRouteImport,
+    } as any,
+  )
 const OauthMicrosoftReturnRoute = OauthMicrosoftReturnRouteImport.update({
   id: '/oauth/microsoft/return',
   path: '/oauth/microsoft/return',
@@ -211,6 +220,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/index': typeof Char91indexChar93Route
   '/mcp': typeof McpRoute
+  '/.well-known/microsoft-identity-association.json': typeof Char91DotwellKnownChar93MicrosoftIdentityAssociationChar91DotChar93jsonRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/app': typeof AuthenticatedAppRoute
   '/calendar-import': typeof AuthenticatedCalendarImportRoute
@@ -243,6 +253,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/index': typeof Char91indexChar93Route
   '/mcp': typeof McpRoute
+  '/.well-known/microsoft-identity-association.json': typeof Char91DotwellKnownChar93MicrosoftIdentityAssociationChar91DotChar93jsonRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/app': typeof AuthenticatedAppRoute
   '/calendar-import': typeof AuthenticatedCalendarImportRoute
@@ -277,6 +288,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/index': typeof Char91indexChar93Route
   '/mcp': typeof McpRoute
+  '/.well-known/microsoft-identity-association.json': typeof Char91DotwellKnownChar93MicrosoftIdentityAssociationChar91DotChar93jsonRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_authenticated/app': typeof AuthenticatedAppRoute
   '/_authenticated/calendar-import': typeof AuthenticatedCalendarImportRoute
@@ -311,6 +323,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/index'
     | '/mcp'
+    | '/.well-known/microsoft-identity-association.json'
     | '/.well-known/oauth-protected-resource'
     | '/app'
     | '/calendar-import'
@@ -343,6 +356,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/index'
     | '/mcp'
+    | '/.well-known/microsoft-identity-association.json'
     | '/.well-known/oauth-protected-resource'
     | '/app'
     | '/calendar-import'
@@ -376,6 +390,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/index'
     | '/mcp'
+    | '/.well-known/microsoft-identity-association.json'
     | '/.well-known/oauth-protected-resource'
     | '/_authenticated/app'
     | '/_authenticated/calendar-import'
@@ -410,6 +425,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   Char91indexChar93Route: typeof Char91indexChar93Route
   McpRoute: typeof McpRoute
+  Char91DotwellKnownChar93MicrosoftIdentityAssociationChar91DotChar93jsonRoute: typeof Char91DotwellKnownChar93MicrosoftIdentityAssociationChar91DotChar93jsonRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   OauthMicrosoftReturnRoute: typeof OauthMicrosoftReturnRoute
@@ -565,6 +581,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/.well-known/microsoft-identity-association.json': {
+      id: '/.well-known/microsoft-identity-association.json'
+      path: '/.well-known/microsoft-identity-association.json'
+      fullPath: '/.well-known/microsoft-identity-association.json'
+      preLoaderRoute: typeof Char91DotwellKnownChar93MicrosoftIdentityAssociationChar91DotChar93jsonRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/oauth/microsoft/return': {
       id: '/oauth/microsoft/return'
       path: '/oauth/microsoft/return'
@@ -706,6 +729,8 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   Char91indexChar93Route: Char91indexChar93Route,
   McpRoute: McpRoute,
+  Char91DotwellKnownChar93MicrosoftIdentityAssociationChar91DotChar93jsonRoute:
+    Char91DotwellKnownChar93MicrosoftIdentityAssociationChar91DotChar93jsonRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
