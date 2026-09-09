@@ -4,4 +4,6 @@
     <string name="title_activity_main">Chronos-V</string>
     <string name="package_name">ca.verolane.chronosv</string>
     <string name="custom_url_scheme">ca.verolane.chronosv</string>
+    <string name="shortcut_capture_short">Capture</string>
+    <string name="shortcut_capture_long">Capture a task or appointment</string>
 </resources>

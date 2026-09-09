@@ -13,6 +13,14 @@ const androidManifest = readFileSync(
   resolve(root, "android/app/src/main/AndroidManifest.xml"),
   "utf8",
 );
+const mainActivity = readFileSync(
+  resolve(root, "android/app/src/main/java/ca/verolane/chronosv/MainActivity.java"),
+  "utf8",
+);
+const androidShortcuts = readFileSync(
+  resolve(root, "android/app/src/main/res/xml/shortcuts.xml"),
+  "utf8",
+);
 
 describe("notification action security contract", () => {
   test("keeps the action RPC in caller context with a fixed search path", () => {
@@ -58,6 +66,19 @@ describe("notification action security contract", () => {
     };
     expect(parsed.shortcuts?.some((shortcut) => shortcut.url === "/capture")).toBe(true);
     expect(parsed.share_target).toBeTruthy();
+    expect(androidManifest).toContain('android:name="android.intent.action.SEND"');
+    expect(androidManifest).toContain('android:mimeType="text/plain"');
+    expect(androidShortcuts).toContain('android:shortcutId="capture"');
+    expect(mainActivity).toContain('appPage("/capture")');
+    expect(mainActivity).toContain("Intent.EXTRA_TEXT");
+  });
+
+  test("returns Android Microsoft authorization through the authenticated app WebView", () => {
+    expect(androidManifest).toContain('android:name="android.intent.action.VIEW"');
+    expect(androidManifest).toContain('android:host="oauth"');
+    expect(androidManifest).toContain('android:pathPrefix="/microsoft/return"');
+    expect(mainActivity).toContain('appPage("/oauth/microsoft/return")');
+    expect(mainActivity).toContain('copyQueryParameter(incoming, builder, "code")');
   });
 
   test("does not request Android exact-alarm access for immediate reminders", () => {

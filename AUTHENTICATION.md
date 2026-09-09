@@ -102,6 +102,8 @@ Prefer the user-scoped client from `requireSupabaseAuth` whenever RLS can expres
 
 Live Outlook access must use a Lovable **app-user connector**, not a shared app connection. Each signed-in Chronos-V user completes Microsoft's OAuth consent flow for their own account. Lovable's connector gateway exchanges the authorization code, stores and refreshes Microsoft tokens, selects the correct user's connection for each request, and injects the credentials when forwarding calls to Microsoft Graph.
 
+On Android, Chronos-V opens Microsoft authorization in a Capacitor secure browser rather than an embedded WebView. The gateway returns through the app-only `ca.verolane.chronosv://oauth/microsoft/return` deep link, which is accepted only for the expected OAuth host and path and then forwarded into the authenticated Chronos-V WebView. A connection is saved only when the callback contains an exchangeable one-time code; consent without `offline_access` is shown as incomplete because dependable synchronization requires refresh access.
+
 Microsoft access tokens and refresh tokens must never be stored in Supabase tables, browser storage, application logs, or Chronos-V environment files. The Supabase session proves who the Chronos-V user is; the separate Outlook consent controls what that user has allowed Microsoft Graph to return.
 
 The implemented permissions are deliberately scoped:

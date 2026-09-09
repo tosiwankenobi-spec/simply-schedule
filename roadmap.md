@@ -4,7 +4,7 @@ Work one milestone at a time. Wait for the user to say "next" before starting ea
 milestone after Feature 1. Audit and preserve existing implementations before
 rebuilding anything.
 
-## 1. Per-user Microsoft Outlook sync — DONE (verify/commit/push before moving on)
+## 1. Per-user Microsoft Outlook sync — DONE
 
 Connect / status / reconnect / disconnect, calendar selection, calendarView delta
 sync with pagination + resync fallback, two-way create/update/delete, provider-isolated

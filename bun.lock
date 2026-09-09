@@ -6,6 +6,7 @@
       "name": "chronos-v",
       "dependencies": {
         "@capacitor/android": "^8.5.0",
+        "@capacitor/browser": "8.0.4",
         "@capacitor/calendar": "1.0.1",
         "@capacitor/cli": "^8.5.0",
         "@capacitor/core": "^8.5.0",
@@ -141,6 +142,8 @@
     "@babel/types": ["@babel/types@7.29.0", "", { "dependencies": { "@babel/helper-string-parser": "^7.27.1", "@babel/helper-validator-identifier": "^7.28.5" } }, "sha512-LwdZHpScM4Qz8Xw2iKSzS+cfglZzJGvofQICy7W7v4caru4EaAmyUuO6BGrbyQ2mYV11W0U8j5mBhd14dd3B0A=="],
 
     "@capacitor/android": ["@capacitor/android@8.5.0", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@capacitor/android/-/android-8.5.0.tgz", { "peerDependencies": { "@capacitor/core": "^8.5.0" } }, "sha512-Rb3prJeQiTp0pQhSSOReJuG9VgibOGMG4ECs+UhMwr6TCCHZ3NCZO811bDA0HxD0xrT/gCrJAsY5yfEATu84JQ=="],
+
+    "@capacitor/browser": ["@capacitor/browser@8.0.4", "", { "peerDependencies": { "@capacitor/core": ">=8.0.0" } }, "sha512-ORZ4u/y+7aMuu6yVuk6SP529fUZyqcbnuHB1q5McpA3o2SYfVoi28iB8rsQjI2ad1qlKJd29ZUuGtspXLBDlWg=="],
 
     "@capacitor/calendar": ["@capacitor/calendar@1.0.1", "", { "peerDependencies": { "@capacitor/core": ">=8.0.0" } }, "sha512-2ogW+Jlamy6BJkZmaggB/Jx282G+o3aBPfgx3GxmjlLjl8hqcorQKFhlCiveDui6xEKoVy13AQpKhukHQ8MrCQ=="],
 

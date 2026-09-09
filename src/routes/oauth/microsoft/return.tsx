@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { Capacitor } from "@capacitor/core";
+import { completeOutlookConnect } from "@/lib/outlook.functions";
+import { parseOutlookOAuthCallback } from "@/lib/outlook";
 
 export const Route = createFileRoute("/oauth/microsoft/return")({
   component: OutlookOAuthReturn,
@@ -21,7 +24,8 @@ function OutlookOAuthReturn() {
   const [message, setMessage] = useState("Finishing your Microsoft connection…");
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    const result = parseOutlookOAuthCallback(window.location.search);
+    const hasOpener = Boolean(window.opener);
     const notify = (
       type: "appUserConnectorOAuthComplete" | "appUserConnectorOAuthFailed",
       code?: string,
@@ -33,22 +37,31 @@ function OutlookOAuthReturn() {
       window.close();
     };
 
-    if (params.get("success") !== "true") {
-      setMessage(params.get("error") ?? "The Microsoft sign-in did not complete.");
+    if (!result.ok) {
+      setMessage(result.message);
       notify("appUserConnectorOAuthFailed");
       return;
     }
-    const code = params.get("code");
-    if (!code) {
-      if (params.get("offline_access_allowed") === "false") {
-        notify("appUserConnectorOAuthComplete");
-        return;
-      }
-      setMessage("Microsoft sign-in finished without a completion code.");
-      notify("appUserConnectorOAuthFailed");
+
+    if (hasOpener) {
+      notify("appUserConnectorOAuthComplete", result.code);
       return;
     }
-    notify("appUserConnectorOAuthComplete", code);
+
+    // Native Android returns through a custom URL scheme into this same WebView,
+    // where the existing signed-in session can safely exchange the one-time code.
+    void completeOutlookConnect({ data: { code: result.code } })
+      .then(async () => {
+        setMessage("Outlook connected. Returning to your calendars…");
+        if (Capacitor.isNativePlatform()) {
+          const { Browser } = await import("@capacitor/browser");
+          await Browser.close().catch(() => undefined);
+        }
+        window.setTimeout(() => window.location.replace("/setup/outlook"), 450);
+      })
+      .catch((error) => {
+        setMessage(error instanceof Error ? error.message : "Outlook could not be connected.");
+      });
   }, []);
 
   return (

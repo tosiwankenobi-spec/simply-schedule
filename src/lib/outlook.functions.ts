@@ -5,7 +5,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { OUTLOOK_CONNECTOR_ID } from "./outlook";
+import { OUTLOOK_CONNECTOR_ID, OUTLOOK_NATIVE_RETURN_URL } from "./outlook";
 import type {
   DisconnectOutcome,
   ExportCandidate,
@@ -36,7 +36,13 @@ const MICROSOFT_SCOPES = [
 
 export const startOutlookConnect = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<{ authorizationUrl: string }> => {
+  .inputValidator((input: unknown) => ({
+    native:
+      typeof input === "object" && input !== null && "native" in input
+        ? (input as { native?: unknown }).native === true
+        : false,
+  }))
+  .handler(async ({ data, context }): Promise<{ authorizationUrl: string }> => {
     const clientKey = process.env["MICROSOFT_OUTLOOK_APP_USER_CONNECTOR_CLIENT_API_KEY"];
     if (!clientKey) throw new Error("Outlook is not configured for this workspace yet.");
 
@@ -45,10 +51,12 @@ export const startOutlookConnect = createServerFn({ method: "POST" })
     const url = new URL(request.url);
     const sandboxHost =
       url.hostname === "localhost" ? request.headers.get("x-forwarded-host") : null;
-    const returnUrl = new URL(
-      "/oauth/microsoft/return",
-      sandboxHost ? `https://${sandboxHost}` : url.origin,
-    ).toString();
+    const returnUrl = data.native
+      ? OUTLOOK_NATIVE_RETURN_URL
+      : new URL(
+          "/oauth/microsoft/return",
+          sandboxHost ? `https://${sandboxHost}` : url.origin,
+        ).toString();
 
     const { authorizeAppUserOAuth } = await import("@/integrations/lovable/appUserConnector");
     const { getConnectionKeyForUser } = await import("@/server/appUserConnections.server");

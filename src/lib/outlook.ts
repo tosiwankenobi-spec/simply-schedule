@@ -5,6 +5,40 @@
 
 export const OUTLOOK_CONNECTOR_ID = "microsoft_outlook";
 export const OUTLOOK_PROVIDER = "microsoft_outlook";
+export const OUTLOOK_NATIVE_RETURN_URL = "ca.verolane.chronosv://oauth/microsoft/return";
+
+export type OutlookOAuthCallback = { ok: true; code: string } | { ok: false; message: string };
+
+/**
+ * Treat OAuth as connected only after the gateway returns an exchangeable
+ * one-time code. Microsoft consent without offline access is not enough for
+ * dependable background calendar synchronization.
+ */
+export function parseOutlookOAuthCallback(search: string): OutlookOAuthCallback {
+  const params = new URLSearchParams(search);
+  if (params.get("success") !== "true") {
+    return {
+      ok: false,
+      message: (params.get("error")?.trim() || "The Microsoft sign-in did not complete.").slice(
+        0,
+        240,
+      ),
+    };
+  }
+
+  const code = params.get("code")?.trim();
+  if (!code) {
+    return {
+      ok: false,
+      message:
+        params.get("offline_access_allowed") === "false"
+          ? "Microsoft access was granted without background refresh permission. Reconnect and allow offline access so Outlook can stay synchronized."
+          : "Microsoft sign-in finished without a completion code. Please reconnect Outlook.",
+    };
+  }
+
+  return { ok: true, code };
+}
 
 export type GraphDateTime = { dateTime?: string; timeZone?: string } | null | undefined;
 

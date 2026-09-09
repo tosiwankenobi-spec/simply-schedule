@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { Capacitor } from "@capacitor/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -103,11 +104,20 @@ export function OutlookConnection() {
 
   const connect = useMutation({
     mutationFn: async () => {
+      if (Capacitor.isNativePlatform()) {
+        const [{ authorizationUrl }, { Browser }] = await Promise.all([
+          startOutlookConnect({ data: { native: true } }),
+          import("@capacitor/browser"),
+        ]);
+        await Browser.open({ url: authorizationUrl, toolbarColor: "#002E28" });
+        return "opened" as const;
+      }
+
       const popup = window.open("", "chronos-outlook-oauth", "width=600,height=760");
       if (!popup) throw new Error("Allow pop-ups for Chronos-V, then try again.");
       let code: string | null;
       try {
-        const { authorizationUrl } = await startOutlookConnect();
+        const { authorizationUrl } = await startOutlookConnect({ data: { native: false } });
         const completion = waitForOAuthCompletion(popup);
         popup.location.href = authorizationUrl;
         code = await completion;
@@ -116,10 +126,15 @@ export function OutlookConnection() {
         throw error;
       }
       if (code) await completeOutlookConnect({ data: { code } });
+      return "connected" as const;
     },
-    onSuccess: () => {
-      toast.success("Outlook connected");
-      invalidate();
+    onSuccess: (result) => {
+      if (result === "opened") {
+        toast("Finish signing in with Microsoft, then return to Chronos-V.");
+      } else {
+        toast.success("Outlook connected");
+        invalidate();
+      }
     },
     onError: (e: Error) => toast.error(e.message),
   });

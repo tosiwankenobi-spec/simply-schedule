@@ -15,11 +15,33 @@ import {
   pullStartUrl,
   walkDeltaPages,
   lockIsStale,
+  parseOutlookOAuthCallback,
   type LockRow,
 } from "../src/lib/outlook";
 import { decryptConnectionKey, encryptConnectionKey } from "../src/server/connectionKeyCrypto";
 
 const secret = randomBytes(32);
+
+describe("OAuth completion", () => {
+  test("requires an exchangeable completion code", () => {
+    expect(parseOutlookOAuthCallback("?success=true&code=one-time-code")).toEqual({
+      ok: true,
+      code: "one-time-code",
+    });
+  });
+
+  test("does not report a no-code connection as successful", () => {
+    const result = parseOutlookOAuthCallback("?success=true&offline_access_allowed=false");
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.message).toMatch(/offline access/i);
+  });
+
+  test("returns a bounded provider error", () => {
+    const result = parseOutlookOAuthCallback(`?success=false&error=${"x".repeat(500)}`);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.message).toHaveLength(240);
+  });
+});
 
 describe("connection key encryption", () => {
   test("round-trips the opaque connection key", () => {
