@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { OutlookConnection } from "@/components/OutlookConnection";
+import { VerificationDocumentUploader } from "@/components/VerificationDocumentUploader";
 import { WorkspaceHeader } from "@/components/WorkspaceHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -228,6 +229,8 @@ function OutlookSetupPage() {
                 />
               </CardContent>
             </Card>
+
+            <VerificationDocumentUploader />
 
             <Card className="rounded-2xl border-dashed bg-card/70">
               <CardHeader>

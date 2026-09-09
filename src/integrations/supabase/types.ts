@@ -1079,6 +1079,42 @@ export type Database = {
           },
         ]
       }
+      verification_documents: {
+        Row: {
+          content_type: string
+          created_at: string
+          filename: string
+          id: string
+          purpose: string
+          size_bytes: number
+          storage_path: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content_type: string
+          created_at?: string
+          filename: string
+          id?: string
+          purpose?: string
+          size_bytes: number
+          storage_path: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content_type?: string
+          created_at?: string
+          filename?: string
+          id?: string
+          purpose?: string
+          size_bytes?: number
+          storage_path?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       schedule_hub_events: {
