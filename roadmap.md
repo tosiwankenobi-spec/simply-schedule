@@ -41,7 +41,7 @@ upload, dependable refresh/deduplication, and deletion limited to Chronos-V copi
 User-initiated read-only Outlook email scans, approval before adding, provider-isolated
 deduplication, independently pausable access, and deletion limited to Chronos-V copies.
 
-## 8. Google Calendar read-only push fix — IN PROGRESS
+## 8. Google Calendar read-only push fix — DONE
 
 Never push to calendars Google marks read-only; stop reporting those 403s as a
 broken Google connection.
