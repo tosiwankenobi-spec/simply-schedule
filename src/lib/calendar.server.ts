@@ -675,8 +675,9 @@ async function push(
     .limit(50);
 
   for (const p of pending ?? []) {
-    if (settings.conflict_policy === "remote") {
-      // Google is authoritative: drop the queued deletion instead of pushing it.
+    if (settings.conflict_policy === "remote" || !canWrite(targetCalendar)) {
+      // Google is authoritative (or the calendar is read-only): drop the queued
+      // deletion instead of pushing it.
       await supabase.from("pending_calendar_deletions").delete().eq("id", p.id);
       result.skipped++;
       continue;
