@@ -763,6 +763,11 @@ async function push(
   for (const row of linked ?? []) {
     if (!hasLocalEdits(row.updated_at, row.last_synced_at)) continue;
     const cal = row.calendar_id ?? targetCalendar;
+    if (!canWrite(cal)) {
+      // Subscribed/shared calendar we may only read — keep the local edit.
+      result.skipped++;
+      continue;
+    }
     try {
       const { status, json } = await calFetch(
         `/calendars/${encodeURIComponent(cal)}/events/${encodeURIComponent(row.calendar_event_id!)}`,
