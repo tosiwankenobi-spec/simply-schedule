@@ -263,7 +263,47 @@ export const performNotificationAction = createServerFn({ method: "POST" })
       p_snooze_minutes: data.snoozeMinutes,
     });
     if (error) throw error;
-    return result as unknown as NotificationActionResult;
+    const actionResult = result as unknown as NotificationActionResult;
+
+    if (data.action === "done" || data.action === "snooze") {
+      // Confirmation email is best effort — never fail the action on a send error.
+      try {
+        const { NOTIF_COLS, DEFAULT_PREFS } = await import("./notifications.server");
+        const [{ data: prefRow }, { data: notification }] = await Promise.all([
+          context.supabase
+            .from("notification_prefs")
+            .select(NOTIF_COLS)
+            .eq("user_id", context.userId)
+            .maybeSingle(),
+          context.supabase
+            .from("notification_log")
+            .select("title,body")
+            .eq("id", data.notificationId)
+            .eq("user_id", context.userId)
+            .maybeSingle(),
+        ]);
+        const prefs = (prefRow as NotifPrefs | null) ?? DEFAULT_PREFS;
+        const to = prefs.email_to ?? context.claims.email;
+        if (prefs.email_enabled && to) {
+          const { sendTemplateEmail } = await import("@/lib/email-templates/send-email");
+          await sendTemplateEmail("reminder-action", to, {
+            templateData: {
+              action: data.action,
+              reminderTitle: notification?.title ?? "Your reminder",
+              reminderBody: notification?.body ?? "",
+              snoozedUntilLabel: actionResult.snoozedUntil
+                ? new Date(actionResult.snoozedUntil).toISOString()
+                : null,
+            },
+            idempotencyKey: `reminder-action-${data.action}-${data.notificationId}`,
+          });
+        }
+      } catch (sendError) {
+        console.warn("Reminder confirmation email failed", sendError);
+      }
+    }
+
+    return actionResult;
   });
 
 export const markNotificationsSeen = createServerFn({ method: "POST" })
