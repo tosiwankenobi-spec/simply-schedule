@@ -39,6 +39,7 @@ import { Route as AuthenticatedSetupDeviceCalendarRouteImport } from './routes/_
 import { Route as AuthenticatedSetupAndroidRouteImport } from './routes/_authenticated/setup.android'
 import { Route as AuthenticatedPlannerPreferencesRouteImport } from './routes/_authenticated/planner.preferences'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
+import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 
 const Char91indexChar93Route = Char91indexChar93RouteImport.update({
   id: '/index',
@@ -198,6 +199,12 @@ const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
   path: '/.lovable/oauth/consent',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LovableEmailTransactionalPreviewRoute =
+  LovableEmailTransactionalPreviewRouteImport.update({
+    id: '/lovable/email/transactional/preview',
+    path: '/lovable/email/transactional/preview',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -229,6 +236,7 @@ export interface FileRoutesByFullPath {
   '/setup/outlook': typeof AuthenticatedSetupOutlookRoute
   '/setup/sync': typeof AuthenticatedSetupSyncRoute
   '/oauth/microsoft/return': typeof OauthMicrosoftReturnRoute
+  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -260,6 +268,7 @@ export interface FileRoutesByTo {
   '/setup/outlook': typeof AuthenticatedSetupOutlookRoute
   '/setup/sync': typeof AuthenticatedSetupSyncRoute
   '/oauth/microsoft/return': typeof OauthMicrosoftReturnRoute
+  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -293,6 +302,7 @@ export interface FileRoutesById {
   '/_authenticated/setup/outlook': typeof AuthenticatedSetupOutlookRoute
   '/_authenticated/setup/sync': typeof AuthenticatedSetupSyncRoute
   '/oauth/microsoft/return': typeof OauthMicrosoftReturnRoute
+  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -326,6 +336,7 @@ export interface FileRouteTypes {
     | '/setup/outlook'
     | '/setup/sync'
     | '/oauth/microsoft/return'
+    | '/lovable/email/transactional/preview'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -357,6 +368,7 @@ export interface FileRouteTypes {
     | '/setup/outlook'
     | '/setup/sync'
     | '/oauth/microsoft/return'
+    | '/lovable/email/transactional/preview'
   id:
     | '__root__'
     | '/'
@@ -389,6 +401,7 @@ export interface FileRouteTypes {
     | '/_authenticated/setup/outlook'
     | '/_authenticated/setup/sync'
     | '/oauth/microsoft/return'
+    | '/lovable/email/transactional/preview'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -400,6 +413,7 @@ export interface RootRouteChildren {
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   OauthMicrosoftReturnRoute: typeof OauthMicrosoftReturnRoute
+  LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -614,6 +628,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DotlovableOauthConsentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/lovable/email/transactional/preview': {
+      id: '/lovable/email/transactional/preview'
+      path: '/lovable/email/transactional/preview'
+      fullPath: '/lovable/email/transactional/preview'
+      preLoaderRoute: typeof LovableEmailTransactionalPreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -689,6 +710,7 @@ const rootRouteChildren: RootRouteChildren = {
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   OauthMicrosoftReturnRoute: OauthMicrosoftReturnRoute,
+  LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
