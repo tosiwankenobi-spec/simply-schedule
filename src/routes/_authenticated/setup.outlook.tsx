@@ -38,7 +38,7 @@ const SETUP_STEPS = [
   {
     title: "Register Chronos-V in Microsoft Entra",
     description:
-      "Create an app registration for personal, work, and school Microsoft accounts, then add the gateway callback below as a web redirect URI.",
+      "Create an app registration that supports personal Microsoft accounts (Outlook.com, Hotmail, Live), then add the gateway callback below as a web redirect URI.",
   },
   {
     title: "Grant calendar and read-only mail access",
