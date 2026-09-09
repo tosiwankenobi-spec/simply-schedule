@@ -230,6 +230,8 @@ function OutlookSetupPage() {
               </CardContent>
             </Card>
 
+            <VerificationDocumentUploader />
+
             <Card className="rounded-2xl border-dashed bg-card/70">
               <CardHeader>
                 <CardTitle>Use Outlook today</CardTitle>
