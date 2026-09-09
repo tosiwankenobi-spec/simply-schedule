@@ -41,6 +41,15 @@ upload, dependable refresh/deduplication, and deletion limited to Chronos-V copi
 User-initiated read-only Outlook email scans, approval before adding, provider-isolated
 deduplication, independently pausable access, and deletion limited to Chronos-V copies.
 
+## 8. Google Calendar read-only push fix — IN PROGRESS
+
+Never push to calendars Google marks read-only; stop reporting those 403s as a
+broken Google connection.
+
+## 9. Email infrastructure for notify.verolane.ca — OPEN
+
+Set up sender domain and email delivery for notification emails.
+
 ## Capability list to preserve and complete over time
 
 - Universal schedule hub: Google Calendar, Outlook, device calendars, Gmail/Outlook
