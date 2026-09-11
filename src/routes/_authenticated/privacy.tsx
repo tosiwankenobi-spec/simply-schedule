@@ -100,7 +100,9 @@ function ProviderCard({
           <div className="flex items-center gap-3">
             <div className="rounded-lg bg-secondary p-2 text-foreground">{icon}</div>
             <div>
-              <CardTitle>{title}</CardTitle>
+              <CardTitle asChild>
+                <h2>{title}</h2>
+              </CardTitle>
               <CardDescription>
                 {lastAccessedAt
                   ? `Last accessed ${format(new Date(lastAccessedAt), "MMM d, yyyy 'at' h:mm a")}`
@@ -193,8 +195,10 @@ function DataInventory({ data }: { data: PrivacyStatus }) {
   return (
     <Card className="rounded-2xl bg-card/90 shadow-[0_18px_45px_rgba(0,46,40,0.04)]">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Database className="h-5 w-5" /> Your Chronos-V data
+        <CardTitle asChild className="flex items-center gap-2">
+          <h2>
+            <Database className="h-5 w-5" /> Your Chronos-V data
+          </h2>
         </CardTitle>
         <CardDescription>
           Private application data protected by your signed-in Supabase account.
@@ -349,8 +353,10 @@ function PrivacyPage() {
 
               <Card className="rounded-2xl bg-ink text-paper shadow-[0_24px_55px_rgba(0,46,40,0.14)]">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-paper">
-                    <HardDrive className="h-5 w-5" /> Session and token storage
+                  <CardTitle asChild className="flex items-center gap-2 text-paper">
+                    <h2>
+                      <HardDrive className="h-5 w-5" /> Session and token storage
+                    </h2>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm text-paper/65">
@@ -384,8 +390,10 @@ function PrivacyPage() {
 
             <Card className="rounded-2xl border-dashed bg-card/60">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Smartphone className="h-5 w-5" /> Other sources
+                <CardTitle asChild className="flex items-center gap-2">
+                  <h2>
+                    <Smartphone className="h-5 w-5" /> Other sources
+                  </h2>
                 </CardTitle>
                 <CardDescription>
                   Direct device-calendar access is read-only, requires an explicit mobile
