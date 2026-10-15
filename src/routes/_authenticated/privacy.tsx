@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { WorkspaceHeader } from "@/components/WorkspaceHeader";
 import {
+  deleteMyAccount,
   deleteProviderData,
   getPrivacyStatus,
   setProviderAccess,
@@ -37,6 +38,9 @@ import {
   type PrivacyStatus,
 } from "@/lib/privacy.functions";
 import { LearningPanel } from "@/components/LearningPanel";
+import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/_authenticated/privacy")({
   component: PrivacyPage,
@@ -257,6 +261,18 @@ function PrivacyPage() {
       toast.error(error instanceof Error ? error.message : "Couldn't delete imported data"),
   });
 
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const deleteAccount = useMutation({
+    mutationFn: () => deleteMyAccount({ data: { confirm: "DELETE" } }),
+    onSuccess: async () => {
+      toast.success("Your account and data have been deleted");
+      await supabase.auth.signOut();
+      window.location.href = "/";
+    },
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : "Couldn't delete your account"),
+  });
+
   const data = status.data;
   const busy = access.isPending || remove.isPending;
 
@@ -387,6 +403,58 @@ function PrivacyPage() {
             </div>
 
             <LearningPanel compact />
+
+            <Card className="rounded-2xl border-destructive/40 bg-card/90">
+              <CardHeader>
+                <CardTitle asChild className="flex items-center gap-2 text-destructive">
+                  <h2>
+                    <Trash2 className="h-5 w-5" /> Delete your account
+                  </h2>
+                </CardTitle>
+                <CardDescription>
+                  Permanently removes your Chronos-V account and everything stored with it:
+                  appointments, tasks, routines, plans, reminders, learning data, connection
+                  settings, and uploaded verification documents. Originals in your Google or
+                  Microsoft accounts are not touched. This cannot be undone.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" disabled={deleteAccount.isPending}>
+                      <Trash2 className="mr-1.5 h-4 w-4" /> Delete my account and data
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete your account permanently?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        All of your Chronos-V data will be erased immediately and cannot be
+                        recovered. Type <span className="font-semibold">DELETE</span> to confirm.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <Input
+                      value={deleteConfirm}
+                      onChange={(event) => setDeleteConfirm(event.target.value)}
+                      placeholder="Type DELETE"
+                      autoComplete="off"
+                    />
+                    <AlertDialogFooter>
+                      <AlertDialogCancel onClick={() => setDeleteConfirm("")}>
+                        Keep my account
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        disabled={deleteConfirm !== "DELETE" || deleteAccount.isPending}
+                        onClick={() => deleteAccount.mutate()}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        {deleteAccount.isPending ? "Deleting…" : "Delete everything"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </CardContent>
+            </Card>
 
             <Card className="rounded-2xl border-dashed bg-card/60">
               <CardHeader>

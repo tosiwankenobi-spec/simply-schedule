@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   Smartphone,
   Sparkles,
+  Trash2,
 } from "lucide-react";
 import { WorkspaceHeader } from "@/components/WorkspaceHeader";
 import { Button } from "@/components/ui/button";
@@ -123,6 +124,13 @@ const SETTINGS_GROUPS: Array<{
         action: "Open privacy controls",
         to: "/privacy",
         icon: ShieldCheck,
+      },
+      {
+        title: "Delete account",
+        description: "Permanently remove your account and every piece of data stored with it.",
+        action: "Request deletion",
+        to: "/privacy",
+        icon: Trash2,
       },
       {
         title: "Device calendars",

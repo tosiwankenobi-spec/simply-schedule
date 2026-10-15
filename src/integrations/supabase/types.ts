@@ -1174,6 +1174,7 @@ export type Database = {
         Args: { p_household_id: string }
         Returns: string
       }
+      delete_my_account: { Args: never; Returns: Json }
       join_household: {
         Args: { p_display_name: string; p_invite_id: string }
         Returns: string
