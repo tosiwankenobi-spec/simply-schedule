@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1792091019469,
+      "tag": "0000_delete_my_account",
+      "breakpoints": true
+    }
+  ]
+}
