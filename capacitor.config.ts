@@ -17,12 +17,12 @@ const config: CapacitorConfig = {
   appName: "Chronos-V",
   webDir: "public",
   server: {
-    url: "https://project--3efdbf41-41b9-4a36-a987-83eec491b4cd.lovable.app",
+    url: "https://verolane.online",
     cleartext: false,
     androidScheme: "https",
   },
   android: {
-    backgroundColor: "#faf3e3",
+    backgroundColor: "#002E28",
   },
   plugins: {
     LocalNotifications: {

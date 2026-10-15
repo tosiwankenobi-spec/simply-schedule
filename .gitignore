@@ -39,3 +39,7 @@ supabase/.temp/
 *.njsproj
 *.sln
 *.sw?
+
+android/keystore.properties
+*.jks
+*.keystore

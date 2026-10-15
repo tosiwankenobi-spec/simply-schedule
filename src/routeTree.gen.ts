@@ -10,36 +10,36 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as Char91indexChar93RouteImport } from './routes/[index]'
-import { Route as McpRouteImport } from './routes/mcp'
-import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthenticatedWelcomeRouteImport } from './routes/_authenticated/welcome'
-import { Route as AuthenticatedWeeklyResetRouteImport } from './routes/_authenticated/weekly-reset'
-import { Route as AuthenticatedTomorrowRouteImport } from './routes/_authenticated/tomorrow'
-import { Route as AuthenticatedTodayRouteImport } from './routes/_authenticated/today'
-import { Route as AuthenticatedTasksRouteImport } from './routes/_authenticated/tasks'
-import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
-import { Route as AuthenticatedRoutinesRouteImport } from './routes/_authenticated/routines'
-import { Route as AuthenticatedPrivacyRouteImport } from './routes/_authenticated/privacy'
-import { Route as AuthenticatedPlannerRouteImport } from './routes/_authenticated/planner'
-import { Route as AuthenticatedNotificationActionRouteImport } from './routes/_authenticated/notification-action'
-import { Route as AuthenticatedInboxRouteImport } from './routes/_authenticated/inbox'
-import { Route as AuthenticatedHouseholdRouteImport } from './routes/_authenticated/household'
-import { Route as AuthenticatedCaptureRouteImport } from './routes/_authenticated/capture'
-import { Route as AuthenticatedCalendarImportRouteImport } from './routes/_authenticated/calendar-import'
-import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/app'
-import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as McpRouteImport } from './routes/mcp'
 import { Route as Char91DotwellKnownChar93MicrosoftIdentityAssociationChar91DotChar93jsonRouteImport } from './routes/[.well-known]/microsoft-identity-association[.]json'
-import { Route as OauthMicrosoftReturnRouteImport } from './routes/oauth/microsoft/return'
-import { Route as AuthenticatedSetupSyncRouteImport } from './routes/_authenticated/setup.sync'
-import { Route as AuthenticatedSetupOutlookRouteImport } from './routes/_authenticated/setup.outlook'
-import { Route as AuthenticatedSetupNotificationsRouteImport } from './routes/_authenticated/setup.notifications'
-import { Route as AuthenticatedSetupGmailRouteImport } from './routes/_authenticated/setup.gmail'
-import { Route as AuthenticatedSetupDeviceCalendarRouteImport } from './routes/_authenticated/setup.device-calendar'
-import { Route as AuthenticatedSetupAndroidRouteImport } from './routes/_authenticated/setup.android'
-import { Route as AuthenticatedPlannerPreferencesRouteImport } from './routes/_authenticated/planner.preferences'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
+import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/app'
+import { Route as AuthenticatedCalendarImportRouteImport } from './routes/_authenticated/calendar-import'
+import { Route as AuthenticatedCaptureRouteImport } from './routes/_authenticated/capture'
+import { Route as AuthenticatedHouseholdRouteImport } from './routes/_authenticated/household'
+import { Route as AuthenticatedInboxRouteImport } from './routes/_authenticated/inbox'
+import { Route as AuthenticatedNotificationActionRouteImport } from './routes/_authenticated/notification-action'
+import { Route as AuthenticatedPlannerRouteImport } from './routes/_authenticated/planner'
+import { Route as AuthenticatedPrivacyRouteImport } from './routes/_authenticated/privacy'
+import { Route as AuthenticatedRoutinesRouteImport } from './routes/_authenticated/routines'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedTasksRouteImport } from './routes/_authenticated/tasks'
+import { Route as AuthenticatedTodayRouteImport } from './routes/_authenticated/today'
+import { Route as AuthenticatedTomorrowRouteImport } from './routes/_authenticated/tomorrow'
+import { Route as AuthenticatedWeeklyResetRouteImport } from './routes/_authenticated/weekly-reset'
+import { Route as AuthenticatedWelcomeRouteImport } from './routes/_authenticated/welcome'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
+import { Route as AuthenticatedPlannerPreferencesRouteImport } from './routes/_authenticated/planner.preferences'
+import { Route as AuthenticatedSetupAndroidRouteImport } from './routes/_authenticated/setup.android'
+import { Route as AuthenticatedSetupDeviceCalendarRouteImport } from './routes/_authenticated/setup.device-calendar'
+import { Route as AuthenticatedSetupGmailRouteImport } from './routes/_authenticated/setup.gmail'
+import { Route as AuthenticatedSetupNotificationsRouteImport } from './routes/_authenticated/setup.notifications'
+import { Route as AuthenticatedSetupOutlookRouteImport } from './routes/_authenticated/setup.outlook'
+import { Route as AuthenticatedSetupSyncRouteImport } from './routes/_authenticated/setup.sync'
+import { Route as OauthMicrosoftReturnRouteImport } from './routes/oauth/microsoft/return'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 
 const Char91indexChar93Route = Char91indexChar93RouteImport.update({
@@ -47,9 +47,13 @@ const Char91indexChar93Route = Char91indexChar93RouteImport.update({
   path: '/index',
   getParentRoute: () => rootRouteImport,
 } as any)
-const McpRoute = McpRouteImport.update({
-  id: '/mcp',
-  path: '/mcp',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -57,99 +61,11 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
-  id: '/_authenticated',
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthenticatedWelcomeRoute = AuthenticatedWelcomeRouteImport.update({
-  id: '/welcome',
-  path: '/welcome',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedWeeklyResetRoute =
-  AuthenticatedWeeklyResetRouteImport.update({
-    id: '/weekly-reset',
-    path: '/weekly-reset',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedTomorrowRoute = AuthenticatedTomorrowRouteImport.update({
-  id: '/tomorrow',
-  path: '/tomorrow',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedTodayRoute = AuthenticatedTodayRouteImport.update({
-  id: '/today',
-  path: '/today',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedTasksRoute = AuthenticatedTasksRouteImport.update({
-  id: '/tasks',
-  path: '/tasks',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedRoutinesRoute = AuthenticatedRoutinesRouteImport.update({
-  id: '/routines',
-  path: '/routines',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedPrivacyRoute = AuthenticatedPrivacyRouteImport.update({
-  id: '/privacy',
-  path: '/privacy',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedPlannerRoute = AuthenticatedPlannerRouteImport.update({
-  id: '/planner',
-  path: '/planner',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedNotificationActionRoute =
-  AuthenticatedNotificationActionRouteImport.update({
-    id: '/notification-action',
-    path: '/notification-action',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedInboxRoute = AuthenticatedInboxRouteImport.update({
-  id: '/inbox',
-  path: '/inbox',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedHouseholdRoute = AuthenticatedHouseholdRouteImport.update({
-  id: '/household',
-  path: '/household',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedCaptureRoute = AuthenticatedCaptureRouteImport.update({
-  id: '/capture',
-  path: '/capture',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedCalendarImportRoute =
-  AuthenticatedCalendarImportRouteImport.update({
-    id: '/calendar-import',
-    path: '/calendar-import',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedAppRoute = AuthenticatedAppRouteImport.update({
-  id: '/app',
-  path: '/app',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const Char91DotwellKnownChar93OauthProtectedResourceRoute =
-  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
-    id: '/.well-known/oauth-protected-resource',
-    path: '/.well-known/oauth-protected-resource',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const Char91DotwellKnownChar93MicrosoftIdentityAssociationChar91DotChar93jsonRoute =
   Char91DotwellKnownChar93MicrosoftIdentityAssociationChar91DotChar93jsonRouteImport.update(
     {
@@ -158,38 +74,100 @@ const Char91DotwellKnownChar93MicrosoftIdentityAssociationChar91DotChar93jsonRou
       getParentRoute: () => rootRouteImport,
     } as any,
   )
-const OauthMicrosoftReturnRoute = OauthMicrosoftReturnRouteImport.update({
-  id: '/oauth/microsoft/return',
-  path: '/oauth/microsoft/return',
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AuthenticatedAppRoute = AuthenticatedAppRouteImport.update({
+  id: '/app',
+  path: '/app',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedCalendarImportRoute =
+  AuthenticatedCalendarImportRouteImport.update({
+    id: '/calendar-import',
+    path: '/calendar-import',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedCaptureRoute = AuthenticatedCaptureRouteImport.update({
+  id: '/capture',
+  path: '/capture',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedHouseholdRoute = AuthenticatedHouseholdRouteImport.update({
+  id: '/household',
+  path: '/household',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedInboxRoute = AuthenticatedInboxRouteImport.update({
+  id: '/inbox',
+  path: '/inbox',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedNotificationActionRoute =
+  AuthenticatedNotificationActionRouteImport.update({
+    id: '/notification-action',
+    path: '/notification-action',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedPlannerRoute = AuthenticatedPlannerRouteImport.update({
+  id: '/planner',
+  path: '/planner',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPrivacyRoute = AuthenticatedPrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedRoutinesRoute = AuthenticatedRoutinesRouteImport.update({
+  id: '/routines',
+  path: '/routines',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedTasksRoute = AuthenticatedTasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedTodayRoute = AuthenticatedTodayRouteImport.update({
+  id: '/today',
+  path: '/today',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedTomorrowRoute = AuthenticatedTomorrowRouteImport.update({
+  id: '/tomorrow',
+  path: '/tomorrow',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedWeeklyResetRoute =
+  AuthenticatedWeeklyResetRouteImport.update({
+    id: '/weekly-reset',
+    path: '/weekly-reset',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedWelcomeRoute = AuthenticatedWelcomeRouteImport.update({
+  id: '/welcome',
+  path: '/welcome',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
+  id: '/.lovable/oauth/consent',
+  path: '/.lovable/oauth/consent',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedSetupSyncRoute = AuthenticatedSetupSyncRouteImport.update({
-  id: '/setup/sync',
-  path: '/setup/sync',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedSetupOutlookRoute =
-  AuthenticatedSetupOutlookRouteImport.update({
-    id: '/setup/outlook',
-    path: '/setup/outlook',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedSetupNotificationsRoute =
-  AuthenticatedSetupNotificationsRouteImport.update({
-    id: '/setup/notifications',
-    path: '/setup/notifications',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedSetupGmailRoute = AuthenticatedSetupGmailRouteImport.update({
-  id: '/setup/gmail',
-  path: '/setup/gmail',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedSetupDeviceCalendarRoute =
-  AuthenticatedSetupDeviceCalendarRouteImport.update({
-    id: '/setup/device-calendar',
-    path: '/setup/device-calendar',
-    getParentRoute: () => AuthenticatedRouteRoute,
+const AuthenticatedPlannerPreferencesRoute =
+  AuthenticatedPlannerPreferencesRouteImport.update({
+    id: '/preferences',
+    path: '/preferences',
+    getParentRoute: () => AuthenticatedPlannerRoute,
   } as any)
 const AuthenticatedSetupAndroidRoute =
   AuthenticatedSetupAndroidRouteImport.update({
@@ -197,15 +175,37 @@ const AuthenticatedSetupAndroidRoute =
     path: '/setup/android',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedPlannerPreferencesRoute =
-  AuthenticatedPlannerPreferencesRouteImport.update({
-    id: '/preferences',
-    path: '/preferences',
-    getParentRoute: () => AuthenticatedPlannerRoute,
+const AuthenticatedSetupDeviceCalendarRoute =
+  AuthenticatedSetupDeviceCalendarRouteImport.update({
+    id: '/setup/device-calendar',
+    path: '/setup/device-calendar',
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
-  id: '/.lovable/oauth/consent',
-  path: '/.lovable/oauth/consent',
+const AuthenticatedSetupGmailRoute = AuthenticatedSetupGmailRouteImport.update({
+  id: '/setup/gmail',
+  path: '/setup/gmail',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSetupNotificationsRoute =
+  AuthenticatedSetupNotificationsRouteImport.update({
+    id: '/setup/notifications',
+    path: '/setup/notifications',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSetupOutlookRoute =
+  AuthenticatedSetupOutlookRouteImport.update({
+    id: '/setup/outlook',
+    path: '/setup/outlook',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSetupSyncRoute = AuthenticatedSetupSyncRouteImport.update({
+  id: '/setup/sync',
+  path: '/setup/sync',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const OauthMicrosoftReturnRoute = OauthMicrosoftReturnRouteImport.update({
+  id: '/oauth/microsoft/return',
+  path: '/oauth/microsoft/return',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LovableEmailTransactionalPreviewRoute =
@@ -441,18 +441,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91indexChar93RouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/mcp': {
-      id: '/mcp'
-      path: '/mcp'
-      fullPath: '/mcp'
-      preLoaderRoute: typeof McpRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -462,123 +455,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/welcome': {
-      id: '/_authenticated/welcome'
-      path: '/welcome'
-      fullPath: '/welcome'
-      preLoaderRoute: typeof AuthenticatedWelcomeRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/weekly-reset': {
-      id: '/_authenticated/weekly-reset'
-      path: '/weekly-reset'
-      fullPath: '/weekly-reset'
-      preLoaderRoute: typeof AuthenticatedWeeklyResetRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/tomorrow': {
-      id: '/_authenticated/tomorrow'
-      path: '/tomorrow'
-      fullPath: '/tomorrow'
-      preLoaderRoute: typeof AuthenticatedTomorrowRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/today': {
-      id: '/_authenticated/today'
-      path: '/today'
-      fullPath: '/today'
-      preLoaderRoute: typeof AuthenticatedTodayRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/tasks': {
-      id: '/_authenticated/tasks'
-      path: '/tasks'
-      fullPath: '/tasks'
-      preLoaderRoute: typeof AuthenticatedTasksRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/settings': {
-      id: '/_authenticated/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/routines': {
-      id: '/_authenticated/routines'
-      path: '/routines'
-      fullPath: '/routines'
-      preLoaderRoute: typeof AuthenticatedRoutinesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/privacy': {
-      id: '/_authenticated/privacy'
-      path: '/privacy'
-      fullPath: '/privacy'
-      preLoaderRoute: typeof AuthenticatedPrivacyRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/planner': {
-      id: '/_authenticated/planner'
-      path: '/planner'
-      fullPath: '/planner'
-      preLoaderRoute: typeof AuthenticatedPlannerRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/notification-action': {
-      id: '/_authenticated/notification-action'
-      path: '/notification-action'
-      fullPath: '/notification-action'
-      preLoaderRoute: typeof AuthenticatedNotificationActionRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/inbox': {
-      id: '/_authenticated/inbox'
-      path: '/inbox'
-      fullPath: '/inbox'
-      preLoaderRoute: typeof AuthenticatedInboxRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/household': {
-      id: '/_authenticated/household'
-      path: '/household'
-      fullPath: '/household'
-      preLoaderRoute: typeof AuthenticatedHouseholdRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/capture': {
-      id: '/_authenticated/capture'
-      path: '/capture'
-      fullPath: '/capture'
-      preLoaderRoute: typeof AuthenticatedCaptureRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/calendar-import': {
-      id: '/_authenticated/calendar-import'
-      path: '/calendar-import'
-      fullPath: '/calendar-import'
-      preLoaderRoute: typeof AuthenticatedCalendarImportRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/app': {
-      id: '/_authenticated/app'
-      path: '/app'
-      fullPath: '/app'
-      preLoaderRoute: typeof AuthenticatedAppRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/.well-known/oauth-protected-resource': {
-      id: '/.well-known/oauth-protected-resource'
-      path: '/.well-known/oauth-protected-resource'
-      fullPath: '/.well-known/oauth-protected-resource'
-      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/.well-known/microsoft-identity-association.json': {
@@ -588,39 +476,137 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotwellKnownChar93MicrosoftIdentityAssociationChar91DotChar93jsonRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/oauth/microsoft/return': {
-      id: '/oauth/microsoft/return'
-      path: '/oauth/microsoft/return'
-      fullPath: '/oauth/microsoft/return'
-      preLoaderRoute: typeof OauthMicrosoftReturnRouteImport
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/setup/sync': {
-      id: '/_authenticated/setup/sync'
-      path: '/setup/sync'
-      fullPath: '/setup/sync'
-      preLoaderRoute: typeof AuthenticatedSetupSyncRouteImport
+    '/_authenticated/app': {
+      id: '/_authenticated/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AuthenticatedAppRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/setup/outlook': {
-      id: '/_authenticated/setup/outlook'
-      path: '/setup/outlook'
-      fullPath: '/setup/outlook'
-      preLoaderRoute: typeof AuthenticatedSetupOutlookRouteImport
+    '/_authenticated/calendar-import': {
+      id: '/_authenticated/calendar-import'
+      path: '/calendar-import'
+      fullPath: '/calendar-import'
+      preLoaderRoute: typeof AuthenticatedCalendarImportRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/setup/notifications': {
-      id: '/_authenticated/setup/notifications'
-      path: '/setup/notifications'
-      fullPath: '/setup/notifications'
-      preLoaderRoute: typeof AuthenticatedSetupNotificationsRouteImport
+    '/_authenticated/capture': {
+      id: '/_authenticated/capture'
+      path: '/capture'
+      fullPath: '/capture'
+      preLoaderRoute: typeof AuthenticatedCaptureRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/setup/gmail': {
-      id: '/_authenticated/setup/gmail'
-      path: '/setup/gmail'
-      fullPath: '/setup/gmail'
-      preLoaderRoute: typeof AuthenticatedSetupGmailRouteImport
+    '/_authenticated/household': {
+      id: '/_authenticated/household'
+      path: '/household'
+      fullPath: '/household'
+      preLoaderRoute: typeof AuthenticatedHouseholdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/inbox': {
+      id: '/_authenticated/inbox'
+      path: '/inbox'
+      fullPath: '/inbox'
+      preLoaderRoute: typeof AuthenticatedInboxRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/notification-action': {
+      id: '/_authenticated/notification-action'
+      path: '/notification-action'
+      fullPath: '/notification-action'
+      preLoaderRoute: typeof AuthenticatedNotificationActionRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/planner': {
+      id: '/_authenticated/planner'
+      path: '/planner'
+      fullPath: '/planner'
+      preLoaderRoute: typeof AuthenticatedPlannerRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/privacy': {
+      id: '/_authenticated/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof AuthenticatedPrivacyRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/routines': {
+      id: '/_authenticated/routines'
+      path: '/routines'
+      fullPath: '/routines'
+      preLoaderRoute: typeof AuthenticatedRoutinesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/tasks': {
+      id: '/_authenticated/tasks'
+      path: '/tasks'
+      fullPath: '/tasks'
+      preLoaderRoute: typeof AuthenticatedTasksRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/today': {
+      id: '/_authenticated/today'
+      path: '/today'
+      fullPath: '/today'
+      preLoaderRoute: typeof AuthenticatedTodayRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/tomorrow': {
+      id: '/_authenticated/tomorrow'
+      path: '/tomorrow'
+      fullPath: '/tomorrow'
+      preLoaderRoute: typeof AuthenticatedTomorrowRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/weekly-reset': {
+      id: '/_authenticated/weekly-reset'
+      path: '/weekly-reset'
+      fullPath: '/weekly-reset'
+      preLoaderRoute: typeof AuthenticatedWeeklyResetRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/welcome': {
+      id: '/_authenticated/welcome'
+      path: '/welcome'
+      fullPath: '/welcome'
+      preLoaderRoute: typeof AuthenticatedWelcomeRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/.lovable/oauth/consent': {
+      id: '/.lovable/oauth/consent'
+      path: '/.lovable/oauth/consent'
+      fullPath: '/.lovable/oauth/consent'
+      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/planner/preferences': {
+      id: '/_authenticated/planner/preferences'
+      path: '/preferences'
+      fullPath: '/planner/preferences'
+      preLoaderRoute: typeof AuthenticatedPlannerPreferencesRouteImport
+      parentRoute: typeof AuthenticatedPlannerRoute
+    }
+    '/_authenticated/setup/android': {
+      id: '/_authenticated/setup/android'
+      path: '/setup/android'
+      fullPath: '/setup/android'
+      preLoaderRoute: typeof AuthenticatedSetupAndroidRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/setup/device-calendar': {
@@ -630,25 +616,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSetupDeviceCalendarRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/setup/android': {
-      id: '/_authenticated/setup/android'
-      path: '/setup/android'
-      fullPath: '/setup/android'
-      preLoaderRoute: typeof AuthenticatedSetupAndroidRouteImport
+    '/_authenticated/setup/gmail': {
+      id: '/_authenticated/setup/gmail'
+      path: '/setup/gmail'
+      fullPath: '/setup/gmail'
+      preLoaderRoute: typeof AuthenticatedSetupGmailRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/planner/preferences': {
-      id: '/_authenticated/planner/preferences'
-      path: '/preferences'
-      fullPath: '/planner/preferences'
-      preLoaderRoute: typeof AuthenticatedPlannerPreferencesRouteImport
-      parentRoute: typeof AuthenticatedPlannerRoute
+    '/_authenticated/setup/notifications': {
+      id: '/_authenticated/setup/notifications'
+      path: '/setup/notifications'
+      fullPath: '/setup/notifications'
+      preLoaderRoute: typeof AuthenticatedSetupNotificationsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/.lovable/oauth/consent': {
-      id: '/.lovable/oauth/consent'
-      path: '/.lovable/oauth/consent'
-      fullPath: '/.lovable/oauth/consent'
-      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
+    '/_authenticated/setup/outlook': {
+      id: '/_authenticated/setup/outlook'
+      path: '/setup/outlook'
+      fullPath: '/setup/outlook'
+      preLoaderRoute: typeof AuthenticatedSetupOutlookRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/setup/sync': {
+      id: '/_authenticated/setup/sync'
+      path: '/setup/sync'
+      fullPath: '/setup/sync'
+      preLoaderRoute: typeof AuthenticatedSetupSyncRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/oauth/microsoft/return': {
+      id: '/oauth/microsoft/return'
+      path: '/oauth/microsoft/return'
+      fullPath: '/oauth/microsoft/return'
+      preLoaderRoute: typeof OauthMicrosoftReturnRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lovable/email/transactional/preview': {
