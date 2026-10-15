@@ -166,10 +166,33 @@ function PrivacyPolicyPage() {
             <li>Reset or turn off the optional learning statistics.</li>
             <li>Export your plan as an iCalendar (.ics) file.</li>
             <li>
-              Request deletion of your account and all associated data by contacting us at the
-              address below.
+              Delete your account and all associated data yourself — see the next section.
             </li>
           </ul>
+        </Section>
+
+        <Section title="Delete your account">
+          <p>
+            You can permanently delete your account and everything stored with it at any
+            time. Sign in, open{" "}
+            <Link to="/settings" className="font-medium text-foreground underline underline-offset-2">
+              Settings
+            </Link>
+            , choose <span className="font-medium text-foreground">Delete account</span>, and
+            confirm. This immediately erases your appointments, tasks, routines, plans,
+            reminders, learning data, connection settings, and uploaded documents. Originals
+            in your Google or Microsoft accounts are not affected. Deletion cannot be undone.
+          </p>
+          <p>
+            If you cannot sign in, email{" "}
+            <a
+              href="mailto:privacy@verolane.online"
+              className="font-medium text-foreground underline underline-offset-2"
+            >
+              privacy@verolane.online
+            </a>{" "}
+            from the address on the account and we will process the deletion for you.
+          </p>
         </Section>
 
         <Section title="Data retention and location">
