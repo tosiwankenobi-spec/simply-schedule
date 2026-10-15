@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { WorkspaceHeader } from "@/components/WorkspaceHeader";
 import {
+  deleteMyAccount,
   deleteProviderData,
   getPrivacyStatus,
   setProviderAccess,
@@ -37,6 +38,9 @@ import {
   type PrivacyStatus,
 } from "@/lib/privacy.functions";
 import { LearningPanel } from "@/components/LearningPanel";
+import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/_authenticated/privacy")({
   component: PrivacyPage,
