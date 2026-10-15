@@ -39,3 +39,22 @@ export const deleteProviderData = createServerFn({ method: "POST" })
     const { deletePrivacyProviderData } = await import("./privacy.server");
     return deletePrivacyProviderData(context.supabase as never, context.userId, data.provider);
   });
+
+export const deleteMyAccount = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ confirm: z.literal("DELETE") }))
+  .handler(async ({ context }): Promise<{ deleted: boolean }> => {
+    const userId = context.userId;
+    const { error } = await (context.supabase as never as {
+      rpc: (fn: string) => Promise<{ error: { message: string } | null }>;
+    }).rpc("delete_my_account");
+    if (error) {
+      throw new Error(error.message || "Couldn't delete your data");
+    }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+    if (authError) {
+      throw new Error("Your data was deleted, but the sign-in record could not be removed.");
+    }
+    return { deleted: true };
+  });
