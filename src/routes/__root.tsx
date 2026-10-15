@@ -121,7 +121,7 @@ function RecoveryLayout({
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({ error, reset }: import("@tanstack/react-router").ErrorComponentProps) {
   const router = useRouter();
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
