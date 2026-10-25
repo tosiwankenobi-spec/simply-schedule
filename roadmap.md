@@ -6,6 +6,11 @@ rebuilding anything.
 
 ## 1. Per-user Microsoft Outlook sync — DONE
 
+### Current validation request
+- [ ] Verify workspace linkage, desktop sign-in/consent start and Android return handling.
+- [ ] Repair confirmed account-routing and reconnect blockers; add synthetic integration coverage.
+- [ ] Run automated checks; report genuine Microsoft consent limitations without publishing.
+
 Connect / status / reconnect / disconnect, calendar selection, calendarView delta
 sync with pagination + resync fallback, two-way create/update/delete, provider-isolated
 dedupe and deletion queue, encrypted service-role-only connection key storage,
