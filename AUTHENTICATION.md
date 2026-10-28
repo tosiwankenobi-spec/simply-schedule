@@ -86,6 +86,12 @@ Chronos-V does not perform the Google authorization-code exchange or store a Goo
 
 ## RLS and service-role trust boundaries
 
+### Android Google return: current limitation
+
+The installed managed broker client (cloud-auth-js 1.1.2) offers a full-page browser redirect or an iframe message result, not a documented native one-time-code redemption contract. Android now opens `/auth/google-start` in the Capacitor secure browser and uses the managed broker there. `/auth/google-return` verifies the browser session with Auth, clears callback URL material, and offers a credential-free **Open Chronos-V** link. The native return validates the exact scheme/authority/path and rejects all query parameters and fragments; it never trusts or imports browser credentials. Only a verified session already present in the WebView can enter `/app`. Otherwise the user must sign in in the app, for example with the existing email/password method.
+
+This is safe return/fallback handling, **not a completed Google native session handoff**. A working handoff needs a documented broker-supported, state/PKCE-bound one-time native exchange or a reviewed app-owned server-side transfer contract. Do not invent one by forwarding access/refresh tokens in a link. No Google provider or managed files were changed. Verified Android App Links additionally need the public Play **app-signing** SHA-256 certificate fingerprint (not merely the upload-key fingerprint), HTTPS assetlinks hosting, and a rebuilt release. No fingerprint was fabricated and no verification claim is made. Android changes require a rebuilt APK/AAB; hosted routes must be published deliberately before a distributed build can use them.
+
 The browser and normal authenticated server functions use the Supabase publishable key. A publishable key identifies the Supabase project; it is not an authorization bypass and is expected to be present in the browser bundle. User identity comes from the access token. RLS policies in `supabase/migrations/` restrict application rows with checks such as `auth.uid() = user_id`.
 
 `client.server.ts` is different: it reads `SUPABASE_SERVICE_ROLE_KEY` and creates a non-persistent admin client. The service-role key bypasses RLS and therefore must:
