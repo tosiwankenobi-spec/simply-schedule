@@ -8,14 +8,13 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { CalendarDays, CheckCircle2, Eye, EyeOff, Mail, ShieldCheck, Sparkles } from "lucide-react";
 import { buildEmailVerificationRedirect, readAuthRedirectError } from "@/lib/auth-verification";
+import { Capacitor } from "@capacitor/core";
+import { googleBrowserStartUrl, googleReturnUrl, safeAuthNext } from "@/lib/google-auth-return";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
   validateSearch: (s: Record<string, unknown>): { next?: string; verified?: boolean } => {
-    const next =
-      typeof s.next === "string" && s.next.startsWith("/") && !s.next.startsWith("//")
-        ? s.next
-        : undefined;
+    const next = safeAuthNext(s.next);
     return {
       ...(next ? { next } : {}),
       ...(s.verified === "1" || s.verified === true ? { verified: true } : {}),
@@ -29,6 +28,10 @@ export const Route = createFileRoute("/auth")({
         name: "description",
         content: "Sign in or create your private Chronos-V planning account.",
       },
+      { property: "og:title", content: "Sign in · Chronos-V" },
+      { property: "og:description", content: "Sign in to your private Chronos-V planning account." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
 });
@@ -163,8 +166,19 @@ function AuthPage() {
   async function handleGoogle() {
     setLoading(true);
     setAuthError(null);
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const { Browser } = await import("@capacitor/browser");
+        await Browser.open({ url: googleBrowserStartUrl(window.location.origin) });
+      } catch {
+        setAuthError("Couldn't open the secure browser. Please try again.");
+      } finally { setLoading(false); }
+      return;
+    }
+    if (next) sessionStorage.setItem("chronos-google-next", next);
+    else sessionStorage.removeItem("chronos-google-next");
     const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: next ? window.location.origin + next : window.location.origin,
+      redirect_uri: googleReturnUrl(window.location.origin, false),
     });
     if (result.error) {
       setAuthError("Google sign-in failed. Please try again.");

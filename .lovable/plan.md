@@ -6,6 +6,7 @@
 - Repair verified blockers for personal and Microsoft 365 account selection and expired-access handling.
 - Add synthetic integration tests for per-user encrypted storage, one-time exchange, isolation, calendar sync, read-only mail, disconnect and native return handling.
 - Run the automated suite and inspect harness typecheck/build results. Report real-provider and mocked outcomes separately; do not publish.
+- Repair Android Google return through a public browser callback and a short-lived, encrypted, single-use handoff bound to a verifier held only by the originating WebView. Retain the managed Google broker and existing Outlook native return. Add strict native-link validation and document Android rebuild requirements.
 
 ## Technical details
 Use the existing App User Connector, authenticated server functions and encrypted connection storage. Requests retain User.Read, Calendars.ReadWrite, Mail.Read and offline_access, with no email mutation. Microsoft registration settings not exposed by workspace tools remain unverified.

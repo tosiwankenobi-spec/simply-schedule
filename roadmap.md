@@ -10,6 +10,7 @@ rebuilding anything.
 - [ ] Verify workspace linkage, desktop sign-in/consent start and Android return handling.
 - [ ] Repair confirmed account-routing and reconnect blockers; add synthetic integration coverage.
 - [ ] Run automated checks; report genuine Microsoft consent limitations without publishing.
+- [ ] Validate and repair Android Google return-to-app with secure session handoff; preserve web Google and Outlook flows, test, and document rebuild/configuration requirements without publishing.
 
 Connect / status / reconnect / disconnect, calendar selection, calendarView delta
 sync with pagination + resync fallback, two-way create/update/delete, provider-isolated

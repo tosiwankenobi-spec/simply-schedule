@@ -35,6 +35,14 @@
             </intent-filter>
 
             <!-- Accept text and links shared from other Android apps. -->
+            <!-- Credential-free return only; browser sessions are never copied. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="@string/custom_url_scheme" android:host="oauth" android:path="/google/return" />
+            </intent-filter>
+
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />

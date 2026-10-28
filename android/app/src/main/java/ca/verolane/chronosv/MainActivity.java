@@ -11,6 +11,12 @@ public class MainActivity extends BridgeActivity {
     private static final int MAX_SHARED_TEXT = 2000;
 
     @Override
+    public void onCreate(android.os.Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        routeExternalIntent(getIntent());
+    }
+
+    @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
@@ -31,7 +37,8 @@ public class MainActivity extends BridgeActivity {
         } else if (ACTION_CAPTURE.equals(intent.getAction())) {
             destination = appPage("/capture").build().toString();
         } else if (Intent.ACTION_VIEW.equals(intent.getAction())) {
-            destination = oauthReturnPage(intent.getData());
+            destination = googleReturnPage(intent.getData());
+            if (destination == null) destination = oauthReturnPage(intent.getData());
         }
 
         if (destination == null) return;
@@ -59,6 +66,15 @@ public class MainActivity extends BridgeActivity {
         copyQueryParameter(incoming, builder, "error");
         copyQueryParameter(incoming, builder, "offline_access_allowed");
         return builder.build().toString();
+    }
+
+    private String googleReturnPage(Uri incoming) {
+        if (incoming == null
+            || !getString(R.string.custom_url_scheme).equals(incoming.getScheme())
+            || !"oauth".equals(incoming.getEncodedAuthority())
+            || !"/google/return".equals(incoming.getEncodedPath())
+            || incoming.getQuery() != null || incoming.getFragment() != null) return null;
+        return appPage("/auth/google-return").appendQueryParameter("native", "1").build().toString();
     }
 
     private static void copyQueryParameter(Uri source, Uri.Builder destination, String name) {

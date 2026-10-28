@@ -32,6 +32,8 @@ import { Route as AuthenticatedTodayRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedTomorrowRouteImport } from './routes/_authenticated/tomorrow'
 import { Route as AuthenticatedWeeklyResetRouteImport } from './routes/_authenticated/weekly-reset'
 import { Route as AuthenticatedWelcomeRouteImport } from './routes/_authenticated/welcome'
+import { Route as AuthGoogleReturnRouteImport } from './routes/auth.google-return'
+import { Route as AuthGoogleStartRouteImport } from './routes/auth.google-start'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as AuthenticatedPlannerPreferencesRouteImport } from './routes/_authenticated/planner.preferences'
 import { Route as AuthenticatedSetupAndroidRouteImport } from './routes/_authenticated/setup.android'
@@ -164,6 +166,16 @@ const AuthenticatedWelcomeRoute = AuthenticatedWelcomeRouteImport.update({
   path: '/welcome',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthGoogleReturnRoute = AuthGoogleReturnRouteImport.update({
+  id: '/google-return',
+  path: '/google-return',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthGoogleStartRoute = AuthGoogleStartRouteImport.update({
+  id: '/google-start',
+  path: '/google-start',
+  getParentRoute: () => AuthRoute,
+} as any)
 const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
   id: '/.lovable/oauth/consent',
   path: '/.lovable/oauth/consent',
@@ -223,7 +235,7 @@ const LovableEmailTransactionalPreviewRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/index': typeof Char91indexChar93Route
   '/mcp': typeof McpRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
@@ -244,6 +256,8 @@ export interface FileRoutesByFullPath {
   '/tomorrow': typeof AuthenticatedTomorrowRoute
   '/weekly-reset': typeof AuthenticatedWeeklyResetRoute
   '/welcome': typeof AuthenticatedWelcomeRoute
+  '/auth/google-return': typeof AuthGoogleReturnRoute
+  '/auth/google-start': typeof AuthGoogleStartRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/planner/preferences': typeof AuthenticatedPlannerPreferencesRoute
   '/setup/android': typeof AuthenticatedSetupAndroidRoute
@@ -257,7 +271,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/index': typeof Char91indexChar93Route
   '/mcp': typeof McpRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
@@ -278,6 +292,8 @@ export interface FileRoutesByTo {
   '/tomorrow': typeof AuthenticatedTomorrowRoute
   '/weekly-reset': typeof AuthenticatedWeeklyResetRoute
   '/welcome': typeof AuthenticatedWelcomeRoute
+  '/auth/google-return': typeof AuthGoogleReturnRoute
+  '/auth/google-start': typeof AuthGoogleStartRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/planner/preferences': typeof AuthenticatedPlannerPreferencesRoute
   '/setup/android': typeof AuthenticatedSetupAndroidRoute
@@ -293,7 +309,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/index': typeof Char91indexChar93Route
   '/mcp': typeof McpRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
@@ -314,6 +330,8 @@ export interface FileRoutesById {
   '/_authenticated/tomorrow': typeof AuthenticatedTomorrowRoute
   '/_authenticated/weekly-reset': typeof AuthenticatedWeeklyResetRoute
   '/_authenticated/welcome': typeof AuthenticatedWelcomeRoute
+  '/auth/google-return': typeof AuthGoogleReturnRoute
+  '/auth/google-start': typeof AuthGoogleStartRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/_authenticated/planner/preferences': typeof AuthenticatedPlannerPreferencesRoute
   '/_authenticated/setup/android': typeof AuthenticatedSetupAndroidRoute
@@ -350,6 +368,8 @@ export interface FileRouteTypes {
     | '/tomorrow'
     | '/weekly-reset'
     | '/welcome'
+    | '/auth/google-return'
+    | '/auth/google-start'
     | '/.lovable/oauth/consent'
     | '/planner/preferences'
     | '/setup/android'
@@ -384,6 +404,8 @@ export interface FileRouteTypes {
     | '/tomorrow'
     | '/weekly-reset'
     | '/welcome'
+    | '/auth/google-return'
+    | '/auth/google-start'
     | '/.lovable/oauth/consent'
     | '/planner/preferences'
     | '/setup/android'
@@ -419,6 +441,8 @@ export interface FileRouteTypes {
     | '/_authenticated/tomorrow'
     | '/_authenticated/weekly-reset'
     | '/_authenticated/welcome'
+    | '/auth/google-return'
+    | '/auth/google-start'
     | '/.lovable/oauth/consent'
     | '/_authenticated/planner/preferences'
     | '/_authenticated/setup/android'
@@ -434,7 +458,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
-  AuthRoute: typeof AuthRoute
+  AuthRoute: typeof AuthRouteWithChildren
   Char91indexChar93Route: typeof Char91indexChar93Route
   McpRoute: typeof McpRoute
   PrivacyPolicyRoute: typeof PrivacyPolicyRoute
@@ -608,6 +632,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWelcomeRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/auth/google-return': {
+      id: '/auth/google-return'
+      path: '/google-return'
+      fullPath: '/auth/google-return'
+      preLoaderRoute: typeof AuthGoogleReturnRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/google-start': {
+      id: '/auth/google-start'
+      path: '/google-start'
+      fullPath: '/auth/google-start'
+      preLoaderRoute: typeof AuthGoogleStartRouteImport
+      parentRoute: typeof AuthRoute
+    }
     '/.lovable/oauth/consent': {
       id: '/.lovable/oauth/consent'
       path: '/.lovable/oauth/consent'
@@ -743,10 +781,22 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface AuthRouteChildren {
+  AuthGoogleReturnRoute: typeof AuthGoogleReturnRoute
+  AuthGoogleStartRoute: typeof AuthGoogleStartRoute
+}
+
+const AuthRouteChildren: AuthRouteChildren = {
+  AuthGoogleReturnRoute: AuthGoogleReturnRoute,
+  AuthGoogleStartRoute: AuthGoogleStartRoute,
+}
+
+const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
-  AuthRoute: AuthRoute,
+  AuthRoute: AuthRouteWithChildren,
   Char91indexChar93Route: Char91indexChar93Route,
   McpRoute: McpRoute,
   PrivacyPolicyRoute: PrivacyPolicyRoute,
