@@ -24,9 +24,11 @@ describe("Google native return safety (synthetic)", () => {
     const appLink = new URL(googleNativeAppLinkUrl("https://verolane.online", handoffCode, state));
     expect(appLink.origin).toBe("https://verolane.online");
     expect(appLink.pathname).toBe("/auth/google-handoff");
-    expect(appLink.searchParams.get("native")).toBe("1");
-    expect(appLink.searchParams.get("handoff")).toBe(handoffCode);
-    expect(appLink.searchParams.get("state")).toBe(state);
+    expect(appLink.search).toBe("");
+    const appLinkFragment = new URLSearchParams(appLink.hash.slice(1));
+    expect(appLinkFragment.get("native")).toBe("1");
+    expect(appLinkFragment.get("handoff")).toBe(handoffCode);
+    expect(appLinkFragment.get("state")).toBe(state);
     expect(googleReturnUrl("https://verolane.online", true)).toBe(
       "https://verolane.online/auth/google-return?native=1",
     );
