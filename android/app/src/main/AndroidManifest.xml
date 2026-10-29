@@ -35,7 +35,7 @@
             </intent-filter>
 
             <!-- Accept text and links shared from other Android apps. -->
-            <!-- Credential-free return only; browser sessions are never copied. -->
+            <!-- Accept only the encrypted one-time handoff; never copy browser session tokens. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
