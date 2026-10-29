@@ -4,11 +4,13 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const challengeSchema = z.object({
   codeChallenge: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
+  state: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
 });
 
 const redeemSchema = z.object({
   handoffCode: z.string().min(80).max(1800),
   codeVerifier: z.string().regex(/^[A-Za-z0-9_-]{43,128}$/),
+  state: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
 });
 
 export const createNativeGoogleHandoff = createServerFn({ method: "POST" })
@@ -33,6 +35,7 @@ export const createNativeGoogleHandoff = createServerFn({ method: "POST" })
         userId: user.id,
         email: user.email,
         codeChallenge: data.codeChallenge,
+        state: data.state,
       }),
     };
   });
