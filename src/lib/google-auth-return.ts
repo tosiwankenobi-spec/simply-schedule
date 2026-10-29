@@ -11,7 +11,7 @@ const HANDOFF_CODE = /^v1\.[A-Za-z0-9_-]{16}\.[A-Za-z0-9_-]{1,1500}\.[A-Za-z0-9_
 
 export function safeAuthNext(value: unknown): string | undefined {
   if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//")) return;
-  if (/[\\\u0000-\u0020]/.test(value)) return;
+  if ([...value].some((char) => char === "\\" || char.charCodeAt(0) <= 0x20)) return;
   try {
     const parsed = new URL(value, "https://verolane.online");
     if (parsed.origin !== "https://verolane.online" || parsed.pathname.startsWith("/auth")) return;
