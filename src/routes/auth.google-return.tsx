@@ -86,7 +86,7 @@ function GoogleReturn() {
         }
 
         const session = await redeemNativeGoogleHandoff({
-          data: { handoffCode, codeVerifier: verifier },
+          data: { handoffCode, codeVerifier: verifier, state: returnedState },
         });
         if (!session.access_token || !session.refresh_token) {
           throw new Error("Missing session");
@@ -135,7 +135,7 @@ function GoogleReturn() {
         }
 
         const { handoffCode: newHandoffCode } = await createNativeGoogleHandoff({
-          data: { codeChallenge: challenge },
+          data: { codeChallenge: challenge, state: stateValue },
         });
         sessionStorage.removeItem(GOOGLE_BROWSER_CHALLENGE_KEY);
         sessionStorage.removeItem(GOOGLE_BROWSER_STATE_KEY);
