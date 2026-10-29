@@ -88,9 +88,12 @@ export function googleNativeAppLinkUrl(origin: string, handoffCode: string, stat
     throw new Error("Invalid native Google handoff.");
   }
   const url = new URL("/auth/google-handoff", origin);
-  url.searchParams.set("native", "1");
-  url.searchParams.set("handoff", handoffCode);
-  url.searchParams.set("state", state);
+  // Put the opaque handoff in the fragment so web/CDN request logs never see it.
+  url.hash = new URLSearchParams({
+    native: "1",
+    handoff: handoffCode,
+    state,
+  }).toString();
   return url.toString();
 }
 
