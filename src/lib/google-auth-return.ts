@@ -62,8 +62,8 @@ export function googleBrowserStartUrl(origin: string, challenge: string, state: 
     throw new Error("Invalid native Google sign-in request.");
   }
   const url = new URL("/auth/google-start", origin);
-  url.searchParams.set("challenge", challenge);
-  url.searchParams.set("state", state);
+  // Keep PKCE material out of the HTTP request URL and server access logs.
+  url.hash = new URLSearchParams({ challenge, state }).toString();
   return url.toString();
 }
 
