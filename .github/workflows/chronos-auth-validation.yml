@@ -54,7 +54,7 @@ jobs:
             src/routes/auth.tsx \
             tests/google-auth-return.test.ts \
             tests/native-google-handoff.test.ts \
-            tests/outlook-connect-integration.test.ts \\
+            tests/outlook-connect-integration.test.ts \
             tests/outlook-smart-inbox-contract.test.ts
 
   repository-lint:
