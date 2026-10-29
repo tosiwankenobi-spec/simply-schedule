@@ -123,6 +123,9 @@ function GoogleReturn() {
         }
 
         const { data: userData, error: userError } = await supabase.auth.getUser();
+        // Supabase has consumed the callback fragment by this point. Strip it
+        // before any additional request so URL credentials never linger in history.
+        window.history.replaceState(null, "", "/auth/google-return");
         if (userError || !userData.user) {
           sessionStorage.removeItem(GOOGLE_BROWSER_CHALLENGE_KEY);
           sessionStorage.removeItem(GOOGLE_BROWSER_STATE_KEY);
