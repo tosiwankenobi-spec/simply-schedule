@@ -81,7 +81,7 @@ public class MainActivity extends BridgeActivity {
                 && "verolane.online".equals(incoming.getHost())
                 && incoming.getPort() == -1
                 && incoming.getUserInfo() == null
-                && "/auth/google-return".equals(incoming.getPath());
+                && "/auth/google-handoff".equals(incoming.getPath());
 
         if (!customScheme && !verifiedAppLink) return null;
         if (!validGoogleHandoffParameters(incoming, verifiedAppLink)) return null;
