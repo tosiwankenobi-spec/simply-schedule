@@ -176,7 +176,7 @@ export async function redeemNativeGoogleHandoffCode(input: {
   });
   const { data, error } = await authClient.auth.verifyOtp({
     token_hash: payload.tokenHash,
-    type: "email",
+    type: "magiclink",
   });
 
   if (
