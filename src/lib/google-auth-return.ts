@@ -84,6 +84,17 @@ export function googleNativeOpenUrl(handoffCode: string, state: string): string 
   return url.toString();
 }
 
+export function googleNativeAppLinkUrl(origin: string, handoffCode: string, state: string): string {
+  if (!isValidNativeHandoffCode(handoffCode) || !isValidNativeGoogleState(state)) {
+    throw new Error("Invalid native Google handoff.");
+  }
+  const url = new URL("/auth/google-handoff", origin);
+  url.searchParams.set("native", "1");
+  url.searchParams.set("handoff", handoffCode);
+  url.searchParams.set("state", state);
+  return url.toString();
+}
+
 export function validGoogleNativeReturn(value: string): boolean {
   try {
     const url = new URL(value);
