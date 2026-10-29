@@ -50,10 +50,15 @@ function GoogleReturn() {
     };
 
     async function run() {
-      const params = new URLSearchParams(window.location.search);
-      const nativeReturn = params.get("native") === "1";
-      const handoffCode = params.get("handoff");
-      const returnedState = params.get("state");
+      const queryParams = new URLSearchParams(window.location.search);
+      const fragment = window.location.hash.startsWith("#")
+        ? window.location.hash.slice(1)
+        : "";
+      const fragmentParams = new URLSearchParams(fragment);
+      const nativeReturn =
+        queryParams.get("native") === "1" || fragmentParams.get("native") === "1";
+      const handoffCode = fragmentParams.get("handoff") ?? queryParams.get("handoff");
+      const returnedState = fragmentParams.get("state") ?? queryParams.get("state");
       const isNativeApp = Capacitor.isNativePlatform();
 
       // The handoff is encrypted and one-time. Remove it from browser history
