@@ -69,12 +69,62 @@ public class MainActivity extends BridgeActivity {
     }
 
     private String googleReturnPage(Uri incoming) {
-        if (incoming == null
-            || !getString(R.string.custom_url_scheme).equals(incoming.getScheme())
-            || !"oauth".equals(incoming.getEncodedAuthority())
-            || !"/google/return".equals(incoming.getEncodedPath())
-            || incoming.getQuery() != null || incoming.getFragment() != null) return null;
-        return appPage("/auth/google-return").appendQueryParameter("native", "1").build().toString();
+        if (incoming == null) return null;
+
+        boolean customScheme =
+            getString(R.string.custom_url_scheme).equals(incoming.getScheme())
+                && "oauth".equals(incoming.getEncodedAuthority())
+                && "/google/return".equals(incoming.getEncodedPath())
+                && incoming.getFragment() == null;
+
+        boolean verifiedAppLink =
+            "https".equals(incoming.getScheme())
+                && "verolane.online".equals(incoming.getHost())
+                && incoming.getPort() == -1
+                && incoming.getUserInfo() == null
+                && "/auth/google-handoff".equals(incoming.getPath())
+                && incoming.getQuery() == null
+                && incoming.getFragment() != null;
+
+        if (!customScheme && !verifiedAppLink) return null;
+
+        // For HTTPS App Links, parse the fragment locally so the opaque handoff
+        // never appears in the HTTP request or routine server access logs.
+        Uri parameters = incoming;
+        if (verifiedAppLink) {
+            parameters = Uri.parse("https://verolane.online/auth/google-handoff?"
+                + incoming.getFragment());
+        }
+        if (!validGoogleHandoffParameters(parameters, verifiedAppLink)) return null;
+
+        String handoff = parameters.getQueryParameter("handoff");
+        String state = parameters.getQueryParameter("state");
+        Uri.Builder builder = appPage("/auth/google-return");
+        // Keep the handoff in the WebView fragment as well. Fragments are not
+        // sent in HTTP requests, so the opaque code stays out of server logs.
+        builder.encodedFragment("native=1&handoff=" + Uri.encode(handoff)
+            + "&state=" + Uri.encode(state));
+        return builder.build().toString();
+    }
+
+    private boolean validGoogleHandoffParameters(Uri incoming, boolean verifiedAppLink) {
+        java.util.Set<String> names = incoming.getQueryParameterNames();
+        if (verifiedAppLink) {
+            if (names.size() != 3 || !names.contains("native")
+                || !"1".equals(incoming.getQueryParameter("native"))) return false;
+        } else if (names.size() != 2 || names.contains("native")) {
+            return false;
+        }
+
+        if (!names.contains("handoff") || !names.contains("state")
+            || incoming.getQueryParameters("handoff").size() != 1
+            || incoming.getQueryParameters("state").size() != 1) return false;
+
+        String handoff = incoming.getQueryParameter("handoff");
+        String state = incoming.getQueryParameter("state");
+        return handoff != null && handoff.length() <= 1800
+            && handoff.matches("v1\\.[A-Za-z0-9_-]{16}\\.[A-Za-z0-9_-]{1,1500}\\.[A-Za-z0-9_-]{22}")
+            && state != null && state.matches("[A-Za-z0-9_-]{43}");
     }
 
     private static void copyQueryParameter(Uri source, Uri.Builder destination, String name) {

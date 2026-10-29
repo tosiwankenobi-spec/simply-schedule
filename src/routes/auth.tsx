@@ -9,7 +9,15 @@ import { toast } from "sonner";
 import { CalendarDays, CheckCircle2, Eye, EyeOff, Mail, ShieldCheck, Sparkles } from "lucide-react";
 import { buildEmailVerificationRedirect, readAuthRedirectError } from "@/lib/auth-verification";
 import { Capacitor } from "@capacitor/core";
-import { googleBrowserStartUrl, googleReturnUrl, safeAuthNext } from "@/lib/google-auth-return";
+import {
+  createNativeGooglePkce,
+  GOOGLE_NATIVE_NEXT_KEY,
+  GOOGLE_NATIVE_STATE_KEY,
+  GOOGLE_NATIVE_VERIFIER_KEY,
+  googleBrowserStartUrl,
+  googleReturnUrl,
+  safeAuthNext,
+} from "@/lib/google-auth-return";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -29,7 +37,10 @@ export const Route = createFileRoute("/auth")({
         content: "Sign in or create your private Chronos-V planning account.",
       },
       { property: "og:title", content: "Sign in · Chronos-V" },
-      { property: "og:description", content: "Sign in to your private Chronos-V planning account." },
+      {
+        property: "og:description",
+        content: "Sign in to your private Chronos-V planning account.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -168,11 +179,23 @@ function AuthPage() {
     setAuthError(null);
     if (Capacitor.isNativePlatform()) {
       try {
+        const pkce = await createNativeGooglePkce();
+        localStorage.setItem(GOOGLE_NATIVE_VERIFIER_KEY, pkce.verifier);
+        localStorage.setItem(GOOGLE_NATIVE_STATE_KEY, pkce.state);
+        if (next) localStorage.setItem(GOOGLE_NATIVE_NEXT_KEY, next);
+        else localStorage.removeItem(GOOGLE_NATIVE_NEXT_KEY);
         const { Browser } = await import("@capacitor/browser");
-        await Browser.open({ url: googleBrowserStartUrl(window.location.origin) });
+        await Browser.open({
+          url: googleBrowserStartUrl(window.location.origin, pkce.challenge, pkce.state),
+        });
       } catch {
-        setAuthError("Couldn't open the secure browser. Please try again.");
-      } finally { setLoading(false); }
+        localStorage.removeItem(GOOGLE_NATIVE_VERIFIER_KEY);
+        localStorage.removeItem(GOOGLE_NATIVE_STATE_KEY);
+        localStorage.removeItem(GOOGLE_NATIVE_NEXT_KEY);
+        setAuthError("Couldn't start secure Google sign-in. Please try again.");
+      } finally {
+        setLoading(false);
+      }
       return;
     }
     if (next) sessionStorage.setItem("chronos-google-next", next);

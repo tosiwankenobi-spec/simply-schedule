@@ -1,0 +1,130 @@
+name: Chronos-V Google Auth Validation
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [fix/chronos-android-app-links-association]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chronos-google-auth-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun run test
+        env:
+          VITE_SUPABASE_URL: https://example.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: ci-placeholder-publishable-key
+          SUPABASE_URL: https://example.supabase.co
+          SUPABASE_PUBLISHABLE_KEY: ci-placeholder-publishable-key
+          SUPABASE_SERVICE_ROLE_KEY: ci-placeholder-service-role-key
+
+  lint:
+    name: Changed-file ESLint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Lint files changed for this fix
+        run: |
+          bunx eslint \
+            src/lib/google-auth-return.ts \
+            src/lib/native-google-handoff.functions.ts \
+            src/lib/native-google-handoff.server.ts \
+            src/lib/outlook-connect.server.ts \
+            src/lib/outlook.functions.ts \
+            'src/routes/[.well-known]/assetlinks[.]json.ts' \
+            src/routes/auth.google-handoff.tsx \
+            src/routes/auth.google-return.tsx \
+            src/routes/auth.google-start.tsx \
+            src/routes/auth.tsx \
+            tests/google-auth-return.test.ts \
+            tests/native-google-handoff.test.ts \
+            tests/outlook-connect-integration.test.ts \
+            tests/outlook-smart-inbox-contract.test.ts
+
+  android-build:
+    name: Android debug build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install Android SDK packages
+        shell: bash
+        run: |
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
+          if [ -z "$SDKMANAGER" ]; then
+            echo "Android SDK manager was not found under $SDK_ROOT/cmdline-tools"
+            exit 1
+          fi
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" --install "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Build web app for Capacitor
+        run: bun run build
+        env:
+          VITE_SUPABASE_URL: https://example.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: ci-placeholder-publishable-key
+          SUPABASE_URL: https://example.supabase.co
+          SUPABASE_PUBLISHABLE_KEY: ci-placeholder-publishable-key
+          SUPABASE_SERVICE_ROLE_KEY: ci-placeholder-service-role-key
+      - name: Sync Capacitor Android project
+        run: bunx cap sync android
+      - name: Compile Android debug APK
+        run: |
+          chmod +x android/gradlew
+          android/gradlew --no-daemon -p android assembleDebug
+
+  repository-lint:
+    name: Repository-wide lint baseline
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun run lint
+
+  build:
+    name: Production build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+        env:
+          VITE_SUPABASE_URL: https://example.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: ci-placeholder-publishable-key
+          SUPABASE_URL: https://example.supabase.co
+          SUPABASE_PUBLISHABLE_KEY: ci-placeholder-publishable-key
+          SUPABASE_SERVICE_ROLE_KEY: ci-placeholder-service-role-key

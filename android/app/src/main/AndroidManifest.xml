@@ -35,12 +35,23 @@
             </intent-filter>
 
             <!-- Accept text and links shared from other Android apps. -->
-            <!-- Credential-free return only; browser sessions are never copied. -->
+            <!-- Accept only the encrypted one-time handoff; never copy browser session tokens. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="@string/custom_url_scheme" android:host="oauth" android:path="/google/return" />
+            </intent-filter>
+
+            <!-- Verified HTTPS return for the encrypted, one-time Google handoff. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="verolane.online"
+                    android:path="/auth/google-handoff" />
             </intent-filter>
 
             <intent-filter>

@@ -1,0 +1,22 @@
+name: Chronos-V server test formatting
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [fix/chronos-android-app-links-association]
+
+permissions:
+  contents: read
+
+jobs:
+  format-check:
+    name: Prettier check for Outlook server tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bunx prettier --check src/lib/outlook-connect.server.ts tests/outlook-connect-integration.test.ts
