@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
   GOOGLE_NATIVE_OPEN_URL,
   googleBrowserStartUrl,
+  googleNativeAppLinkUrl,
   googleNativeOpenUrl,
   googleReturnDestination,
   googleReturnUrl,
@@ -20,6 +21,12 @@ describe("Google native return safety (synthetic)", () => {
     expect(url.pathname).toBe("/auth/google-start");
     expect(url.searchParams.get("challenge")).toBe(challenge);
     expect(url.searchParams.get("state")).toBe(state);
+    const appLink = new URL(googleNativeAppLinkUrl("https://verolane.online", handoffCode, state));
+    expect(appLink.origin).toBe("https://verolane.online");
+    expect(appLink.pathname).toBe("/auth/google-handoff");
+    expect(appLink.searchParams.get("native")).toBe("1");
+    expect(appLink.searchParams.get("handoff")).toBe(handoffCode);
+    expect(appLink.searchParams.get("state")).toBe(state);
     expect(googleReturnUrl("https://verolane.online", true)).toBe(
       "https://verolane.online/auth/google-return?native=1",
     );
