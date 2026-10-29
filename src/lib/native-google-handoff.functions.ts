@@ -17,23 +17,19 @@ export const createNativeGoogleHandoff = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(challengeSchema)
   .handler(async ({ data, context }): Promise<{ handoffCode: string }> => {
-    const { data: userData, error } = await context.supabase.auth.getUser();
-    const user = userData.user;
-    if (
-      error ||
-      !user ||
-      user.id !== context.userId ||
-      !user.email ||
-      !user.email_confirmed_at
-    ) {
+    // The middleware already validated the signed JWT and its subject.
+    // Use the signed email claim here rather than asking a non-persistent
+    // server client to recover a browser session from storage.
+    const email = typeof context.claims.email === "string" ? context.claims.email : null;
+    if (!context.userId || context.claims.sub !== context.userId || !email) {
       throw new Error("A verified browser sign-in is required to continue.");
     }
 
     const { issueNativeGoogleHandoff } = await import("./native-google-handoff.server");
     return {
       handoffCode: await issueNativeGoogleHandoff({
-        userId: user.id,
-        email: user.email,
+        userId: context.userId,
+        email,
         codeChallenge: data.codeChallenge,
         state: data.state,
       }),
