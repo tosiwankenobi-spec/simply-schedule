@@ -1,0 +1,52 @@
+name: Format Chronos-V auth changes
+
+on:
+  push:
+    branches: [fix/chronos-android-app-links-association]
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Format only auth files changed by this fix
+        run: |
+          bunx prettier --write \
+            src/lib/google-auth-return.ts \
+            src/lib/native-google-handoff.functions.ts \
+            src/lib/native-google-handoff.server.ts \
+            src/routes/auth.google-handoff.tsx \
+            src/routes/auth.google-return.tsx \
+            src/routes/auth.google-start.tsx \
+            src/routes/auth.tsx \
+            tests/google-auth-return.test.ts \
+            tests/native-google-handoff.test.ts
+      - name: Commit formatting changes
+        run: |
+          if git diff --quiet; then
+            echo "Auth files already formatted."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            src/lib/google-auth-return.ts \
+            src/lib/native-google-handoff.functions.ts \
+            src/lib/native-google-handoff.server.ts \
+            src/routes/auth.google-handoff.tsx \
+            src/routes/auth.google-return.tsx \
+            src/routes/auth.google-start.tsx \
+            src/routes/auth.tsx \
+            tests/google-auth-return.test.ts \
+            tests/native-google-handoff.test.ts
+          git commit -m "Format Chronos-V Google auth changes"
+          git push origin HEAD:${{ github.ref_name }}
