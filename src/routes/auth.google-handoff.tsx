@@ -16,7 +16,10 @@ function GoogleHandoff() {
   const [message, setMessage] = useState("Returning to Chronos-V…");
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    const fragment = window.location.hash.startsWith("#")
+      ? window.location.hash.slice(1)
+      : "";
+    const params = new URLSearchParams(fragment);
     const handoffCode = params.get("handoff");
     const state = params.get("state");
     const native = params.get("native") === "1";
