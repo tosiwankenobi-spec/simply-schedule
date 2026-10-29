@@ -25,9 +25,7 @@ describe("native Google handoff envelope", () => {
     const code = encryptNativeHandoff(payload, secret);
     const parts = code.split(".");
     parts[2] = `${parts[2].startsWith("A") ? "B" : "A"}${parts[2].slice(1)}`;
-    expect(() =>
-      decryptNativeHandoff(parts.join("."), secret, 1_900_000_000_000),
-    ).toThrow();
+    expect(() => decryptNativeHandoff(parts.join("."), secret, 1_900_000_000_000)).toThrow();
     expect(() => decryptNativeHandoff(code, "a-different-secret", 1_900_000_000_000)).toThrow();
   });
 
