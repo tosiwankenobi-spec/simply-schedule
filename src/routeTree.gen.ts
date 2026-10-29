@@ -657,7 +657,7 @@ declare module '@tanstack/react-router' {
       fullPath: '/auth/google-handoff'
       preLoaderRoute: typeof AuthGoogleHandoffRouteImport
       parentRoute: typeof AuthRoute
-    },
+    }
     '/auth/google-start': {
       id: '/auth/google-start'
       path: '/google-start'
