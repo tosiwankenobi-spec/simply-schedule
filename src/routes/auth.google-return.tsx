@@ -13,6 +13,7 @@ import {
   GOOGLE_NATIVE_NEXT_KEY,
   GOOGLE_NATIVE_STATE_KEY,
   GOOGLE_NATIVE_VERIFIER_KEY,
+  googleNativeAppLinkUrl,
   googleNativeOpenUrl,
   googleReturnDestination,
   isValidNativeGoogleChallenge,
@@ -139,7 +140,7 @@ function GoogleReturn() {
         setHandoffUrl(deepLink);
         setMessage("Google sign-in succeeded. Returning to Chronos-V…");
         setState("browser");
-        window.location.href = deepLink;
+        window.location.href = googleNativeAppLinkUrl(window.location.origin, newHandoffCode, stateValue);
         return;
       }
 
