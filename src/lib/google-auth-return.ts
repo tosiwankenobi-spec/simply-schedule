@@ -16,7 +16,9 @@ export function safeAuthNext(value: unknown): string | undefined {
     const parsed = new URL(value, "https://verolane.online");
     if (parsed.origin !== "https://verolane.online" || parsed.pathname.startsWith("/auth")) return;
     return parsed.pathname + parsed.search + parsed.hash;
-  } catch { return; }
+  } catch {
+    return;
+  }
 }
 
 function base64Url(bytes: Uint8Array): string {
@@ -101,19 +103,26 @@ export function validGoogleNativeReturn(value: string): boolean {
   try {
     const url = new URL(value);
     const keys = Array.from(url.searchParams.keys());
-    return url.protocol === "ca.verolane.chronosv:" &&
+    return (
+      url.protocol === "ca.verolane.chronosv:" &&
       url.hostname === "oauth" &&
       url.pathname === "/google/return" &&
-      !url.hash && !url.username && !url.password && !url.port &&
+      !url.hash &&
+      !url.username &&
+      !url.password &&
+      !url.port &&
       keys.length === 2 &&
       keys.every((key) => key === "handoff" || key === "state") &&
       url.searchParams.getAll("handoff").length === 1 &&
       url.searchParams.getAll("state").length === 1 &&
       isValidNativeHandoffCode(url.searchParams.get("handoff")) &&
-      isValidNativeGoogleState(url.searchParams.get("state"));
-  } catch { return false; }
+      isValidNativeGoogleState(url.searchParams.get("state"))
+    );
+  } catch {
+    return false;
+  }
 }
 
 export function googleReturnDestination(hasVerifiedUser: boolean, next?: unknown): string | null {
-  return hasVerifiedUser ? safeAuthNext(next) ?? "/app" : null;
+  return hasVerifiedUser ? (safeAuthNext(next) ?? "/app") : null;
 }

@@ -36,10 +36,7 @@ function constantTimeStringEqual(left: string, right: string): boolean {
  * protects the one-time Supabase email token hash; the app's PKCE verifier
  * is required before the server will redeem it.
  */
-export function encryptNativeHandoff(
-  payload: NativeHandoffPayload,
-  secret: string,
-): string {
+export function encryptNativeHandoff(payload: NativeHandoffPayload, secret: string): string {
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", encryptionKey(secret), iv);
   const ciphertext = Buffer.concat([
@@ -118,10 +115,7 @@ export async function issueNativeGoogleHandoff(input: {
   codeChallenge: string;
   state: string;
 }): Promise<string> {
-  if (
-    !CHALLENGE_PATTERN.test(input.codeChallenge) ||
-    !CHALLENGE_PATTERN.test(input.state)
-  ) {
+  if (!CHALLENGE_PATTERN.test(input.codeChallenge) || !CHALLENGE_PATTERN.test(input.state)) {
     throw new Error("Native sign-in handoff could not be created.");
   }
 
@@ -191,12 +185,7 @@ export async function redeemNativeGoogleHandoffCode(input: {
     type: "magiclink",
   });
 
-  if (
-    error ||
-    !data.session ||
-    !data.user ||
-    data.user.id !== payload.userId
-  ) {
+  if (error || !data.session || !data.user || data.user.id !== payload.userId) {
     throw new Error("Google sign-in could not be completed. Please restart sign-in.");
   }
 

@@ -23,14 +23,16 @@ import {
 
 export const Route = createFileRoute("/auth/google-return")({
   component: GoogleReturn,
-  head: () => ({ meta: [
-    { title: "Return from Google sign-in · Chronos-V" },
-    { name: "description", content: "Complete Chronos-V sign-in securely." },
-    { property: "og:title", content: "Return from Google sign-in · Chronos-V" },
-    { property: "og:description", content: "Complete Chronos-V sign-in securely." },
-    { property: "og:type", content: "website" },
-    { name: "twitter:card", content: "summary" },
-  ] }),
+  head: () => ({
+    meta: [
+      { title: "Return from Google sign-in · Chronos-V" },
+      { name: "description", content: "Complete Chronos-V sign-in securely." },
+      { property: "og:title", content: "Return from Google sign-in · Chronos-V" },
+      { property: "og:description", content: "Complete Chronos-V sign-in securely." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
 });
 
 type ReturnState = "checking" | "browser" | "signin" | "error";
@@ -51,9 +53,7 @@ function GoogleReturn() {
 
     async function run() {
       const queryParams = new URLSearchParams(window.location.search);
-      const fragment = window.location.hash.startsWith("#")
-        ? window.location.hash.slice(1)
-        : "";
+      const fragment = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : "";
       const fragmentParams = new URLSearchParams(fragment);
       const nativeReturn =
         queryParams.get("native") === "1" || fragmentParams.get("native") === "1";
@@ -65,10 +65,7 @@ function GoogleReturn() {
       // immediately; never put access or refresh tokens in a deep-link URL.
       if (handoffCode !== null) {
         window.history.replaceState(null, "", "/auth/google-return");
-        if (
-          !isValidNativeHandoffCode(handoffCode) ||
-          !isValidNativeGoogleState(returnedState)
-        ) {
+        if (!isValidNativeHandoffCode(handoffCode) || !isValidNativeGoogleState(returnedState)) {
           setMessage("This Google sign-in link is invalid or expired. Please restart sign-in.");
           setState("error");
           return;
@@ -118,10 +115,7 @@ function GoogleReturn() {
 
         const challenge = sessionStorage.getItem(GOOGLE_BROWSER_CHALLENGE_KEY);
         const stateValue = sessionStorage.getItem(GOOGLE_BROWSER_STATE_KEY);
-        if (
-          !isValidNativeGoogleChallenge(challenge) ||
-          !isValidNativeGoogleState(stateValue)
-        ) {
+        if (!isValidNativeGoogleChallenge(challenge) || !isValidNativeGoogleState(stateValue)) {
           setMessage("The secure Google sign-in request expired. Please restart from Chronos-V.");
           setState("error");
           return;
@@ -148,7 +142,11 @@ function GoogleReturn() {
         setHandoffUrl(deepLink);
         setMessage("Google sign-in succeeded. Returning to Chronos-V…");
         setState("browser");
-        window.location.href = googleNativeAppLinkUrl(window.location.origin, newHandoffCode, stateValue);
+        window.location.href = googleNativeAppLinkUrl(
+          window.location.origin,
+          newHandoffCode,
+          stateValue,
+        );
         return;
       }
 

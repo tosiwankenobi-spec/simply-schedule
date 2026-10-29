@@ -37,7 +37,10 @@ export const Route = createFileRoute("/auth")({
         content: "Sign in or create your private Chronos-V planning account.",
       },
       { property: "og:title", content: "Sign in · Chronos-V" },
-      { property: "og:description", content: "Sign in to your private Chronos-V planning account." },
+      {
+        property: "og:description",
+        content: "Sign in to your private Chronos-V planning account.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],

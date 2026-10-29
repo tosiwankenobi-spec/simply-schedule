@@ -1,5 +1,8 @@
 import { describe, expect, test } from "vitest";
-import { decryptNativeHandoff, encryptNativeHandoff } from "../src/lib/native-google-handoff.server";
+import {
+  decryptNativeHandoff,
+  encryptNativeHandoff,
+} from "../src/lib/native-google-handoff.server";
 
 const secret = "synthetic-server-secret-for-tests-only";
 const payload = {
@@ -20,7 +23,13 @@ describe("native Google handoff envelope", () => {
 
   test("rejects tampering and a wrong server key", () => {
     const code = encryptNativeHandoff(payload, secret);
-    expect(() => decryptNativeHandoff(code.slice(0, -1) + (code.endsWith("A") ? "B" : "A"), secret, 1_900_000_000_000)).toThrow();
+    expect(() =>
+      decryptNativeHandoff(
+        code.slice(0, -1) + (code.endsWith("A") ? "B" : "A"),
+        secret,
+        1_900_000_000_000,
+      ),
+    ).toThrow();
     expect(() => decryptNativeHandoff(code, "a-different-secret", 1_900_000_000_000)).toThrow();
   });
 
