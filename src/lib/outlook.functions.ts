@@ -34,15 +34,10 @@ const MICROSOFT_SCOPES = [
   "Mail.Read",
 ];
 
-export const startOutlookConnect = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => ({
-    native:
-      typeof input === "object" && input !== null && "native" in input
-        ? (input as { native?: unknown }).native === true
-        : false,
-  }))
-  .handler(async ({ data, context }): Promise<{ authorizationUrl: string }> => {
+export async function startOutlookConnectHandler({ data, context }: {
+  data: { native: boolean };
+  context: { userId: string };
+}): Promise<{ authorizationUrl: string }> {
     const clientKey = process.env["MICROSOFT_OUTLOOK_APP_USER_CONNECTOR_CLIENT_API_KEY"];
     if (!clientKey) throw new Error("Outlook is not configured for this workspace yet.");
 
@@ -76,17 +71,22 @@ export const startOutlookConnect = createServerFn({ method: "POST" })
       },
     });
     return { authorizationUrl };
-  });
+}
 
-export const completeOutlookConnect = createServerFn({ method: "POST" })
+export const startOutlookConnect = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { code: string }) => {
-    if (!input || typeof input.code !== "string" || !input.code.trim()) {
-      throw new Error("Missing connection code.");
-    }
-    return { code: input.code };
-  })
-  .handler(async ({ data, context }): Promise<{ ok: true }> => {
+  .inputValidator((input: unknown) => ({
+    native:
+      typeof input === "object" && input !== null && "native" in input
+        ? (input as { native?: unknown }).native === true
+        : false,
+  }))
+  .handler(startOutlookConnectHandler);
+
+export async function completeOutlookConnectHandler({ data, context }: {
+  data: { code: string };
+  context: { userId: string; supabase: unknown };
+}): Promise<{ ok: true }> {
     const { exchangeAppUserOAuthCode } = await import("@/integrations/lovable/appUserConnector");
     const { saveConnectionKeyForUser } = await import("@/server/appUserConnections.server");
     const { connectionAPIKey, connectorId } = await exchangeAppUserOAuthCode(
@@ -106,7 +106,17 @@ export const completeOutlookConnect = createServerFn({ method: "POST" })
       /* the setup screen can retry discovery */
     }
     return { ok: true };
-  });
+}
+
+export const completeOutlookConnect = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { code: string }) => {
+    if (!input || typeof input.code !== "string" || !input.code.trim()) {
+      throw new Error("Missing connection code.");
+    }
+    return { code: input.code };
+  })
+  .handler(completeOutlookConnectHandler);
 
 export const getOutlookStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
