@@ -4,7 +4,7 @@ import { describe, expect, test } from "vitest";
 
 const root = resolve(import.meta.dirname, "..");
 const read = (path: string) => readFileSync(resolve(root, path), "utf8");
-const auth = read("src/lib/outlook.functions.ts");
+const auth = read("src/lib/outlook-connect.server.ts");
 const functions = read("src/lib/outlook-inbox.functions.ts");
 const server = read("src/lib/outlook-inbox.server.ts");
 const privacy = read("src/lib/privacy.server.ts");
