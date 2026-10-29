@@ -17,6 +17,7 @@ type NativeHandoffPayload = {
   userId: string;
   tokenHash: string;
   codeChallenge: string;
+  state: string;
   expiresAt: number;
 };
 
@@ -90,6 +91,8 @@ export function decryptNativeHandoff(
       payload.tokenHash.length > 512 ||
       typeof payload.codeChallenge !== "string" ||
       !CHALLENGE_PATTERN.test(payload.codeChallenge) ||
+      typeof payload.state !== "string" ||
+      !CHALLENGE_PATTERN.test(payload.state) ||
       typeof payload.expiresAt !== "number" ||
       !Number.isFinite(payload.expiresAt) ||
       payload.expiresAt <= now
@@ -113,8 +116,12 @@ export async function issueNativeGoogleHandoff(input: {
   userId: string;
   email: string;
   codeChallenge: string;
+  state: string;
 }): Promise<string> {
-  if (!CHALLENGE_PATTERN.test(input.codeChallenge)) {
+  if (
+    !CHALLENGE_PATTERN.test(input.codeChallenge) ||
+    !CHALLENGE_PATTERN.test(input.state)
+  ) {
     throw new Error("Native sign-in handoff could not be created.");
   }
 
@@ -132,6 +139,7 @@ export async function issueNativeGoogleHandoff(input: {
     userId: input.userId,
     tokenHash,
     codeChallenge: input.codeChallenge,
+    state: input.state,
     expiresAt: Date.now() + HANDOFF_TTL_MS,
   };
   return encryptNativeHandoff(payload, requiredHandoffSecret());
@@ -140,13 +148,17 @@ export async function issueNativeGoogleHandoff(input: {
 export async function redeemNativeGoogleHandoffCode(input: {
   handoffCode: string;
   codeVerifier: string;
+  state: string;
 }): Promise<{ access_token: string; refresh_token: string }> {
   const secret = requiredHandoffSecret();
   const payload = decryptNativeHandoff(input.handoffCode, secret);
 
   if (
     typeof input.codeVerifier !== "string" ||
-    !/^[A-Za-z0-9_-]{43,128}$/.test(input.codeVerifier)
+    !/^[A-Za-z0-9_-]{43,128}$/.test(input.codeVerifier) ||
+    typeof input.state !== "string" ||
+    !CHALLENGE_PATTERN.test(input.state) ||
+    !constantTimeStringEqual(input.state, payload.state)
   ) {
     throw new Error("The Google sign-in handoff is invalid or has expired.");
   }
