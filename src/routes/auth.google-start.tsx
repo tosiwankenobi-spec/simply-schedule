@@ -27,7 +27,10 @@ function GoogleBrowserStart() {
   const [flowReady, setFlowReady] = useState(false);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    const fragment = window.location.hash.startsWith("#")
+      ? window.location.hash.slice(1)
+      : "";
+    const params = new URLSearchParams(fragment);
     const challenge = params.get("challenge");
     const state = params.get("state");
     if (isValidNativeGoogleChallenge(challenge) && isValidNativeGoogleState(state)) {
