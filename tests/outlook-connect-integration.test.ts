@@ -8,7 +8,7 @@ vi.mock("@/integrations/supabase/client.server", () => ({ supabaseAdmin: { from:
   return chain;
 } } }));
 vi.mock("../src/lib/outlook.server", () => ({ refreshAccountLabel: async () => null, discoverCalendars: async () => [] }));
-import { startOutlookConnectHandler, completeOutlookConnectHandler } from "../src/lib/outlook.functions";
+import { startOutlookConnectHandler, completeOutlookConnectHandler } from "../src/lib/outlook-connect.server";
 import { getConnectionKeyForUser } from "../src/server/appUserConnections.server";
 describe("Outlook actual connect/exchange/storage with synthetic gateway", () => {
   beforeEach(() => {
