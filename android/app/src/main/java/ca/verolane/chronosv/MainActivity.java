@@ -97,9 +97,13 @@ public class MainActivity extends BridgeActivity {
         }
         if (!validGoogleHandoffParameters(parameters, verifiedAppLink)) return null;
 
-        Uri.Builder builder = appPage("/auth/google-return").appendQueryParameter("native", "1");
-        appendIfPresent(builder, "handoff", parameters.getQueryParameter("handoff"));
-        appendIfPresent(builder, "state", parameters.getQueryParameter("state"));
+        String handoff = parameters.getQueryParameter("handoff");
+        String state = parameters.getQueryParameter("state");
+        Uri.Builder builder = appPage("/auth/google-return");
+        // Keep the handoff in the WebView fragment as well. Fragments are not
+        // sent in HTTP requests, so the opaque code stays out of server logs.
+        builder.encodedFragment("native=1&handoff=" + Uri.encode(handoff)
+            + "&state=" + Uri.encode(state));
         return builder.build().toString();
     }
 
