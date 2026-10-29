@@ -1,0 +1,24 @@
+import { createFileRoute } from "@tanstack/react-router";
+
+export const Route = createFileRoute(
+  "/.well-known/assetlinks.json"
+)({
+  server: {
+    handlers: {
+      GET: async () => {
+        return Response.json([
+          {
+            relation: ["delegate_permission/common.handle_all_urls"],
+            target: {
+              namespace: "android_app",
+              package_name: "ca.verolane.chronosv",
+              sha256_cert_fingerprints: [
+                "F6:7E:01:75:E4:C0:7B:50:2C:08:DD:C5:0A:C0:27:B1:F7:66:B6:0C:5B:52:93:F4:68:DE:99:47:E5:D5:AC:EA",
+              ],
+            },
+          },
+        ]);
+      },
+    },
+  },
+});

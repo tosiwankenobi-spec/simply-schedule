@@ -15,6 +15,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as PrivacyPolicyRouteImport } from './routes/privacy-policy'
+import { Route as Char91DotwellKnownChar93AssetlinksChar91DotChar93jsonRouteImport } from './routes/[.well-known]/assetlinks[.]json'
 import { Route as Char91DotwellKnownChar93MicrosoftIdentityAssociationChar91DotChar93jsonRouteImport } from './routes/[.well-known]/microsoft-identity-association[.]json'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/app'
@@ -74,6 +75,12 @@ const PrivacyPolicyRoute = PrivacyPolicyRouteImport.update({
   path: '/privacy-policy',
   getParentRoute: () => rootRouteImport,
 } as any)
+const Char91DotwellKnownChar93AssetlinksChar91DotChar93jsonRoute =
+  Char91DotwellKnownChar93AssetlinksChar91DotChar93jsonRouteImport.update({
+    id: '/.well-known/assetlinks.json',
+    path: '/.well-known/assetlinks.json',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const Char91DotwellKnownChar93MicrosoftIdentityAssociationChar91DotChar93jsonRoute =
   Char91DotwellKnownChar93MicrosoftIdentityAssociationChar91DotChar93jsonRouteImport.update(
     {
@@ -239,6 +246,7 @@ export interface FileRoutesByFullPath {
   '/index': typeof Char91indexChar93Route
   '/mcp': typeof McpRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
+  '/.well-known/assetlinks.json': typeof Char91DotwellKnownChar93AssetlinksChar91DotChar93jsonRoute
   '/.well-known/microsoft-identity-association.json': typeof Char91DotwellKnownChar93MicrosoftIdentityAssociationChar91DotChar93jsonRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/app': typeof AuthenticatedAppRoute
@@ -275,6 +283,7 @@ export interface FileRoutesByTo {
   '/index': typeof Char91indexChar93Route
   '/mcp': typeof McpRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
+  '/.well-known/assetlinks.json': typeof Char91DotwellKnownChar93AssetlinksChar91DotChar93jsonRoute
   '/.well-known/microsoft-identity-association.json': typeof Char91DotwellKnownChar93MicrosoftIdentityAssociationChar91DotChar93jsonRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/app': typeof AuthenticatedAppRoute
@@ -313,6 +322,7 @@ export interface FileRoutesById {
   '/index': typeof Char91indexChar93Route
   '/mcp': typeof McpRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
+  '/.well-known/assetlinks.json': typeof Char91DotwellKnownChar93AssetlinksChar91DotChar93jsonRoute
   '/.well-known/microsoft-identity-association.json': typeof Char91DotwellKnownChar93MicrosoftIdentityAssociationChar91DotChar93jsonRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_authenticated/app': typeof AuthenticatedAppRoute
@@ -351,6 +361,7 @@ export interface FileRouteTypes {
     | '/index'
     | '/mcp'
     | '/privacy-policy'
+    | '/.well-known/assetlinks.json'
     | '/.well-known/microsoft-identity-association.json'
     | '/.well-known/oauth-protected-resource'
     | '/app'
@@ -387,6 +398,7 @@ export interface FileRouteTypes {
     | '/index'
     | '/mcp'
     | '/privacy-policy'
+    | '/.well-known/assetlinks.json'
     | '/.well-known/microsoft-identity-association.json'
     | '/.well-known/oauth-protected-resource'
     | '/app'
@@ -424,6 +436,7 @@ export interface FileRouteTypes {
     | '/index'
     | '/mcp'
     | '/privacy-policy'
+    | '/.well-known/assetlinks.json'
     | '/.well-known/microsoft-identity-association.json'
     | '/.well-known/oauth-protected-resource'
     | '/_authenticated/app'
@@ -462,6 +475,7 @@ export interface RootRouteChildren {
   Char91indexChar93Route: typeof Char91indexChar93Route
   McpRoute: typeof McpRoute
   PrivacyPolicyRoute: typeof PrivacyPolicyRoute
+  Char91DotwellKnownChar93AssetlinksChar91DotChar93jsonRoute: typeof Char91DotwellKnownChar93AssetlinksChar91DotChar93jsonRoute
   Char91DotwellKnownChar93MicrosoftIdentityAssociationChar91DotChar93jsonRoute: typeof Char91DotwellKnownChar93MicrosoftIdentityAssociationChar91DotChar93jsonRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
@@ -511,6 +525,13 @@ declare module '@tanstack/react-router' {
       path: '/privacy-policy'
       fullPath: '/privacy-policy'
       preLoaderRoute: typeof PrivacyPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.well-known/assetlinks.json': {
+      id: '/.well-known/assetlinks.json'
+      path: '/.well-known/assetlinks.json'
+      fullPath: '/.well-known/assetlinks.json'
+      preLoaderRoute: typeof Char91DotwellKnownChar93AssetlinksChar91DotChar93jsonRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/.well-known/microsoft-identity-association.json': {
@@ -800,6 +821,8 @@ const rootRouteChildren: RootRouteChildren = {
   Char91indexChar93Route: Char91indexChar93Route,
   McpRoute: McpRoute,
   PrivacyPolicyRoute: PrivacyPolicyRoute,
+  Char91DotwellKnownChar93AssetlinksChar91DotChar93jsonRoute:
+    Char91DotwellKnownChar93AssetlinksChar91DotChar93jsonRoute,
   Char91DotwellKnownChar93MicrosoftIdentityAssociationChar91DotChar93jsonRoute:
     Char91DotwellKnownChar93MicrosoftIdentityAssociationChar91DotChar93jsonRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
