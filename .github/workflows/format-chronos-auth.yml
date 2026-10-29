@@ -1,0 +1,33 @@
+name: Format Chronos-V server test changes
+
+on:
+  push:
+    branches: [fix/chronos-android-app-links-association]
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Format the changed server and regression-test files
+        run: bunx prettier --write src/lib/outlook-connect.server.ts tests/outlook-connect-integration.test.ts
+      - name: Commit formatting changes
+        run: |
+          if git diff --quiet; then
+            echo "Files already formatted."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/outlook-connect.server.ts tests/outlook-connect-integration.test.ts
+          git commit -m "Format Outlook server regression tests"
+          git push origin HEAD:${{ github.ref_name }}
