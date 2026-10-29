@@ -23,12 +23,22 @@ function GoogleHandoff() {
     const handoffCode = params.get("handoff");
     const state = params.get("state");
     const native = params.get("native") === "1";
+    const keys = Array.from(params.keys());
+    const exactFragment =
+      keys.length === 3 &&
+      keys.every((key) => key === "native" || key === "handoff" || key === "state") &&
+      params.getAll("native").length === 1 &&
+      params.getAll("handoff").length === 1 &&
+      params.getAll("state").length === 1;
+    const hasUnexpectedQuery = window.location.search.length > 0;
 
     // This route is only the HTTPS App Link/fallback landing page. The native
     // app performs the actual exchange after validating its stored PKCE state.
     window.history.replaceState(null, "", "/auth/google-handoff");
 
     if (
+      hasUnexpectedQuery ||
+      !exactFragment ||
       !native ||
       !isValidNativeHandoffCode(handoffCode) ||
       !isValidNativeGoogleState(state)
