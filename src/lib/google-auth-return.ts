@@ -6,7 +6,6 @@ export const GOOGLE_NATIVE_NEXT_KEY = "chronos-google-next";
 export const GOOGLE_BROWSER_CHALLENGE_KEY = "chronos-v:google-browser-challenge";
 export const GOOGLE_BROWSER_STATE_KEY = "chronos-v:google-browser-state";
 
-const PKCE_VALUE = /^[A-Za-z0-9_-]{43,128}$/;
 const PKCE_CHALLENGE = /^[A-Za-z0-9_-]{43}$/;
 const HANDOFF_CODE = /^v1\.[A-Za-z0-9_-]{16}\.[A-Za-z0-9_-]{1,1500}\.[A-Za-z0-9_-]{22}$/;
 
