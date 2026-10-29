@@ -69,26 +69,37 @@ public class MainActivity extends BridgeActivity {
     }
 
     private String googleReturnPage(Uri incoming) {
-        if (incoming == null || incoming.getFragment() != null) return null;
+        if (incoming == null) return null;
 
         boolean customScheme =
             getString(R.string.custom_url_scheme).equals(incoming.getScheme())
                 && "oauth".equals(incoming.getEncodedAuthority())
-                && "/google/return".equals(incoming.getEncodedPath());
+                && "/google/return".equals(incoming.getEncodedPath())
+                && incoming.getFragment() == null;
 
         boolean verifiedAppLink =
             "https".equals(incoming.getScheme())
                 && "verolane.online".equals(incoming.getHost())
                 && incoming.getPort() == -1
                 && incoming.getUserInfo() == null
-                && "/auth/google-handoff".equals(incoming.getPath());
+                && "/auth/google-handoff".equals(incoming.getPath())
+                && incoming.getQuery() == null
+                && incoming.getFragment() != null;
 
         if (!customScheme && !verifiedAppLink) return null;
-        if (!validGoogleHandoffParameters(incoming, verifiedAppLink)) return null;
+
+        // For HTTPS App Links, parse the fragment locally so the opaque handoff
+        // never appears in the HTTP request or routine server access logs.
+        Uri parameters = incoming;
+        if (verifiedAppLink) {
+            parameters = Uri.parse("https://verolane.online/auth/google-handoff?"
+                + incoming.getFragment());
+        }
+        if (!validGoogleHandoffParameters(parameters, verifiedAppLink)) return null;
 
         Uri.Builder builder = appPage("/auth/google-return").appendQueryParameter("native", "1");
-        appendIfPresent(builder, "handoff", incoming.getQueryParameter("handoff"));
-        appendIfPresent(builder, "state", incoming.getQueryParameter("state"));
+        appendIfPresent(builder, "handoff", parameters.getQueryParameter("handoff"));
+        appendIfPresent(builder, "state", parameters.getQueryParameter("state"));
         return builder.build().toString();
     }
 
