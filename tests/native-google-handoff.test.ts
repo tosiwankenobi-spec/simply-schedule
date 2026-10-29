@@ -23,12 +23,10 @@ describe("native Google handoff envelope", () => {
 
   test("rejects tampering and a wrong server key", () => {
     const code = encryptNativeHandoff(payload, secret);
+    const parts = code.split(".");
+    parts[2] = `${parts[2].startsWith("A") ? "B" : "A"}${parts[2].slice(1)}`;
     expect(() =>
-      decryptNativeHandoff(
-        code.slice(0, -1) + (code.endsWith("A") ? "B" : "A"),
-        secret,
-        1_900_000_000_000,
-      ),
+      decryptNativeHandoff(parts.join("."), secret, 1_900_000_000_000),
     ).toThrow();
     expect(() => decryptNativeHandoff(code, "a-different-secret", 1_900_000_000_000)).toThrow();
   });
