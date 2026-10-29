@@ -51,7 +51,7 @@
                 <data
                     android:scheme="https"
                     android:host="verolane.online"
-                    android:path="/auth/google-return" />
+                    android:path="/auth/google-handoff" />
             </intent-filter>
 
             <intent-filter>
