@@ -130,7 +130,7 @@ export async function issueNativeGoogleHandoff(input: {
     email: input.email,
   });
   const tokenHash = data?.properties?.hashed_token;
-  if (error || !tokenHash) {
+  if (error || !tokenHash || data?.user?.id !== input.userId) {
     throw new Error("Native sign-in handoff could not be created.");
   }
 
