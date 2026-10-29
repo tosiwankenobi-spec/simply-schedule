@@ -33,6 +33,7 @@ import { Route as AuthenticatedTomorrowRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedWeeklyResetRouteImport } from './routes/_authenticated/weekly-reset'
 import { Route as AuthenticatedWelcomeRouteImport } from './routes/_authenticated/welcome'
 import { Route as AuthGoogleReturnRouteImport } from './routes/auth.google-return'
+import { Route as AuthGoogleHandoffRouteImport } from './routes/auth.google-handoff'
 import { Route as AuthGoogleStartRouteImport } from './routes/auth.google-start'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as AuthenticatedPlannerPreferencesRouteImport } from './routes/_authenticated/planner.preferences'
@@ -171,6 +172,11 @@ const AuthGoogleReturnRoute = AuthGoogleReturnRouteImport.update({
   path: '/google-return',
   getParentRoute: () => AuthRoute,
 } as any)
+const AuthGoogleHandoffRoute = AuthGoogleHandoffRouteImport.update({
+  id: '/google-handoff',
+  path: '/google-handoff',
+  getParentRoute: () => AuthRoute,
+} as any)
 const AuthGoogleStartRoute = AuthGoogleStartRouteImport.update({
   id: '/google-start',
   path: '/google-start',
@@ -257,6 +263,7 @@ export interface FileRoutesByFullPath {
   '/weekly-reset': typeof AuthenticatedWeeklyResetRoute
   '/welcome': typeof AuthenticatedWelcomeRoute
   '/auth/google-return': typeof AuthGoogleReturnRoute
+  '/auth/google-handoff': typeof AuthGoogleHandoffRoute
   '/auth/google-start': typeof AuthGoogleStartRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/planner/preferences': typeof AuthenticatedPlannerPreferencesRoute
@@ -293,6 +300,7 @@ export interface FileRoutesByTo {
   '/weekly-reset': typeof AuthenticatedWeeklyResetRoute
   '/welcome': typeof AuthenticatedWelcomeRoute
   '/auth/google-return': typeof AuthGoogleReturnRoute
+  '/auth/google-handoff': typeof AuthGoogleHandoffRoute
   '/auth/google-start': typeof AuthGoogleStartRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/planner/preferences': typeof AuthenticatedPlannerPreferencesRoute
@@ -331,6 +339,7 @@ export interface FileRoutesById {
   '/_authenticated/weekly-reset': typeof AuthenticatedWeeklyResetRoute
   '/_authenticated/welcome': typeof AuthenticatedWelcomeRoute
   '/auth/google-return': typeof AuthGoogleReturnRoute
+  '/auth/google-handoff': typeof AuthGoogleHandoffRoute
   '/auth/google-start': typeof AuthGoogleStartRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/_authenticated/planner/preferences': typeof AuthenticatedPlannerPreferencesRoute
@@ -369,6 +378,7 @@ export interface FileRouteTypes {
     | '/weekly-reset'
     | '/welcome'
     | '/auth/google-return'
+    | '/auth/google-handoff'
     | '/auth/google-start'
     | '/.lovable/oauth/consent'
     | '/planner/preferences'
@@ -405,6 +415,7 @@ export interface FileRouteTypes {
     | '/weekly-reset'
     | '/welcome'
     | '/auth/google-return'
+    | '/auth/google-handoff'
     | '/auth/google-start'
     | '/.lovable/oauth/consent'
     | '/planner/preferences'
@@ -442,6 +453,7 @@ export interface FileRouteTypes {
     | '/_authenticated/weekly-reset'
     | '/_authenticated/welcome'
     | '/auth/google-return'
+    | '/auth/google-handoff'
     | '/auth/google-start'
     | '/.lovable/oauth/consent'
     | '/_authenticated/planner/preferences'
@@ -639,6 +651,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthGoogleReturnRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/auth/google-handoff': {
+      id: '/auth/google-handoff'
+      path: '/google-handoff'
+      fullPath: '/auth/google-handoff'
+      preLoaderRoute: typeof AuthGoogleHandoffRouteImport
+      parentRoute: typeof AuthRoute
+    }
     '/auth/google-start': {
       id: '/auth/google-start'
       path: '/google-start'
@@ -783,11 +802,13 @@ const AuthenticatedRouteRouteWithChildren =
 
 interface AuthRouteChildren {
   AuthGoogleReturnRoute: typeof AuthGoogleReturnRoute
+  AuthGoogleHandoffRoute: typeof AuthGoogleHandoffRoute
   AuthGoogleStartRoute: typeof AuthGoogleStartRoute
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
   AuthGoogleReturnRoute: AuthGoogleReturnRoute,
+  AuthGoogleHandoffRoute: AuthGoogleHandoffRoute,
   AuthGoogleStartRoute: AuthGoogleStartRoute,
 }
 
