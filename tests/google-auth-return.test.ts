@@ -19,8 +19,10 @@ describe("Google native return safety (synthetic)", () => {
     const url = new URL(googleBrowserStartUrl("https://verolane.online", challenge, state));
     expect(url.origin).toBe("https://verolane.online");
     expect(url.pathname).toBe("/auth/google-start");
-    expect(url.searchParams.get("challenge")).toBe(challenge);
-    expect(url.searchParams.get("state")).toBe(state);
+    expect(url.search).toBe("");
+    const startFragment = new URLSearchParams(url.hash.slice(1));
+    expect(startFragment.get("challenge")).toBe(challenge);
+    expect(startFragment.get("state")).toBe(state);
     const appLink = new URL(googleNativeAppLinkUrl("https://verolane.online", handoffCode, state));
     expect(appLink.origin).toBe("https://verolane.online");
     expect(appLink.pathname).toBe("/auth/google-handoff");
