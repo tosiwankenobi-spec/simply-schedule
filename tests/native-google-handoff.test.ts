@@ -6,7 +6,7 @@ const payload = {
   version: 1 as const,
   userId: "11111111-2222-4333-8444-555555555555",
   tokenHash: "synthetic-one-time-token-hash",
-  codeChallenge: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMN0123456789_-",
+  codeChallenge: "A".repeat(43),
   expiresAt: 2_000_000_000_000,
 };
 
