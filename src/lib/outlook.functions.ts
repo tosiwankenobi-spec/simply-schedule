@@ -4,7 +4,7 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { OUTLOOK_CONNECTOR_ID, OUTLOOK_NATIVE_RETURN_URL } from "./outlook";
+import { OUTLOOK_CONNECTOR_ID } from "./outlook";
 import type {
   DisconnectOutcome,
   ExportCandidate,
@@ -20,18 +20,6 @@ export type {
   OutlookStatus,
   OutlookSyncResult,
 };
-
-const GATEWAY_BASE_URL = "https://connector-gateway.lovable.dev";
-
-const MICROSOFT_SCOPES = [
-  "openid",
-  "profile",
-  "email",
-  "offline_access",
-  "User.Read",
-  "Calendars.ReadWrite",
-  "Mail.Read",
-];
 
 export const startOutlookConnect = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
