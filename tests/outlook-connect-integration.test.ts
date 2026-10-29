@@ -1,10 +1,5 @@
 import { beforeEach, afterEach, describe, expect, test, vi } from "vitest";
 const state = vi.hoisted(() => ({ request: "https://verolane.online/auth", calls: [] as Record<string, any>[], rows: new Map<string, any>(), used: false }));
-vi.mock("@tanstack/react-start", () => ({ createServerFn: () => {
-  let validate = (input: any) => input;
-  const chain = { middleware: () => chain, inputValidator: (fn: any) => { validate = fn; return chain; }, handler: (fn: any) => (input: any) => fn({ ...input, data: validate(input?.data) }) };
-  return chain;
-} }));
 vi.mock("@tanstack/react-start/server", () => ({ getRequest: () => new Request(state.request) }));
 vi.mock("@/integrations/supabase/auth-middleware", () => ({ requireSupabaseAuth: {} }));
 vi.mock("@/integrations/supabase/client.server", () => ({ supabaseAdmin: { from: () => {
@@ -13,7 +8,7 @@ vi.mock("@/integrations/supabase/client.server", () => ({ supabaseAdmin: { from:
   return chain;
 } } }));
 vi.mock("../src/lib/outlook.server", () => ({ refreshAccountLabel: async () => null, discoverCalendars: async () => [] }));
-import { startOutlookConnect, completeOutlookConnect } from "../src/lib/outlook.functions";
+import { startOutlookConnectHandler, completeOutlookConnectHandler } from "../src/lib/outlook.functions";
 import { getConnectionKeyForUser } from "../src/server/appUserConnections.server";
 describe("Outlook actual connect/exchange/storage with synthetic gateway", () => {
   beforeEach(() => {
@@ -28,8 +23,7 @@ describe("Outlook actual connect/exchange/storage with synthetic gateway", () =>
   });
   afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
   test("both Microsoft account types, least privilege and native return", async () => {
-    const run = startOutlookConnect as unknown as (input: any) => Promise<any>;
-    await run({ data: { native: true }, context: { userId: "synthetic-user-a" } });
+    await startOutlookConnectHandler({ data: { native: true }, context: { userId: "synthetic-user-a" } });
     const body = state.calls[0]?.body;
     expect(body.app_user_id).toBe("synthetic-user-a");
     expect(body.return_url).toBe("ca.verolane.chronosv://oauth/microsoft/return");
@@ -37,13 +31,12 @@ describe("Outlook actual connect/exchange/storage with synthetic gateway", () =>
     expect(body.credentials_configuration.scopes).toEqual(["openid", "profile", "email", "offline_access", "User.Read", "Calendars.ReadWrite", "Mail.Read"]);
   });
   test("exchanges once, saves encrypted and never reads another user's handle", async () => {
-    const complete = completeOutlookConnect as unknown as (input: any) => Promise<any>;
     const input = { data: { code: "synthetic-one-time" }, context: { userId: "synthetic-user-a", supabase: {} } };
-    expect(await complete(input)).toEqual({ ok: true });
+    expect(await completeOutlookConnectHandler(input)).toEqual({ ok: true });
     expect(state.rows.get("synthetic-user-a:microsoft_outlook").connection_key_ciphertext).not.toContain("synthetic-user-handle");
     expect(await getConnectionKeyForUser("synthetic-user-a", "microsoft_outlook")).toBe("synthetic-user-handle");
     expect(await getConnectionKeyForUser("synthetic-user-b", "microsoft_outlook")).toBeNull();
     expect(await getConnectionKeyForUser("synthetic-user-a", "google_mail")).toBeNull();
-    await expect(complete(input)).rejects.toThrow("400");
+    await expect(completeOutlookConnectHandler(input)).rejects.toThrow("400");
   });
 });
