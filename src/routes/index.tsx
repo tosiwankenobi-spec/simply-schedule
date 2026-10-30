@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { LoaderCircle } from "lucide-react";
@@ -49,6 +49,17 @@ function IndexRedirect() {
           <span>Opening your schedule…</span>
         </div>
       </div>
+      <footer className="absolute inset-x-0 bottom-6 text-center text-xs text-muted-foreground">
+        <nav className="flex items-center justify-center gap-4">
+          <Link to="/privacy-policy" className="underline underline-offset-2 hover:text-foreground">
+            Privacy policy
+          </Link>
+          <Link to="/terms" className="underline underline-offset-2 hover:text-foreground">
+            Terms of service
+          </Link>
+        </nav>
+        <p className="mt-2">© 2026 Verolane Digital Solutions Limited</p>
+      </footer>
     </main>
   );
 }

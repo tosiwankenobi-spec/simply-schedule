@@ -51,8 +51,8 @@ function PrivacyPolicyPage() {
           Privacy policy
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Last updated: October 15, 2026 · Chronos-V is operated by Verolane
-          (verolane.online).
+          Last updated: October 30, 2026 · Chronos-V is operated by Verolane Digital
+          Solutions Limited, Regina, Saskatchewan, Canada (verolane.online).
         </p>
 
         <Section title="Overview">
@@ -149,6 +149,30 @@ function PrivacyPolicyPage() {
           </p>
         </Section>
 
+        <Section title="Google user data">
+          <p>
+            Chronos-V's use and transfer to any other app of information received from Google
+            APIs will adhere to the{" "}
+            <a
+              href="https://developers.google.com/terms/api-services-user-data-policy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-foreground underline underline-offset-2"
+            >
+              Google API Services User Data Policy
+            </a>
+            , including the Limited Use requirements.
+          </p>
+          <p>
+            Google user data is used only to provide and improve the user-facing scheduling
+            features you enabled. It is not used for advertising, not sold, and not used to
+            train generalized AI models. Humans do not read it except with your explicit
+            consent, for security or abuse investigation, to comply with law, or when it is
+            aggregated and anonymized for internal operations. Email text sent to an AI service
+            is processed only on your behalf to produce suggestions.
+          </p>
+        </Section>
+
         <Section title="Sharing and household features">
           <p>
             Your plan is private by default. Household features only reveal what you choose to
@@ -225,6 +249,13 @@ function PrivacyPolicyPage() {
             >
               privacy@verolane.online
             </a>
+            .
+          </p>
+          <p>
+            See also our{" "}
+            <Link to="/terms" className="font-medium text-foreground underline underline-offset-2">
+              Terms of service
+            </Link>
             .
           </p>
         </Section>
