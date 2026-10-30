@@ -198,6 +198,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
+      { name: "google-site-verification", content: "Cu-ihY9C9wkzs81N3H99CJsbb028AzH-O8-SeIU_MeI" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Chronos-V — your AI schedule planner" },
       {
