@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
@@ -457,6 +457,17 @@ function AuthPage() {
             inboxes are always optional.
           </p>
         </div>
+        <footer className="mx-auto mt-6 w-full max-w-md text-center text-xs text-muted-foreground">
+          <nav className="flex items-center justify-center gap-4">
+            <Link to="/privacy-policy" className="underline underline-offset-2 hover:text-foreground">
+              Privacy policy
+            </Link>
+            <Link to="/terms" className="underline underline-offset-2 hover:text-foreground">
+              Terms of service
+            </Link>
+          </nav>
+          <p className="mt-2">© 2026 Verolane Digital Solutions Limited</p>
+        </footer>
       </section>
     </main>
   );
