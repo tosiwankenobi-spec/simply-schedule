@@ -210,10 +210,10 @@ function PrivacyPolicyPage() {
           <p>
             If you cannot sign in, email{" "}
             <a
-              href="mailto:privacy@verolane.online"
+              href="mailto:support@verolane.online"
               className="font-medium text-foreground underline underline-offset-2"
             >
-              privacy@verolane.online
+              support@verolane.online
             </a>{" "}
             from the address on the account and we will process the deletion for you.
           </p>
@@ -244,10 +244,10 @@ function PrivacyPolicyPage() {
           <p>
             Questions, deletion requests, or data requests: email{" "}
             <a
-              href="mailto:privacy@verolane.online"
+              href="mailto:support@verolane.online"
               className="font-medium text-foreground underline underline-offset-2"
             >
-              privacy@verolane.online
+              support@verolane.online
             </a>
             .
           </p>
