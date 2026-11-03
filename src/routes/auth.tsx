@@ -245,7 +245,7 @@ function AuthPage() {
         </p>
       </section>
 
-      <section className="verolane-wash relative flex min-h-screen items-center bg-background px-4 py-8 sm:px-8 lg:px-12">
+      <section className="verolane-wash relative flex min-h-screen flex-col items-center justify-center bg-background px-4 py-8 sm:px-8 lg:px-12">
         <div className="pointer-events-none absolute inset-0 paper-grain opacity-20" />
         <div className="relative mx-auto w-full max-w-md rounded-3xl border border-border/80 bg-card/95 p-6 shadow-[0_30px_80px_rgba(0,46,40,0.13)] sm:p-8">
           <div className="mb-6 flex items-center justify-center gap-2.5 lg:hidden">
