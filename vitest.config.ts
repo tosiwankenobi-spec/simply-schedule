@@ -14,6 +14,7 @@ export default defineConfig({
   plugins: [tsConfigPaths()],
   resolve: {
     alias: {
+      "@": path.resolve(rootDir, "src"),
       "entities/lib/decode.js": path.resolve(
         rootDir,
         "node_modules/entities/lib/decode.js",

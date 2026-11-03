@@ -1,6 +1,6 @@
 import { beforeEach, afterEach, describe, expect, test, vi } from "vitest";
 const state = vi.hoisted(() => ({ request: "https://verolane.online/auth", calls: [] as Record<string, any>[], rows: new Map<string, any>(), used: false }));
-vi.mock("@tanstack/react-start", () => ({ createServerFn: () => {
+vi.mock("@tanstack/react-start", () => ({ createMiddleware: () => (handler: any) => handler, createServerFn: () => {
   let validate = (input: any) => input;
   const chain = { middleware: () => chain, inputValidator: (fn: any) => { validate = fn; return chain; }, handler: (fn: any) => (input: any) => fn({ ...input, data: validate(input?.data) }) };
   return chain;
