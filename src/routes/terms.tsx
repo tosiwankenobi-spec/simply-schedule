@@ -39,8 +39,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function SupportEmail() {
   return (
-    <a href="mailto:support@verolane.online" className={linkClass}>
-      support@verolane.online
+    <a href="mailto:jeff@verolane.ca" className={linkClass}>
+      jeff@verolane.ca
     </a>
   );
 }
